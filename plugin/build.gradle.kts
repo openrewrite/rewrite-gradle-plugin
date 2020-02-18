@@ -15,6 +15,15 @@ plugins {
 
 repositories {
     jcenter()
+    maven { url = uri("https://oss.jfrog.org/artifactory/oss-snapshot-local") }
+    mavenLocal()
+}
+
+configurations.all {
+    resolutionStrategy {
+        cacheChangingModulesFor(0, TimeUnit.SECONDS)
+        cacheDynamicVersionsFor(0, TimeUnit.SECONDS)
+    }
 }
 
 group = "org.gradle"
@@ -30,7 +39,9 @@ val plugin: Configuration by configurations.creating
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
 dependencies {
-    plugin("org.ow2.asm:asm:7.2")
+    plugin("com.netflix.devinsight.rewrite:rewrite-core:latest.integration")
+    plugin("eu.infomas:annotation-detector:latest.release")
+    plugin("org.gradle:rewrite-checkstyle:latest.integration")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.8")
@@ -68,7 +79,7 @@ publishing {
     publications {
         create<MavenPublication>("plugin") {
             artifactId = "rewrite-gradle-plugin"
-            artifact(jar.get())
+            artifact(tasks.named<Jar>("jar").get())
         }
     }
     repositories {

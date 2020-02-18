@@ -1,0 +1,36 @@
+buildscript {
+    dependencies {
+        classpath 'org.gradle:rewrite-gradle-plugin:latest.integration'
+        classpath 'com.netflix.devinsight.rewrite:rewrite-core:latest.integration'
+        classpath 'org.gradle:rewrite-checkstyle:latest.integration'
+        classpath 'com.puppycrawl.tools:checkstyle:latest.release'
+    }
+
+    repositories {
+        mavenCentral()
+        mavenLocal()
+        maven { url "https://oss.jfrog.org/artifactory/oss-snapshot-local" }
+    }
+
+    configurations.classpath {
+        resolutionStrategy {
+            cacheChangingModulesFor 0, 'seconds'
+            cacheDynamicVersionsFor 0, 'seconds'
+        }
+    }
+}
+
+plugins {
+    id 'java'
+    id 'checkstyle'
+}
+
+apply plugin: 'org.gradle.rewrite'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+}
