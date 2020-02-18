@@ -6,6 +6,8 @@
     <module name="TreeWalker">
         <module name="SimplifyBooleanExpression"/>
         <module name="SimplifyBooleanReturn"/>
-        <module name="EmptyBlock"/>
+        <module name="EmptyBlock">
+            <property name="tokens" value="LITERAL_CATCH,LITERAL_FINALLY,LITERAL_IF"/>
+        </module>
     </module>
 </module>
