@@ -4,6 +4,7 @@ import com.netflix.rewrite.refactor.RefactorResult;
 import org.gradle.api.tasks.TaskAction;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -30,7 +31,8 @@ public class RewriteFixTask extends AbstractRewriteTask {
                     .println("Please review changes and commit.");
 
             for (RefactorResult result : results) {
-                textOutput.withStyle(Styling.Bold).println(result.getOriginal().getSourcePath());
+                textOutput.withStyle(Styling.Bold).println(getProject().getProjectDir().toPath().relativize(
+                        new File(result.getOriginal().getSourcePath()).toPath()));
                 result.getRulesThatMadeChanges().stream()
                         .sorted()
                         .forEach(rule -> textOutput.println("  " + rule));

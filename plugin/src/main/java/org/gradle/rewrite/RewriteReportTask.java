@@ -3,6 +3,7 @@ package org.gradle.rewrite;
 import com.netflix.rewrite.refactor.RefactorResult;
 import org.gradle.api.tasks.TaskAction;
 
+import java.io.File;
 import java.util.List;
 
 public class RewriteReportTask extends AbstractRewriteTask {
@@ -18,7 +19,8 @@ public class RewriteReportTask extends AbstractRewriteTask {
             textOutput.println(" to automatically fix.");
 
             for (RefactorResult result : results) {
-                textOutput.withStyle(Styling.Bold).println(result.getOriginal().getSourcePath());
+                textOutput.withStyle(Styling.Bold).println(getProject().getProjectDir().toPath().relativize(
+                        new File(result.getOriginal().getSourcePath()).toPath()));
                 result.getRulesThatMadeChanges().stream()
                         .sorted()
                         .forEach(rule -> textOutput.println("  " + rule));
