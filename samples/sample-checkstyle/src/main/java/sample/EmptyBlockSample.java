@@ -1,5 +1,6 @@
 package sample;
 
+import java.nio.file.*;
 import java.util.Random;
 
 public class EmptyBlockSample {
@@ -22,7 +23,7 @@ public class EmptyBlockSample {
         int n;
         if((n = sideEffect()) == 1) {}
         if((n /= sideEffect()) == 1) {}
-        if(new A().n == 1) {}
+        if(new EmptyBlockSample().n == 1) {}
         if(!boolSideEffect()) {}
         if(1 == 2) {}
     }
