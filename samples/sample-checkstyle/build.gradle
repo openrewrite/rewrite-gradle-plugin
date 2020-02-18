@@ -26,11 +26,3 @@ plugins {
 }
 
 apply plugin: 'org.gradle.rewrite'
-
-repositories {
-    mavenLocal()
-    mavenCentral()
-}
-
-dependencies {
-}
