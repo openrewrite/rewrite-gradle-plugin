@@ -6,5 +6,6 @@
     <module name="TreeWalker">
         <module name="SimplifyBooleanExpression"/>
         <module name="SimplifyBooleanReturn"/>
+        <module name="EmptyBlock"/>
     </module>
 </module>
