@@ -1,7 +1,7 @@
 package org.gradle.rewrite;
 
 import com.netflix.rewrite.RefactoringProvider;
-import com.netflix.rewrite.tree.visitor.refactor.RefactorVisitor;
+import com.netflix.rewrite.visitor.refactor.RefactorVisitor;
 import eu.infomas.annotation.AnnotationDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

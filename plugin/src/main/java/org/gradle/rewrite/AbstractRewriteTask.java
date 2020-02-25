@@ -1,23 +1,27 @@
 package org.gradle.rewrite;
 
-import com.netflix.rewrite.parse.OpenJdkParser;
-import com.netflix.rewrite.refactor.RefactorResult;
-import com.netflix.rewrite.tree.visitor.refactor.RefactorVisitor;
+import com.netflix.rewrite.Parser;
+import com.netflix.rewrite.RefactorResult;
+import com.netflix.rewrite.visitor.refactor.RefactorVisitor;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.rewrite.checkstyle.RewriteCheckstyle;
+import org.gradle.rewrite.spring.xml.AnnotationBasedBeanConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanDefinitionStoreException;
+import org.springframework.beans.factory.support.SimpleBeanDefinitionRegistry;
+import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
+import org.xml.sax.InputSource;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
@@ -45,16 +49,47 @@ public abstract class AbstractRewriteTask extends DefaultTask {
         }
 
         return convention.getSourceSets().stream().flatMap(ss -> {
-            var parser = new OpenJdkParser(ss.getCompileClasspath().getFiles().stream().map(File::toPath).collect(toList()),
+            var parser = new Parser(ss.getCompileClasspath().getFiles().stream().map(File::toPath).collect(toList()),
                     Charset.defaultCharset(), false);
             var cus = parser.parse(ss.getAllJava().getFiles().stream().map(File::toPath).collect(toList()));
 
             var refactorVisitors = new ArrayList<>(automaticallyAppliedRules);
+
             refactorVisitors.addAll(RewriteScanner.findRefactorVisitors(ss.getCompileClasspath()));
+
+            refactorVisitors.addAll(addSpringAnnotationBeanConfigurationForSpringBeanXMLs(ss));
 
             return cus.stream()
                     .map(cu -> cu.refactor().visit(refactorVisitors).fix())
                     .filter(result -> !result.getRulesThatMadeChanges().isEmpty());
         }).collect(toList());
+    }
+
+    /**
+     * If the project contains any Spring XML Bean configurations, migrate the project to annotation-driven configuration.
+     */
+    private List<RefactorVisitor> addSpringAnnotationBeanConfigurationForSpringBeanXMLs(SourceSet ss) {
+        return ss.getResources().getFiles().stream()
+                .filter(f -> f.getName().endsWith(".xml"))
+                .filter(f -> {
+                    var beanDefinitionReader = new XmlBeanDefinitionReader(new SimpleBeanDefinitionRegistry());
+                    beanDefinitionReader.setValidating(false);
+
+                    try(FileInputStream fis = new FileInputStream(f)) {
+                        beanDefinitionReader.loadBeanDefinitions(new InputSource(fis));
+                        return true;
+                    } catch (IOException | BeanDefinitionStoreException ignored) {
+                    }
+                    return false;
+                })
+                .map(f -> {
+                    try(FileInputStream fis = new FileInputStream(f)) {
+                        return (RefactorVisitor) new AnnotationBasedBeanConfiguration(fis);
+                    } catch (IOException ignored) {
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .collect(toList());
     }
 }

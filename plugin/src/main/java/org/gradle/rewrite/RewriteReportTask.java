@@ -1,6 +1,6 @@
 package org.gradle.rewrite;
 
-import com.netflix.rewrite.refactor.RefactorResult;
+import com.netflix.rewrite.RefactorResult;
 import org.gradle.api.tasks.TaskAction;
 
 import java.io.File;

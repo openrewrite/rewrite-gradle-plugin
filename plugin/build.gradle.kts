@@ -15,8 +15,8 @@ plugins {
 
 repositories {
     jcenter()
-    maven { url = uri("https://oss.jfrog.org/artifactory/oss-snapshot-local") }
     mavenLocal()
+    maven { url = uri("https://oss.jfrog.org/artifactory/oss-snapshot-local") }
 }
 
 configurations.all {
@@ -42,6 +42,8 @@ dependencies {
     plugin("com.netflix.devinsight.rewrite:rewrite-core:latest.integration")
     plugin("eu.infomas:annotation-detector:latest.release")
     plugin("org.gradle:rewrite-checkstyle:latest.integration")
+    plugin("org.gradle:rewrite-spring:latest.integration")
+    plugin("org.springframework:spring-beans:5.2.3.RELEASE")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.8")

@@ -6,6 +6,9 @@ import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.compile.AbstractCompile;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 public class RewritePlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
