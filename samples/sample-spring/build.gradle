@@ -3,6 +3,8 @@ buildscript {
         classpath 'org.gradle:rewrite-gradle-plugin:latest.integration'
         classpath 'com.netflix.devinsight.rewrite:rewrite-core:latest.integration'
         classpath 'org.gradle:rewrite-checkstyle:latest.integration'
+        classpath 'org.gradle:rewrite-spring:latest.integration'
+        classpath 'org.springframework:spring-beans:5.2.3.RELEASE'
         classpath 'com.puppycrawl.tools:checkstyle:latest.release'
     }
 
