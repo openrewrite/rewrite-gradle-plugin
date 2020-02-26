@@ -9,6 +9,7 @@ import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.rewrite.checkstyle.RewriteCheckstyle;
+import org.gradle.rewrite.spring.ConstructorInjection;
 import org.gradle.rewrite.spring.xml.AnnotationBasedBeanConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +59,7 @@ public abstract class AbstractRewriteTask extends DefaultTask {
             refactorVisitors.addAll(RewriteScanner.findRefactorVisitors(ss.getCompileClasspath()));
 
             refactorVisitors.addAll(addSpringAnnotationBeanConfigurationForSpringBeanXMLs(ss));
+            refactorVisitors.add(new ConstructorInjection());
 
             return cus.stream()
                     .map(cu -> cu.refactor().visit(refactorVisitors).fix())
