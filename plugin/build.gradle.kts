@@ -10,13 +10,11 @@ plugins {
     checkstyle
     codenarc
     `kotlin-dsl`
-    id("com.gradle.plugin-publish") version "0.10.1"
 }
 
 repositories {
+    maven { url = uri("https://repo.gradle.org/gradle/libs-snapshots/") }
     jcenter()
-    mavenLocal()
-    maven { url = uri("https://oss.jfrog.org/artifactory/oss-snapshot-local") }
 }
 
 configurations.all {
@@ -39,42 +37,20 @@ val plugin: Configuration by configurations.creating
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
 dependencies {
-    plugin("com.netflix.devinsight.rewrite:rewrite-core:latest.integration")
-    plugin("eu.infomas:annotation-detector:latest.release")
-    plugin("org.gradle:rewrite-checkstyle:latest.integration")
-    plugin("org.gradle:rewrite-spring:latest.integration")
-    plugin("org.springframework:spring-beans:5.2.3.RELEASE")
+    plugin("org.gradle.rewrite:rewrite-java:latest.integration")
+    plugin("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
+    plugin("org.eclipse.jgit:org.eclipse.jgit:latest.release")
+
+    implementation("org.gradle.rewrite:rewrite-java:latest.integration")
+    implementation("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.8")
     testImplementation("org.spockframework:spock-core:1.3-groovy-2.5")
 }
 
-gradlePlugin {
-    plugins {
-        create("rewrite") {
-            id = "org.gradle.rewrite"
-            displayName = "Gradle rewrite plugin"
-            description = project.description
-            implementationClass = "org.gradle.rewrite.RewritePlugin"
-        }
-    }
-}
-
 tasks.pluginUnderTestMetadata {
     pluginClasspath.from(plugin)
-}
-
-pluginBundle {
-    website = "https://github.com/gradle/rewrite-gradle-plugin"
-    vcsUrl = "https://github.com/gradle/rewrite-gradle-plugin.git"
-    description = project.description
-    tags = listOf("static-analysis", "refactoring")
-
-    mavenCoordinates {
-        groupId = "org.gradle"
-        artifactId = "rewrite-gradle-plugin"
-    }
 }
 
 publishing {

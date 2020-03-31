@@ -4,7 +4,7 @@ plugins {
 
 apply(from = "gradle/build-cache-configuration.settings.gradle.kts")
 
-rootProject.name = "rewrite-plugin"
+rootProject.name = "rewrite-gradle-plugin"
 
 include("plugin")
 //include("sample-tests")

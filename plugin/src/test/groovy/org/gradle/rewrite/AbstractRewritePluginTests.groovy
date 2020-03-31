@@ -29,11 +29,11 @@ class AbstractRewritePluginTests extends Specification {
         return file
     }
 
-    GradleRunner gradleRunner(String gradleVersion) {
+    GradleRunner gradleRunner(String gradleVersion, String... tasks) {
         GradleRunner.create()
                 .withDebug(ManagementFactory.getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0)
                 .withProjectDir(projectDir.root)
-                .withArguments('fixSourceLint', '-s')
+                .withArguments((tasks + '-s').toList())
                 .withPluginClasspath()
                 .forwardOutput()
                 .tap {
