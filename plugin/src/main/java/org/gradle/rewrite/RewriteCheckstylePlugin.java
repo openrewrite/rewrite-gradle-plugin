@@ -79,7 +79,7 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
     private void configureTaskConventionMapping(RewriteCheckstyleTask task) {
         ConventionMapping taskMapping = task.getConventionMapping();
         taskMapping.map("config", (Callable<TextResource>) () -> extension.getCheckstyle().getConfig());
-        taskMapping.map("showViolations", (Callable<Boolean>) () -> extension.isShowViolations());
+        taskMapping.map("ignoreFailures", (Callable<Boolean>) () -> extension.isIgnoreFailures());
         taskMapping.map("fixInPlace", (Callable<Boolean>) () -> extension.isFixInPlace());
         taskMapping.map("autoCommit", (Callable<Boolean>) () -> extension.isAutoCommit());
     }

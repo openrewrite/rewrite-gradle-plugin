@@ -5,21 +5,12 @@ import org.gradle.api.plugins.quality.CodeQualityExtension;
 import org.gradle.api.resources.TextResource;
 
 public class RewriteExtension extends CodeQualityExtension {
-    private boolean showViolations = true;
     private boolean fixInPlace = true;
     private boolean autoCommit = false;
     private Checkstyle checkstyle = new Checkstyle();
 
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
-    }
-
-    public boolean isShowViolations() {
-        return showViolations;
-    }
-
-    public void setShowViolations(boolean showViolations) {
-        this.showViolations = showViolations;
     }
 
     public boolean isFixInPlace() {

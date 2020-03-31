@@ -204,10 +204,52 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         def sourceFile = writeSource(javaSourceWithCheckstyleViolation)
 
         when:
-        gradleRunner(gradleVersion as String, 'check').build()
+        gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').buildAndFail()
 
         then:
         sourceFile.text == javaSourceFixed
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
+    @Unroll
+    def "fixes checkstyle issues in place but 'ignore failures', i.e. don't fail the build (gradle version #gradleVersion)"() {
+        given:
+        def sourceFile = writeSource(javaSourceWithCheckstyleViolation)
+
+        buildFile << """
+            rewrite {
+                ignoreFailures = true
+            }
+        """
+
+        when:
+        gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').build()
+
+        then:
+        sourceFile.text == javaSourceFixed
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
+    @Unroll
+    def "just generate diff, don't fix in place (gradle version #gradleVersion)"() {
+        given:
+        def sourceFile = writeSource(javaSourceWithCheckstyleViolation)
+
+        buildFile << """
+            rewrite {
+                fixInPlace = false
+            }
+        """
+
+        when:
+        gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').buildAndFail()
+
+        then:
+        sourceFile.text == javaSourceWithCheckstyleViolation
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
