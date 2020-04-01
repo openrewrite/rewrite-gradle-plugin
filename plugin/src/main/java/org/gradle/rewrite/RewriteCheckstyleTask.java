@@ -204,7 +204,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
                     getLogger().warn("Failed to automatically commit checkstyle fixes. Please review and commit the changes.", e);
                 }
             }
-        } else if (!cus.isEmpty()) {
+        } else if (!changes.isEmpty()) {
             if (isIgnoreFailures()) {
                 if (isFixInPlace() || isAutoCommit()) {
                     getLogger().warn("Checkstyle violations have been fixed. Please review and commit the changes.");

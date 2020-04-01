@@ -254,4 +254,22 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
+
+    @Unroll
+    def "issues fixed in place are not seen as violations on a subsequent run (gradle version #gradleVersion)"() {
+        given:
+        def sourceFile = writeSource(javaSourceWithCheckstyleViolation)
+
+        when:
+        gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').buildAndFail()
+
+        then:
+        sourceFile.text == javaSourceFixed
+
+        then:
+        gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').build()
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
 }
