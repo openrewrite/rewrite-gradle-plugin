@@ -1,3 +1,4 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.rewrite.build.GradleVersionData
 import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
 import java.net.URI
@@ -10,6 +11,8 @@ plugins {
     checkstyle
     codenarc
     `kotlin-dsl`
+    id("nebula.maven-resolved-dependencies") version "17.2.1"
+    id("com.github.johnrengelman.shadow") version "5.2.0"
 }
 
 repositories {
@@ -41,13 +44,28 @@ dependencies {
     plugin("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
     plugin("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
-    implementation("org.gradle.rewrite:rewrite-java:latest.integration")
-    implementation("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
+    api("org.gradle.rewrite:rewrite-java:latest.integration")
+    api("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.8")
     testImplementation("org.spockframework:spock-core:1.3-groovy-2.5")
 }
+
+val shadowJar = tasks.named<ShadowJar>("shadowJar")
+shadowJar.configure {
+    configurations = listOf(plugin)
+    dependencies {
+        include(dependency("org.eclipse.jgit:org.eclipse.jgit"))
+    }
+    relocate("org.eclipse.jgit", "org.gradle.rewrite.gradleplugin.org.eclipse.jgit")
+    @Suppress("DEPRECATION")
+    classifier = ""
+}
+
+tasks.getByName("jar").enabled = false
+tasks.getByName("jar").dependsOn(shadowJar)
 
 tasks.pluginUnderTestMetadata {
     pluginClasspath.from(plugin)
@@ -57,7 +75,9 @@ publishing {
     publications {
         create<MavenPublication>("plugin") {
             artifactId = "rewrite-gradle-plugin"
-            artifact(tasks.named<Jar>("jar").get())
+            artifact(shadowJar.get()) {
+                classifier = null
+            }
         }
     }
     repositories {
