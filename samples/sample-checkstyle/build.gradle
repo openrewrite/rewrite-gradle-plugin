@@ -21,4 +21,8 @@ plugins {
     id 'checkstyle'
 }
 
+repositories {
+    mavenCentral()
+}
+
 apply plugin: 'org.gradle.rewrite-checkstyle'
