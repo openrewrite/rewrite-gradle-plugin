@@ -60,7 +60,7 @@ publishing {
     publications {
         create<MavenPublication>("plugin") {
             artifactId = "rewrite-gradle-plugin"
-            artifact(tasks.named<Jar>("jar").get())
+            from(components["java"])
         }
     }
     repositories {
