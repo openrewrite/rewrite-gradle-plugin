@@ -13,7 +13,7 @@ plugins {
 }
 
 repositories {
-    maven { url = uri("https://repo.gradle.org/gradle/libs-snapshots/") }
+    maven { url = uri("https://repo.gradle.org/gradle/libs-releases/") }
     jcenter()
 }
 
@@ -62,8 +62,8 @@ publishing {
     }
     repositories {
         maven {
-            name = "GradleBuildInternalSnapshots"
-            url = URI.create("https://repo.gradle.org/gradle/libs-snapshots-local")
+            name = "GradleReleases"
+            url = URI.create("https://repo.gradle.org/gradle/libs-releases-local")
             credentials {
                 username = project.findProperty("artifactoryUsername") as String?
                 password = project.findProperty("artifactoryPassword") as String?

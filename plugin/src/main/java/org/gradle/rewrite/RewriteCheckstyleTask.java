@@ -17,7 +17,6 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.reporting.Reporting;
 import org.gradle.api.resources.TextResource;
-import org.gradle.api.tasks.Console;
 import org.gradle.api.tasks.*;
 import org.gradle.rewrite.checkstyle.RewriteCheckstyle;
 import org.gradle.util.ClosureBackedAction;
@@ -27,10 +26,15 @@ import org.openrewrite.java.tree.J;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
@@ -38,6 +42,7 @@ import static java.util.stream.StreamSupport.stream;
 
 public class RewriteCheckstyleTask extends SourceTask implements VerificationTask, Reporting<RewriteCheckstyleReports> {
     private TextResource config;
+    private Map<String, Object> configProperties = new LinkedHashMap<>();
     private boolean ignoreFailures;
     private boolean showViolations = true;
     private boolean fixInPlace = true;
@@ -83,17 +88,20 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     @TaskAction
     public void run() throws IOException {
         TextResource config = this.config;
+        Map<String, Object> configProperties = this.configProperties;
 
         CheckstyleExtension extension = getProject().getExtensions().findByType(CheckstyleExtension.class);
         if (config == null && extension != null) {
             config = extension.getConfig();
+            configProperties = extension.getConfigProperties();
         }
 
         if (config == null) {
             throw new GradleException("Rewrite checkstyle must have the config property set or be able to retrieve it from the checkstyle extension");
         }
 
-        RewriteCheckstyle rewrite = new RewriteCheckstyle(new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)));
+        RewriteCheckstyle rewrite = new RewriteCheckstyle(new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)),
+                configProperties);
 
         JavaParser parser = new JavaParser(emptyList(), StandardCharsets.UTF_8, false);
         List<J.CompilationUnit> cus = parser.parse(getSource().getFiles().stream().map(File::toPath).collect(toList()),
@@ -110,8 +118,8 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         }
 
         List<Change<J.CompilationUnit>> changes = cus.stream()
-                .map(cu -> cu.refactor().visit(rewrite.getVisitors()).fix())
-                .filter(change -> !change.getGetRulesThatMadeChanges().isEmpty())
+                .map(cu -> rewrite.apply(cu.refactor()).fix())
+                .filter(change -> !change.getRulesThatMadeChanges().isEmpty())
                 .collect(toList());
 
         try (BufferedWriter writer = Files.newBufferedWriter(reports.getPatch().getDestination().toPath())) {
@@ -283,6 +291,23 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
      */
     public void setConfig(TextResource config) {
         this.config = config;
+    }
+
+    /**
+     * The properties available for use in the configuration file. These are substituted into the configuration file.
+     */
+    @Nullable
+    @Optional
+    @Input
+    public Map<String, Object> getConfigProperties() {
+        return configProperties;
+    }
+
+    /**
+     * The properties available for use in the configuration file. These are substituted into the configuration file.
+     */
+    public void setConfigProperties(@Nullable Map<String, Object> configProperties) {
+        this.configProperties = configProperties;
     }
 
     public void setAutoCommit(boolean autoCommit) {

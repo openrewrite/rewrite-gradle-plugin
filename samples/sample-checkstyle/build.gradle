@@ -1,15 +1,11 @@
 buildscript {
     dependencies {
         classpath 'org.gradle:rewrite-gradle-plugin:latest.integration'
-        classpath 'com.netflix.devinsight.rewrite:rewrite-core:latest.integration'
-        classpath 'org.gradle:rewrite-checkstyle:latest.integration'
-        classpath 'com.puppycrawl.tools:checkstyle:latest.release'
     }
 
     repositories {
         mavenCentral()
-        mavenLocal()
-        maven { url "https://oss.jfrog.org/artifactory/oss-snapshot-local" }
+        maven { url "https://repo.gradle.org/gradle/libs-snapshots" }
     }
 
     configurations.classpath {
@@ -25,4 +21,4 @@ plugins {
     id 'checkstyle'
 }
 
-apply plugin: 'org.gradle.rewrite'
+apply plugin: 'org.gradle.rewrite-checkstyle'
