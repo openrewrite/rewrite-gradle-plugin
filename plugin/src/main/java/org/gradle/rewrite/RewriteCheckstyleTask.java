@@ -127,7 +127,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         }
 
         RewriteCheckstyle rewrite = new RewriteCheckstyle(new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)),
-                getExcludes(),
+                getExcludeChecks(),
                 configProperties);
 
         getLogger().debug("Checking {} files for checkstyle auto-remediation", sourceChanges.size());
