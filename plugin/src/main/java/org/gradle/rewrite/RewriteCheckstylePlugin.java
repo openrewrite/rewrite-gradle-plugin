@@ -11,6 +11,7 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 
 import java.io.File;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCheckstyleTask> {
@@ -80,8 +81,8 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
         ConventionMapping taskMapping = task.getConventionMapping();
         taskMapping.map("config", (Callable<TextResource>) () -> extension.getCheckstyle().getConfig());
         taskMapping.map("ignoreFailures", (Callable<Boolean>) () -> extension.isIgnoreFailures());
-        taskMapping.map("fixInPlace", (Callable<Boolean>) () -> extension.isFixInPlace());
-        taskMapping.map("autoCommit", (Callable<Boolean>) () -> extension.isAutoCommit());
+        taskMapping.map("action", (Callable<RewriteAction>) () -> extension.getAction());
+        taskMapping.map("exclude", (Callable<Set<String>>) () -> extension.getExclude());
     }
 
     private void configureReportsConventionMapping(RewriteCheckstyleTask task, String baseName) {

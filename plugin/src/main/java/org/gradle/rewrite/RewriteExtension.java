@@ -4,29 +4,33 @@ import org.gradle.api.Project;
 import org.gradle.api.plugins.quality.CodeQualityExtension;
 import org.gradle.api.resources.TextResource;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public class RewriteExtension extends CodeQualityExtension {
-    private boolean fixInPlace = true;
-    private boolean autoCommit = false;
+    private RewriteAction action = RewriteAction.FIX_SOURCE;
+    private Set<String> exclude = new HashSet<>();
     private Checkstyle checkstyle = new Checkstyle();
 
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
     }
 
-    public boolean isFixInPlace() {
-        return fixInPlace;
+    public RewriteAction getAction() {
+        return action;
     }
 
-    public void setFixInPlace(boolean fixInPlace) {
-        this.fixInPlace = fixInPlace;
+    public void setAction(RewriteAction action) {
+        this.action = action;
     }
 
-    public boolean isAutoCommit() {
-        return autoCommit;
+    public Set<String> getExclude() {
+        return exclude;
     }
 
-    public void setAutoCommit(boolean autoCommit) {
-        this.autoCommit = autoCommit;
+    public void setExclude(Set<String> exclude) {
+        this.exclude = exclude;
     }
 
     public Checkstyle getCheckstyle() {

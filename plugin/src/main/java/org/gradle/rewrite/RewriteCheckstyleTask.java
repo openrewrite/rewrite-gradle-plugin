@@ -20,6 +20,7 @@ import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.reporting.Reporting;
 import org.gradle.api.resources.TextResource;
 import org.gradle.api.tasks.*;
+import org.gradle.api.tasks.Optional;
 import org.gradle.rewrite.checkstyle.RewriteCheckstyle;
 import org.gradle.util.ClosureBackedAction;
 import org.gradle.work.ChangeType;
@@ -36,9 +37,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 import static java.util.Collections.emptyList;
@@ -50,8 +49,8 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     private Map<String, Object> configProperties = new LinkedHashMap<>();
     private boolean ignoreFailures;
     private boolean showViolations = true;
-    private boolean fixInPlace = true;
-    private boolean autoCommit = false;
+    private RewriteAction action = RewriteAction.FIX_SOURCE;
+    private Set<String> exclude = new HashSet<>();
 
     private final FileCollection stableSources = getProject().files((Callable<Object>) this::getSource);
 
@@ -128,6 +127,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         }
 
         RewriteCheckstyle rewrite = new RewriteCheckstyle(new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)),
+                getExcludes(),
                 configProperties);
 
         getLogger().debug("Checking {} files for checkstyle auto-remediation", sourceChanges.size());
@@ -136,7 +136,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         List<J.CompilationUnit> cus = parser.parse(sourceChanges, getProject().getRootDir().toPath());
 
         Status status = null;
-        if (isAutoCommit() && git != null) {
+        if (getAction().compareTo(RewriteAction.COMMIT) >= 0 && git != null) {
             try {
                 status = git.status().call();
             } catch (GitAPIException e) {
@@ -162,7 +162,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         try (BufferedWriter writer = Files.newBufferedWriter(reports.getPatch().getDestination().toPath())) {
             for (Change<J.CompilationUnit> change : changes) {
                 writer.write(change.diff() + "\n");
-                if (isFixInPlace() || isAutoCommit()) {
+                if (getAction().compareTo(RewriteAction.FIX_SOURCE) >= 0) {
                     try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
                             getProject().getRootDir().toPath().resolve(change.getOriginal().getSourcePath()))) {
                         sourceFileWriter.write(change.getFixed().print());
@@ -171,7 +171,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
             }
         }
 
-        if (isAutoCommit() && git != null) {
+        if (getAction().compareTo(RewriteAction.COMMIT) >= 0 && git != null) {
             if (status == null) {
                 getLogger().warn("Checkstyle violations have been fixed. Please review and commit the changes.");
             } else {
@@ -210,25 +210,27 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
                                         .setMessage("Resolved checkstyle issues.")
                                         .call();
 
-                                git.rebase()
-                                        .setOperation(RebaseCommand.Operation.BEGIN)
-                                        .setUpstream(lastTwoCommits.get(1))
-                                        .runInteractively(new RebaseCommand.InteractiveHandler() {
-                                            @Override
-                                            public void prepareSteps(List<RebaseTodoLine> list) {
-                                                try {
-                                                    list.get(1).setAction(RebaseTodoLine.Action.FIXUP);
-                                                } catch (IllegalTodoFileModification e2) {
-                                                    throw new IllegalStateException(e2);
+                                if(getAction().equals(RewriteAction.REBASE_FIXUP)) {
+                                    git.rebase()
+                                            .setOperation(RebaseCommand.Operation.BEGIN)
+                                            .setUpstream(lastTwoCommits.get(1))
+                                            .runInteractively(new RebaseCommand.InteractiveHandler() {
+                                                @Override
+                                                public void prepareSteps(List<RebaseTodoLine> list) {
+                                                    try {
+                                                        list.get(1).setAction(RebaseTodoLine.Action.FIXUP);
+                                                    } catch (IllegalTodoFileModification e2) {
+                                                        throw new IllegalStateException(e2);
+                                                    }
                                                 }
-                                            }
 
-                                            @Override
-                                            public String modifyCommitMessage(String oldMessage) {
-                                                return oldMessage;
-                                            }
-                                        })
-                                        .call();
+                                                @Override
+                                                public String modifyCommitMessage(String oldMessage) {
+                                                    return oldMessage;
+                                                }
+                                            })
+                                            .call();
+                                }
                             }
                         } finally {
                             if (changedGpgSign) {
@@ -242,13 +244,13 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
             }
         } else if (!changes.isEmpty()) {
             if (isIgnoreFailures()) {
-                if (isFixInPlace() || isAutoCommit()) {
+                if (getAction().compareTo(RewriteAction.FIX_SOURCE) >= 0) {
                     getLogger().warn("Checkstyle violations have been fixed. Please review and commit the changes.");
                 } else {
                     getLogger().warn("Checkstyle violations have been found.");
                 }
             } else {
-                if (isFixInPlace() || isAutoCommit()) {
+                if (getAction().compareTo(RewriteAction.FIX_SOURCE) >= 0) {
                     throw new GradleException("Checkstyle violations have been fixed. Please review and commit the changes.");
                 } else {
                     throw new GradleException("Checkstyle violations have been found.");
@@ -316,14 +318,24 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     }
 
     @Input
-    public boolean isFixInPlace() {
-        return fixInPlace;
+    public RewriteAction getAction() {
+        return action;
     }
 
-    public void setFixInPlace(boolean fixInPlace) {
-        this.fixInPlace = fixInPlace;
+    public void setAction(RewriteAction action) {
+        this.action = action;
     }
 
+    @Input
+    public Set<String> getExclude() {
+        return exclude;
+    }
+
+    public void setExclude(Set<String> exclude) {
+        this.exclude = exclude;
+    }
+
+    @Input
     public TextResource getConfig() {
         return config;
     }
@@ -351,17 +363,5 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
      */
     public void setConfigProperties(@Nullable Map<String, Object> configProperties) {
         this.configProperties = configProperties;
-    }
-
-    public void setAutoCommit(boolean autoCommit) {
-        this.autoCommit = autoCommit;
-    }
-
-    /**
-     * If set, commit fixes and use rebase fixup to layer them on top of the last commit.
-     */
-    @Input
-    public boolean isAutoCommit() {
-        return autoCommit;
     }
 }
