@@ -62,11 +62,10 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
                         .getTasksByName(sourceSet.getTaskName(getTaskBaseName(), null), false)
                         .iterator().next();
 
-                Task checkstyleTask = project
-                        .getTasksByName(sourceSet.getTaskName("checkstyle", null), false)
-                        .iterator().next();
-
-                checkstyleTask.shouldRunAfter(rewriteTask);
+                Set<Task> checkstyleTasks = project.getTasksByName(sourceSet.getTaskName("checkstyle", null), false);
+                if(!checkstyleTasks.isEmpty()) {
+                    checkstyleTasks.iterator().next().shouldRunAfter(rewriteTask);
+                }
             });
         }
     }

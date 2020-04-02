@@ -274,4 +274,28 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
+
+    @Unroll
+    def "exclude checks by name (gradle version #gradleVersion)"() {
+        given:
+        def sourceFile = writeSource(javaSourceWithCheckstyleViolation)
+
+        buildFile << """\
+            rewrite {
+                excludeChecks = ['SimplifyBooleanExpression', 'SimplifyBooleanReturn']
+            }
+        """.stripIndent()
+
+        when:
+        gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').build()
+
+        then:
+        sourceFile.text == javaSourceWithCheckstyleViolation
+
+        then:
+        gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').build()
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
 }
