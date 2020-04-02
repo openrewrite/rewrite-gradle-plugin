@@ -100,10 +100,18 @@ project.gradle.taskGraph.whenReady(object : Action<TaskExecutionGraph> {
 //    }
 //}
 
-publishing {
-    publications.named<MavenPublication>("nebula") {
-        artifactId = "rewrite-gradle-plugin"
+project.afterEvaluate {
+    publishing {
+        publications.named<MavenPublication>("nebula") {
+            pom {
+                artifactId = "rewrite-gradle-plugin"
+                name.set("rewrite-gradle-plugin")
+            }
+        }
     }
+}
+
+publishing {
 //    publications.named<MavenPublication>("nebula") {
 //        pom.withXml {
 //            val dependencies = asElement().getElementsByTagName("dependencies").item(0)
