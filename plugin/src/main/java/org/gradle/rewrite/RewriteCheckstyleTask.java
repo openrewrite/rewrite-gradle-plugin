@@ -50,7 +50,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     private boolean ignoreFailures;
     private boolean showViolations = true;
     private RewriteAction action = RewriteAction.FIX_SOURCE;
-    private Set<String> exclude = new HashSet<>();
+    private Set<String> excludeChecks = new HashSet<>();
 
     private final FileCollection stableSources = getProject().files((Callable<Object>) this::getSource);
 
@@ -327,12 +327,12 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     }
 
     @Input
-    public Set<String> getExclude() {
-        return exclude;
+    public Set<String> getExcludeChecks() {
+        return excludeChecks;
     }
 
-    public void setExclude(Set<String> exclude) {
-        this.exclude = exclude;
+    public void setExcludeChecks(Set<String> excludeChecks) {
+        this.excludeChecks = excludeChecks;
     }
 
     @Input
