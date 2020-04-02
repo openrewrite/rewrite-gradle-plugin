@@ -1,3 +1,4 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.rewrite.build.GradleVersionData
 import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
 import java.net.URI
@@ -6,17 +7,37 @@ plugins {
     java
     groovy
     `java-gradle-plugin`
-    `maven-publish`
     checkstyle
     codenarc
     `kotlin-dsl`
-    id("nebula.maven-resolved-dependencies") version "17.2.1"
     id("com.github.johnrengelman.shadow") version "5.2.0"
+    id("nebula.maven-publish") version "17.2.1"
+    id("nebula.maven-resolved-dependencies") version "17.2.1"
+    id("nebula.maven-shadow-publish") version "17.2.1"
 }
 
 repositories {
-    maven { url = uri("https://repo.gradle.org/gradle/libs-releases/") }
-    jcenter()
+    maven {
+        url = uri("https://repo.gradle.org/gradle/enterprise-libs-releases-local/")
+        credentials  {
+            username = project.findProperty("artifactoryUsername") as String
+            password = project.findProperty("artifactoryPassword") as String
+        }
+        authentication {
+            create<BasicAuthentication>("basic")
+        }
+    }
+    maven {
+        url = uri("https://repo.gradle.org/gradle/enterprise-libs-snapshots-local/")
+        credentials  {
+            username = project.findProperty("artifactoryUsername") as String
+            password = project.findProperty("artifactoryPassword") as String
+        }
+        authentication {
+            create<BasicAuthentication>("basic")
+        }
+    }
+    mavenCentral()
 }
 
 configurations.all {
@@ -56,17 +77,32 @@ tasks.pluginUnderTestMetadata {
     pluginClasspath.from(plugin)
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("plugin") {
-            artifactId = "rewrite-gradle-plugin"
-            from(components["java"])
+fun shouldUseReleaseRepo(): Boolean {
+    return project.gradle.startParameter.taskNames.contains("final") || project.gradle.startParameter.taskNames.contains(":final")
+}
+
+project.gradle.taskGraph.whenReady(object: Action<TaskExecutionGraph> {
+    override fun execute(graph: TaskExecutionGraph) {
+        if (graph.hasTask(":snapshot") || graph.hasTask(":immutableSnapshot")) {
+            throw GradleException("You cannot use the snapshot or immutableSnapshot task from the release plugin. Please use the devSnapshot task.")
         }
     }
+})
+
+tasks.named<ShadowJar>("shadowJar") {
+    archiveClassifier.set(null as String?) // this configuration is used to produce only the shadowed jar
+    relocate("org.eclipse.jgit", "org.gradle.rewrite.plugin.org.eclipse.jgit")
+}
+
+publishing {
     repositories {
         maven {
-            name = "GradleReleases"
-            url = URI.create("https://repo.gradle.org/gradle/libs-releases-local")
+            name = "GradleEnterprise"
+            url = if(shouldUseReleaseRepo()) {
+                URI.create("https://repo.gradle.org/gradle/enterprise-libs-releases-local")
+            } else {
+                URI.create("https://repo.gradle.org/gradle/enterprise-libs-snapshots-local")
+            }
             credentials {
                 username = project.findProperty("artifactoryUsername") as String?
                 password = project.findProperty("artifactoryPassword") as String?
@@ -74,6 +110,8 @@ publishing {
         }
     }
 }
+
+project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishNebulaPublicationToGradleEnterpriseRepository"))
 
 tasks.named<Test>("test") {
     systemProperty(

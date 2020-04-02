@@ -259,6 +259,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
     def "issues fixed in place are not seen as violations on a subsequent run (gradle version #gradleVersion)"() {
         given:
         def sourceFile = writeSource(javaSourceWithCheckstyleViolation)
+        writeSource("package acme;\nclass B {\n}")
 
         when:
         gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').buildAndFail()

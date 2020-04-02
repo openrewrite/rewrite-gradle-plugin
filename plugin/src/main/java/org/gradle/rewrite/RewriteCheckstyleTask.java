@@ -20,6 +20,8 @@ import org.gradle.api.resources.TextResource;
 import org.gradle.api.tasks.*;
 import org.gradle.rewrite.checkstyle.RewriteCheckstyle;
 import org.gradle.util.ClosureBackedAction;
+import org.gradle.work.FileChange;
+import org.gradle.work.InputChanges;
 import org.openrewrite.Change;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.tree.J;
@@ -86,7 +88,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     }
 
     @TaskAction
-    public void run() throws IOException {
+    public void run(InputChanges inputChanges) throws IOException {
         TextResource config = this.config;
         Map<String, Object> configProperties = this.configProperties;
 
@@ -102,6 +104,8 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
 
         RewriteCheckstyle rewrite = new RewriteCheckstyle(new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)),
                 configProperties);
+
+        Iterable<FileChange> fileChanges = inputChanges.getFileChanges(getSource());
 
         JavaParser parser = new JavaParser(emptyList(), StandardCharsets.UTF_8, false);
         List<J.CompilationUnit> cus = parser.parse(getSource().getFiles().stream().map(File::toPath).collect(toList()),
