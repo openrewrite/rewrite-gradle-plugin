@@ -6,7 +6,7 @@ buildscript {
     repositories {
         mavenCentral()
         maven {
-            url 'https://repo.gradle.org/gradle/enterprise-libs-releases-local'
+            url 'https://repo.gradle.org/gradle/enterprise-libs-snapshots-local'
             credentials {
                 username = project.property('artifactoryUsername')
                 password = project.property('artifactoryPassword')
