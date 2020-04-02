@@ -317,6 +317,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         this.showViolations = showViolations;
     }
 
+    @Optional
     @Input
     public RewriteAction getAction() {
         return action;
@@ -326,6 +327,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         this.action = action;
     }
 
+    @Optional
     @Input
     public Set<String> getExcludeChecks() {
         return excludeChecks;
@@ -335,7 +337,6 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         this.excludeChecks = excludeChecks;
     }
 
-    @Input
     public TextResource getConfig() {
         return config;
     }
@@ -344,6 +345,8 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
      * The Checkstyle configuration to use. If not set, the task falls back on
      * {@link CheckstyleExtension#getConfig()}.
      */
+    @Optional
+    @Input
     public void setConfig(TextResource config) {
         this.config = config;
     }
