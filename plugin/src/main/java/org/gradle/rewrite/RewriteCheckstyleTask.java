@@ -61,6 +61,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     private final RewriteCheckstyleReports reports;
 
     public RewriteCheckstyleTask() {
+        include("**/*.java");
         reports = getObjectFactory().newInstance(RewriteCheckstyleReportsImpl.class, this);
 
         try {
@@ -103,12 +104,11 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
             configProperties = extension.getConfigProperties();
         }
 
-        if (config == null) {
-            throw new GradleException("Rewrite checkstyle must have the config property set or be able to retrieve it from the checkstyle extension");
+        if (config == null || configProperties == null) {
+            getLogger().debug("Not performing checkstyle remediation for project {}. Rewrite checkstyle must have the config property set or be able to retrieve it from the checkstyle extension",
+                    getProject().getName());
+            return;
         }
-
-        RewriteCheckstyle rewrite = new RewriteCheckstyle(new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)),
-                configProperties);
 
         List<Path> sourceChanges = stream(inputChanges.getFileChanges(getStableSources()).spliterator(), false)
                 .filter(change -> !change.getChangeType().equals(ChangeType.REMOVED))
@@ -116,6 +116,13 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
                 .filter(change -> change.getFile().getName().endsWith(".java"))
                 .map(change -> change.getFile().toPath())
                 .collect(toList());
+
+        if(sourceChanges.isEmpty()) {
+            return;
+        }
+
+        RewriteCheckstyle rewrite = new RewriteCheckstyle(new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)),
+                configProperties);
 
         getLogger().debug("Checking {} files for checkstyle auto-remediation", sourceChanges.size());
 

@@ -260,6 +260,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         given:
         def sourceFile = writeSource(javaSourceWithCheckstyleViolation)
         writeSource("package acme;\nclass B {\n}")
+        projectDir.newFile("src/main/java/C.txt") << "some text"
 
         when:
         gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').buildAndFail()
