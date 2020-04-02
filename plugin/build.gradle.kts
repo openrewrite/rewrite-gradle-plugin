@@ -19,7 +19,7 @@ plugins {
 repositories {
     maven {
         url = uri("https://repo.gradle.org/gradle/enterprise-libs-releases-local/")
-        credentials  {
+        credentials {
             username = project.findProperty("artifactoryUsername") as String
             password = project.findProperty("artifactoryPassword") as String
         }
@@ -29,7 +29,7 @@ repositories {
     }
     maven {
         url = uri("https://repo.gradle.org/gradle/enterprise-libs-snapshots-local/")
-        credentials  {
+        credentials {
             username = project.findProperty("artifactoryUsername") as String
             password = project.findProperty("artifactoryPassword") as String
         }
@@ -66,7 +66,9 @@ dependencies {
 
     api("org.gradle.rewrite:rewrite-java:latest.integration")
     api("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
-    api("org.eclipse.jgit:org.eclipse.jgit:latest.release")
+
+    // needed to execute tests in IDE, command line before shading
+    runtimeOnly("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.8")
@@ -81,7 +83,7 @@ fun shouldUseReleaseRepo(): Boolean {
     return project.gradle.startParameter.taskNames.contains("final") || project.gradle.startParameter.taskNames.contains(":final")
 }
 
-project.gradle.taskGraph.whenReady(object: Action<TaskExecutionGraph> {
+project.gradle.taskGraph.whenReady(object : Action<TaskExecutionGraph> {
     override fun execute(graph: TaskExecutionGraph) {
         if (graph.hasTask(":snapshot") || graph.hasTask(":immutableSnapshot")) {
             throw GradleException("You cannot use the snapshot or immutableSnapshot task from the release plugin. Please use the devSnapshot task.")
@@ -92,13 +94,29 @@ project.gradle.taskGraph.whenReady(object: Action<TaskExecutionGraph> {
 tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set(null as String?) // this configuration is used to produce only the shadowed jar
     relocate("org.eclipse.jgit", "org.gradle.rewrite.plugin.org.eclipse.jgit")
+    dependencies {
+        include(dependency("org.eclipse.jgit:org.eclipse.jgit:.*"))
+    }
 }
 
 publishing {
+    publications.named<MavenPublication>("nebula") {
+        pom.withXml {
+            val dependencies = asElement().getElementsByTagName("dependencies").item(0)
+            val artifactIds = asElement().getElementsByTagName("artifactId")
+            for (i in 0 until artifactIds.length) {
+                val artifactId = artifactIds.item(i)
+                if (artifactId.textContent == "org.eclipse.jgit") {
+                    dependencies.removeChild(artifactId.parentNode)
+                    break
+                }
+            }
+        }
+    }
     repositories {
         maven {
             name = "GradleEnterprise"
-            url = if(shouldUseReleaseRepo()) {
+            url = if (shouldUseReleaseRepo()) {
                 URI.create("https://repo.gradle.org/gradle/enterprise-libs-releases-local")
             } else {
                 URI.create("https://repo.gradle.org/gradle/enterprise-libs-snapshots-local")
@@ -115,8 +133,8 @@ project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getBy
 
 tasks.named<Test>("test") {
     systemProperty(
-        GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME,
-        project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
+            GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME,
+            project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
     )
 }
 
