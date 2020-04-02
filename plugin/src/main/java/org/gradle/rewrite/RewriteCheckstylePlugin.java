@@ -82,7 +82,7 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
         taskMapping.map("config", (Callable<TextResource>) () -> extension.getCheckstyle().getConfig());
         taskMapping.map("ignoreFailures", (Callable<Boolean>) () -> extension.isIgnoreFailures());
         taskMapping.map("action", (Callable<RewriteAction>) () -> extension.getAction());
-        taskMapping.map("exclude", (Callable<Set<String>>) () -> extension.getExcludeChecks());
+        taskMapping.map("excludeChecks", (Callable<Set<String>>) () -> extension.getExcludeChecks());
     }
 
     private void configureReportsConventionMapping(RewriteCheckstyleTask task, String baseName) {
