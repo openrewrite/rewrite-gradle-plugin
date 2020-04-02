@@ -1,4 +1,4 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+//import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.rewrite.build.GradleVersionData
 import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
 import java.net.URI
@@ -10,10 +10,10 @@ plugins {
     checkstyle
     codenarc
     `kotlin-dsl`
-    id("com.github.johnrengelman.shadow") version "5.2.0"
+//    id("com.github.johnrengelman.shadow") version "5.2.0"
     id("nebula.maven-publish") version "17.2.1"
     id("nebula.maven-resolved-dependencies") version "17.2.1"
-    id("nebula.maven-shadow-publish") version "17.2.1"
+//    id("nebula.maven-shadow-publish") version "17.2.1"
 }
 
 repositories {
@@ -66,9 +66,10 @@ dependencies {
 
     api("org.gradle.rewrite:rewrite-java:latest.integration")
     api("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
-
+    api("org.eclipse.jgit:org.eclipse.jgit:latest.release")
+    
     // needed to execute tests in IDE, command line before shading
-    runtimeOnly("org.eclipse.jgit:org.eclipse.jgit:latest.release")
+//    runtimeOnly("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.8")
@@ -91,28 +92,28 @@ project.gradle.taskGraph.whenReady(object : Action<TaskExecutionGraph> {
     }
 })
 
-tasks.named<ShadowJar>("shadowJar") {
-    archiveClassifier.set(null as String?) // this configuration is used to produce only the shadowed jar
-    relocate("org.eclipse.jgit", "org.gradle.rewrite.plugin.org.eclipse.jgit")
-    dependencies {
-        include(dependency("org.eclipse.jgit:org.eclipse.jgit:.*"))
-    }
-}
+//tasks.named<ShadowJar>("shadowJar") {
+//    archiveClassifier.set(null as String?) // this configuration is used to produce only the shadowed jar
+//    relocate("org.eclipse.jgit", "org.gradle.rewrite.plugin.org.eclipse.jgit")
+//    dependencies {
+//        include(dependency("org.eclipse.jgit:org.eclipse.jgit:.*"))
+//    }
+//}
 
 publishing {
-    publications.named<MavenPublication>("nebula") {
-        pom.withXml {
-            val dependencies = asElement().getElementsByTagName("dependencies").item(0)
-            val artifactIds = asElement().getElementsByTagName("artifactId")
-            for (i in 0 until artifactIds.length) {
-                val artifactId = artifactIds.item(i)
-                if (artifactId.textContent == "org.eclipse.jgit") {
-                    dependencies.removeChild(artifactId.parentNode)
-                    break
-                }
-            }
-        }
-    }
+//    publications.named<MavenPublication>("nebula") {
+//        pom.withXml {
+//            val dependencies = asElement().getElementsByTagName("dependencies").item(0)
+//            val artifactIds = asElement().getElementsByTagName("artifactId")
+//            for (i in 0 until artifactIds.length) {
+//                val artifactId = artifactIds.item(i)
+//                if (artifactId.textContent == "org.eclipse.jgit") {
+//                    dependencies.removeChild(artifactId.parentNode)
+//                    break
+//                }
+//            }
+//        }
+//    }
     repositories {
         maven {
             name = "GradleEnterprise"
