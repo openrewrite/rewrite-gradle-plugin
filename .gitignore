@@ -2,6 +2,6 @@
 build/
 !*/src/**/build
 .gradle/
-gradle.properties
+**/gradle.properties
 .java-version
 .idea
