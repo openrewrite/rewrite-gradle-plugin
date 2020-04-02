@@ -100,10 +100,10 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
 
         CheckstyleExtension extension = getProject().getExtensions().findByType(CheckstyleExtension.class);
         if (extension != null) {
-            if(config == null) {
+            if (config == null) {
                 config = extension.getConfig();
             }
-            if(configProperties == null) {
+            if (configProperties == null) {
                 configProperties = extension.getConfigProperties();
             }
 
@@ -123,7 +123,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
                 .map(change -> change.getFile().toPath())
                 .collect(toList());
 
-        if(sourceChanges.isEmpty()) {
+        if (sourceChanges.isEmpty()) {
             return;
         }
 
@@ -149,6 +149,15 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
                 .map(cu -> rewrite.apply(cu.refactor()).fix())
                 .filter(change -> !change.getRulesThatMadeChanges().isEmpty())
                 .collect(toList());
+
+        if (showViolations && !changes.isEmpty()) {
+            for (Change<J.CompilationUnit> change : changes) {
+                getLogger().warn("The following checkstyle rules in {} have been fixed:", change.getOriginal().getSourcePath());
+                for (String rule : change.getRulesThatMadeChanges()) {
+                    getLogger().warn("   {}", rule);
+                }
+            }
+        }
 
         try (BufferedWriter writer = Files.newBufferedWriter(reports.getPatch().getDestination().toPath())) {
             for (Change<J.CompilationUnit> change : changes) {
