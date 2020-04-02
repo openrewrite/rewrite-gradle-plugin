@@ -11,8 +11,14 @@ import org.eclipse.jgit.lib.RebaseTodoLine;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.gradle.api.Action;
+import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.Incubating;
+import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileTree;
+import org.gradle.api.file.FileType;
+import org.gradle.api.internal.ConventionTask;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.reporting.Reporting;
@@ -20,6 +26,7 @@ import org.gradle.api.resources.TextResource;
 import org.gradle.api.tasks.*;
 import org.gradle.rewrite.checkstyle.RewriteCheckstyle;
 import org.gradle.util.ClosureBackedAction;
+import org.gradle.work.ChangeType;
 import org.gradle.work.FileChange;
 import org.gradle.work.InputChanges;
 import org.openrewrite.Change;
@@ -34,9 +41,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
@@ -49,6 +58,8 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     private boolean showViolations = true;
     private boolean fixInPlace = true;
     private boolean autoCommit = false;
+
+    private final FileCollection stableSources = getProject().files((Callable<Object>) this::getSource);
 
     @Nullable
     private Git git;
@@ -105,11 +116,17 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         RewriteCheckstyle rewrite = new RewriteCheckstyle(new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)),
                 configProperties);
 
-        Iterable<FileChange> fileChanges = inputChanges.getFileChanges(getSource());
+        List<Path> sourceChanges = stream(inputChanges.getFileChanges(getStableSources()).spliterator(), false)
+                .filter(change -> !change.getChangeType().equals(ChangeType.REMOVED))
+                .filter(change -> FileType.FILE.equals(change.getFileType()))
+                .filter(change -> change.getFile().getName().endsWith(".java"))
+                .map(change -> change.getFile().toPath())
+                .collect(toList());
+
+        getLogger().debug("Checking {} files for checkstyle auto-remediation", sourceChanges.size());
 
         JavaParser parser = new JavaParser(emptyList(), StandardCharsets.UTF_8, false);
-        List<J.CompilationUnit> cus = parser.parse(getSource().getFiles().stream().map(File::toPath).collect(toList()),
-                getProject().getRootDir().toPath());
+        List<J.CompilationUnit> cus = parser.parse(sourceChanges, getProject().getRootDir().toPath());
 
         Status status = null;
         if (isAutoCommit() && git != null) {
@@ -169,11 +186,10 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
 
                             List<RevCommit> lastTwoCommits = stream(git.log().setMaxCount(2).call().spliterator(), false).collect(toList());
 
-                            if(lastTwoCommits.size() <= 1) {
+                            if (lastTwoCommits.size() <= 1) {
                                 getLogger().warn("Leaving checkstyle fixes as a separate commit because there is only one commit in the history, and " +
                                         "this plugin does not yet support rebasing the first two commits of a repository");
-                            }
-                            else {
+                            } else {
                                 git.commit()
                                         .setMessage("Resolved checkstyle issues.")
                                         .call();
@@ -225,10 +241,17 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         }
     }
 
-    @Override
+    /**
+     * The sources for incremental change detection.
+     *
+     * @since 6.0
+     */
+    @Incubating
+    @SkipWhenEmpty
     @PathSensitive(PathSensitivity.RELATIVE)
-    public FileTree getSource() {
-        return super.getSource();
+    @InputFiles
+    protected FileCollection getStableSources() {
+        return stableSources;
     }
 
     /**
