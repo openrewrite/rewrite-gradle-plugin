@@ -99,9 +99,15 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         Map<String, Object> configProperties = this.configProperties;
 
         CheckstyleExtension extension = getProject().getExtensions().findByType(CheckstyleExtension.class);
-        if (config == null && extension != null) {
-            config = extension.getConfig();
-            configProperties = extension.getConfigProperties();
+        if (extension != null) {
+            if(config == null) {
+                config = extension.getConfig();
+            }
+            if(configProperties == null) {
+                configProperties = extension.getConfigProperties();
+            }
+
+            configProperties.put("config_loc", extension.getConfigDirectory().get().toString());
         }
 
         if (config == null || configProperties == null) {
