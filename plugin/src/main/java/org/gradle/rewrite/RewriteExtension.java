@@ -8,9 +8,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class RewriteExtension extends CodeQualityExtension {
-    private RewriteAction action = RewriteAction.FIX_SOURCE;
+    private RewriteAction action = RewriteAction.FIX;
     private Set<String> excludeChecks = new HashSet<>();
     private Checkstyle checkstyle = new Checkstyle();
+    private boolean showViolations = true;
 
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
@@ -30,6 +31,14 @@ public class RewriteExtension extends CodeQualityExtension {
 
     public void setExcludeChecks(Set<String> excludeChecks) {
         this.excludeChecks = excludeChecks;
+    }
+
+    public boolean isShowViolations() {
+        return showViolations;
+    }
+
+    public void setShowViolations(boolean showViolations) {
+        this.showViolations = showViolations;
     }
 
     public Checkstyle getCheckstyle() {

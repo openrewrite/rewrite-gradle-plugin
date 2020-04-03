@@ -2,7 +2,7 @@ package org.gradle.rewrite;
 
 public enum RewriteAction {
     WARN_ONLY,
-    FIX_SOURCE,
+    FIX,
     COMMIT,
     REBASE_FIXUP;
 }

@@ -49,7 +49,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     private Map<String, Object> configProperties = new LinkedHashMap<>();
     private boolean ignoreFailures;
     private boolean showViolations = true;
-    private RewriteAction action = RewriteAction.FIX_SOURCE;
+    private RewriteAction action = RewriteAction.FIX;
     private Set<String> excludeChecks = new HashSet<>();
 
     private final FileCollection stableSources = getProject().files((Callable<Object>) this::getSource);
@@ -162,7 +162,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         try (BufferedWriter writer = Files.newBufferedWriter(reports.getPatch().getDestination().toPath())) {
             for (Change<J.CompilationUnit> change : changes) {
                 writer.write(change.diff() + "\n");
-                if (getAction().compareTo(RewriteAction.FIX_SOURCE) >= 0) {
+                if (getAction().compareTo(RewriteAction.FIX) >= 0) {
                     try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
                             getProject().getRootDir().toPath().resolve(change.getOriginal().getSourcePath()))) {
                         sourceFileWriter.write(change.getFixed().print());
@@ -244,13 +244,13 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
             }
         } else if (!changes.isEmpty()) {
             if (isIgnoreFailures()) {
-                if (getAction().compareTo(RewriteAction.FIX_SOURCE) >= 0) {
+                if (getAction().compareTo(RewriteAction.FIX) >= 0) {
                     getLogger().warn("Checkstyle violations have been fixed. Please review and commit the changes.");
                 } else {
                     getLogger().warn("Checkstyle violations have been found.");
                 }
             } else {
-                if (getAction().compareTo(RewriteAction.FIX_SOURCE) >= 0) {
+                if (getAction().compareTo(RewriteAction.FIX) >= 0) {
                     throw new GradleException("Checkstyle violations have been fixed. Please review and commit the changes.");
                 } else {
                     throw new GradleException("Checkstyle violations have been found.");

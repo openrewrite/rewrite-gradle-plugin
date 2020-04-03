@@ -19,7 +19,7 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
 
     @Override
     protected String getToolName() {
-        return "Rewrite Checkstyle";
+        return "RewriteCheckstyle";
     }
 
     @Override
@@ -80,6 +80,7 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
         ConventionMapping taskMapping = task.getConventionMapping();
         taskMapping.map("config", (Callable<TextResource>) () -> extension.getCheckstyle().getConfig());
         taskMapping.map("ignoreFailures", (Callable<Boolean>) () -> extension.isIgnoreFailures());
+        taskMapping.map("showViolations", (Callable<Boolean>) () -> extension.isShowViolations());
         taskMapping.map("action", (Callable<RewriteAction>) () -> extension.getAction());
         taskMapping.map("excludeChecks", (Callable<Set<String>>) () -> extension.getExcludeChecks());
     }
