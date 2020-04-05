@@ -57,7 +57,7 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
         project.getGradle().addBuildListener(new BuildAdapter() {
             @Override
             public void buildFinished(BuildResult result) {
-                if(metricsClient != null) {
+                if (metricsClient != null) {
                     metricsClient.pushAndClose();
                     synchronized (Metrics.globalRegistry) {
                         metricsClient = null;
@@ -87,59 +87,59 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
     }
 
     private void configureMetrics(RewriteCheckstyleTask task) {
-        project.afterEvaluate(p -> {
-            synchronized (Metrics.globalRegistry) {
-                if (extension.getMetricsUri() != null && meterRegistry == null) {
-                    URI uri = URI.create(extension.getMetricsUri());
+        synchronized (Metrics.globalRegistry) {
+            if (extension.getMetricsUri() != null && meterRegistry == null) {
+                URI uri = URI.create(extension.getMetricsUri());
 
-                    ClientTransport clientTransport;
-                    switch (uri.getScheme()) {
-                        case "websocket":
-                            clientTransport = WebsocketClientTransport.create(uri);
-                            break;
-                        case "tcp":
-                            clientTransport = TcpClientTransport.create(uri.getHost(), uri.getPort());
-                            break;
-                        default:
-                            project.getLogger().warn("Unable to publish metrics. Unrecognized scheme {}", uri.getScheme());
-                            return;
-                    }
-
-                    // one per project, because they will have different tags
-                    meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-                    meterRegistry.config()
-                            .commonTags(
-                                    "project.name", project.getName(),
-                                    "project.display.name", project.getDisplayName(),
-                                    "project.path", project.getPath(),
-                                    "project.root.project.name", project.getRootProject().getName(),
-                                    "gradle.version", project.getGradle().getGradleVersion())
-                            .commonTags(extension.getExtraMetricsTags())
-                            .meterFilter(new MeterFilter() {
-                                @Override
-                                public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
-                                    if(id.getName().startsWith("rewrite")) {
-                                        return DistributionStatisticConfig.builder()
-                                                .percentilesHistogram(true)
-                                                .maximumExpectedValue(Duration.ofMillis(100).toNanos())
-                                                .build()
-                                                .merge(config);
-                                    }
-                                    return config;
-                                }
-                            });
-
-                    task.setMeterRegistry(meterRegistry);
-
-                    metricsClient = new PrometheusRSocketClient(meterRegistry, clientTransport,
-                            c -> c.retryBackoff(Long.MAX_VALUE, Duration.ofSeconds(10), Duration.ofMinutes(10)));
-
-                    new JvmMemoryMetrics().bindTo(Metrics.globalRegistry);
-                    new JvmGcMetrics().bindTo(Metrics.globalRegistry);
-                    new ProcessorMetrics().bindTo(Metrics.globalRegistry);
+                ClientTransport clientTransport;
+                switch (uri.getScheme()) {
+                    case "websocket":
+                        clientTransport = WebsocketClientTransport.create(uri);
+                        break;
+                    case "tcp":
+                        clientTransport = TcpClientTransport.create(uri.getHost(), uri.getPort());
+                        break;
+                    default:
+                        project.getLogger().warn("Unable to publish metrics. Unrecognized scheme {}", uri.getScheme());
+                        return;
                 }
+
+                // one per project, because they will have different tags
+                meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+                meterRegistry.config()
+                        .commonTags(
+                                "project.name", project.getName(),
+                                "project.display.name", project.getDisplayName(),
+                                "project.path", project.getPath(),
+                                "project.root.project.name", project.getRootProject().getName(),
+                                "gradle.version", project.getGradle().getGradleVersion())
+                        .commonTags(extension.getExtraMetricsTags())
+                        .meterFilter(new MeterFilter() {
+                            @Override
+                            public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
+                                if (id.getName().startsWith("rewrite")) {
+                                    return DistributionStatisticConfig.builder()
+                                            .percentilesHistogram(true)
+                                            .maximumExpectedValue(Duration.ofMillis(100).toNanos())
+                                            .build()
+                                            .merge(config);
+                                }
+                                return config;
+                            }
+                        });
+
+                metricsClient = new PrometheusRSocketClient(meterRegistry, clientTransport,
+                        c -> c.retryBackoff(Long.MAX_VALUE, Duration.ofSeconds(10), Duration.ofMinutes(10)));
+
+                new JvmMemoryMetrics().bindTo(Metrics.globalRegistry);
+                new JvmGcMetrics().bindTo(Metrics.globalRegistry);
+                new ProcessorMetrics().bindTo(Metrics.globalRegistry);
             }
-        });
+        }
+
+        if (meterRegistry != null) {
+            task.setMeterRegistry(meterRegistry);
+        }
     }
 
     protected void runCheckstyleAfterRewriting() {
