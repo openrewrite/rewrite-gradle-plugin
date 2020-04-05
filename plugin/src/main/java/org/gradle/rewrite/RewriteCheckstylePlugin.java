@@ -1,5 +1,20 @@
 package org.gradle.rewrite;
 
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
+import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
+import io.micrometer.core.instrument.config.MeterFilter;
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
+import io.micrometer.prometheus.PrometheusConfig;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.prometheus.rsocket.PrometheusRSocketClient;
+import io.rsocket.transport.ClientTransport;
+import io.rsocket.transport.netty.client.TcpClientTransport;
+import io.rsocket.transport.netty.client.WebsocketClientTransport;
+import org.gradle.BuildAdapter;
+import org.gradle.BuildResult;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.internal.ConventionMapping;
@@ -11,10 +26,14 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 
 import java.io.File;
+import java.net.URI;
+import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
 public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCheckstyleTask> {
+    private PrometheusMeterRegistry meterRegistry;
+    private PrometheusRSocketClient metricsClient;
     private RewriteExtension extension;
 
     @Override
@@ -30,10 +49,51 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
     @Override
     protected CodeQualityExtension createExtension() {
         extension = project.getExtensions().findByType(RewriteExtension.class);
-        if(extension == null) {
+        if (extension == null) {
             extension = project.getExtensions().create("rewrite", RewriteExtension.class, project);
         }
         extension.setToolVersion("2.0");
+
+        project.afterEvaluate(p -> {
+            synchronized (Metrics.globalRegistry) {
+                if (extension.getMetricsUri() != null && meterRegistry == null) {
+                    URI uri = URI.create(extension.getMetricsUri());
+
+                    ClientTransport clientTransport;
+                    switch (uri.getScheme()) {
+                        case "websocket":
+                            clientTransport = WebsocketClientTransport.create(uri);
+                            break;
+                        case "tcp":
+                            clientTransport = TcpClientTransport.create(uri.getHost(), uri.getPort());
+                            break;
+                        default:
+                            project.getLogger().warn("Unable to publish metrics. Unrecognized scheme {}", uri.getScheme());
+                            return;
+                    }
+
+                    // one per project, because they will have different tags
+                    meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+                    metricsClient = new PrometheusRSocketClient(meterRegistry, clientTransport,
+                            c -> c.retryBackoff(Long.MAX_VALUE, Duration.ofSeconds(10), Duration.ofMinutes(10)));
+
+                    new JvmMemoryMetrics().bindTo(Metrics.globalRegistry);
+                    new JvmGcMetrics().bindTo(Metrics.globalRegistry);
+                    new ProcessorMetrics().bindTo(Metrics.globalRegistry);
+                }
+            }
+        });
+
+        project.getGradle().addBuildListener(new BuildAdapter() {
+            @Override
+            public void buildFinished(BuildResult result) {
+                metricsClient.pushAndClose();
+                synchronized (Metrics.globalRegistry) {
+                    metricsClient = null;
+                }
+            }
+        });
+
         return extension;
     }
 
@@ -48,9 +108,36 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
 
     @Override
     protected void configureTaskDefaults(RewriteCheckstyleTask task, String baseName) {
+        configureMetrics(task);
         configureTaskConventionMapping(task);
         configureReportsConventionMapping(task, baseName);
         runCheckstyleAfterRewriting();
+    }
+
+    private void configureMetrics(RewriteCheckstyleTask task) {
+        task.setMeterRegistry(meterRegistry);
+
+        meterRegistry.config()
+                .commonTags(
+                        "project.name", project.getName(),
+                        "project.display.name", project.getDisplayName(),
+                        "project.path", project.getPath(),
+                        "project.root.project.name", project.getRootProject().getName(),
+                        "gradle.version", project.getGradle().getGradleVersion())
+                .commonTags(extension.getExtraMetricsTags())
+                .meterFilter(new MeterFilter() {
+                    @Override
+                    public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
+                        if(id.getName().startsWith("rewrite")) {
+                            return DistributionStatisticConfig.builder()
+                                    .percentilesHistogram(true)
+                                    .maximumExpectedValue(Duration.ofMillis(100).toNanos())
+                                    .build()
+                                    .merge(config);
+                        }
+                        return config;
+                    }
+                });
     }
 
     protected void runCheckstyleAfterRewriting() {
@@ -63,7 +150,7 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
                         .iterator().next();
 
                 Set<Task> checkstyleTasks = project.getTasksByName(sourceSet.getTaskName("checkstyle", null), false);
-                if(!checkstyleTasks.isEmpty()) {
+                if (!checkstyleTasks.isEmpty()) {
                     checkstyleTasks.iterator().next().shouldRunAfter(rewriteTask);
                 }
             });

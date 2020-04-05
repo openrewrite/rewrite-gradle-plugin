@@ -61,9 +61,15 @@ dependencies {
     plugin("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
     plugin("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
+    plugin("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
+    plugin("io.rsocket:rsocket-transport-netty:latest.release")
+
     api("org.gradle.rewrite:rewrite-java:latest.integration")
     api("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
     api("org.eclipse.jgit:org.eclipse.jgit:latest.release")
+
+    api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
+    api("io.rsocket:rsocket-transport-netty:latest.release")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.8")

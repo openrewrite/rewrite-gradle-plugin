@@ -1,6 +1,7 @@
 package org.gradle.rewrite;
 
 import groovy.lang.Closure;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.RebaseCommand;
@@ -51,6 +52,8 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     private boolean showViolations = true;
     private RewriteAction action = RewriteAction.FIX;
     private Set<String> excludeChecks = new HashSet<>();
+
+    private MeterRegistry meterRegistry;
 
     private final FileCollection stableSources = getProject().files((Callable<Object>) this::getSource);
 
@@ -132,7 +135,10 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
 
         getLogger().debug("Checking {} files for checkstyle auto-remediation", sourceChanges.size());
 
-        JavaParser parser = new JavaParser(emptyList(), StandardCharsets.UTF_8, false);
+        JavaParser parser = new JavaParser(emptyList(), StandardCharsets.UTF_8, false)
+                .setLogCompilationWarningsAndErrors(false)
+                .setMeterRegistry(meterRegistry);
+
         List<J.CompilationUnit> cus = parser.parse(sourceChanges, getProject().getRootDir().toPath());
 
         Status status = null;
@@ -146,7 +152,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         }
 
         List<Change<J.CompilationUnit>> changes = cus.stream()
-                .map(cu -> rewrite.apply(cu.refactor()).fix())
+                .map(cu -> rewrite.apply(cu.refactor().setMeterRegistry(meterRegistry)).fix())
                 .filter(change -> !change.getRulesThatMadeChanges().isEmpty())
                 .collect(toList());
 
@@ -366,5 +372,9 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
      */
     public void setConfigProperties(@Nullable Map<String, Object> configProperties) {
         this.configProperties = configProperties;
+    }
+
+    void setMeterRegistry(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
     }
 }
