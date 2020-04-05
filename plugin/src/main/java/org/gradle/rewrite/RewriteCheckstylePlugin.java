@@ -87,9 +87,11 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
         project.getGradle().addBuildListener(new BuildAdapter() {
             @Override
             public void buildFinished(BuildResult result) {
-                metricsClient.pushAndClose();
-                synchronized (Metrics.globalRegistry) {
-                    metricsClient = null;
+                if(metricsClient != null) {
+                    metricsClient.pushAndClose();
+                    synchronized (Metrics.globalRegistry) {
+                        metricsClient = null;
+                    }
                 }
             }
         });
