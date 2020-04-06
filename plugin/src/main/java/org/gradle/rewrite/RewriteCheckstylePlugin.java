@@ -2,9 +2,6 @@ package org.gradle.rewrite;
 
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
-import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.config.MeterFilter;
 import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import io.micrometer.prometheus.PrometheusConfig;
@@ -117,10 +114,6 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
 
                 final PrometheusRSocketClient metricsClient = new PrometheusRSocketClient(meterRegistry, clientTransport,
                         c -> c.retryBackoff(Long.MAX_VALUE, Duration.ofSeconds(10), Duration.ofMinutes(10)));
-
-                new JvmMemoryMetrics().bindTo(Metrics.globalRegistry);
-                new JvmGcMetrics().bindTo(Metrics.globalRegistry);
-                new ProcessorMetrics().bindTo(Metrics.globalRegistry);
 
                 project.getGradle().addBuildListener(new BuildAdapter() {
                     @Override
