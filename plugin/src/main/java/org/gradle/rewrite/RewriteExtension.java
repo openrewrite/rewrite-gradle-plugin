@@ -18,9 +18,11 @@ public class RewriteExtension extends CodeQualityExtension {
     private boolean showViolations = true;
 
     /**
-     * In the form tcp://host:port or websocket://host:port.
+     * In the form tcp://host:port, http://host:port, https://host:port, ws://host:port, wss://host:port. Port is optional.
      */
     private String metricsUri;
+    private String metricsUsername;
+    private String metricsPassword;
 
     /**
      * In addition to a set of tags like Gradle project name, root project name, group, etc. that are
@@ -77,6 +79,22 @@ public class RewriteExtension extends CodeQualityExtension {
 
     public void setExtraMetricsTags(Iterable<Tag> extraMetricsTags) {
         this.extraMetricsTags = extraMetricsTags;
+    }
+
+    public String getMetricsUsername() {
+        return metricsUsername;
+    }
+
+    public void setMetricsUsername(String metricsUsername) {
+        this.metricsUsername = metricsUsername;
+    }
+
+    public String getMetricsPassword() {
+        return metricsPassword;
+    }
+
+    public void setMetricsPassword(String metricsPassword) {
+        this.metricsPassword = metricsPassword;
     }
 
     public Checkstyle getCheckstyle() {

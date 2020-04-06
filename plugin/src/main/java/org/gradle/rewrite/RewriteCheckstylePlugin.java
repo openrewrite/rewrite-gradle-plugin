@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import io.micrometer.prometheus.rsocket.PrometheusRSocketClient;
+import io.netty.handler.codec.base64.Base64Encoder;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.transport.netty.client.WebsocketClientTransport;
@@ -21,12 +22,18 @@ import org.gradle.api.plugins.quality.internal.AbstractCodeQualityPlugin;
 import org.gradle.api.resources.TextResource;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.jetbrains.annotations.NotNull;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.tcp.TcpClient;
 
 import java.io.File;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.Set;
 import java.util.concurrent.Callable;
+
+import static io.rsocket.transport.netty.UriUtils.getPort;
 
 public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCheckstyleTask> {
     private PrometheusMeterRegistry meterRegistry;
@@ -77,9 +84,18 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
 
                 ClientTransport clientTransport;
                 switch (uri.getScheme()) {
-                    case "websocket":
-                        clientTransport = WebsocketClientTransport.create(uri);
+                    case "https":
+                    case "wss": {
+                        TcpClient tcpClient = TcpClient.create().secure().host(uri.getHost()).port(getPort(uri, 443));
+                        clientTransport = websocketClientTransport(tcpClient);
                         break;
+                    }
+                    case "http":
+                    case "ws": {
+                        TcpClient tcpClient = TcpClient.create().host(uri.getHost()).port(getPort(uri, 80));
+                        clientTransport = websocketClientTransport(tcpClient);
+                        break;
+                    }
                     case "tcp":
                         clientTransport = TcpClientTransport.create(uri.getHost(), uri.getPort());
                         break;
@@ -118,7 +134,11 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
                 project.getGradle().addBuildListener(new BuildAdapter() {
                     @Override
                     public void buildFinished(BuildResult result) {
-                        metricsClient.pushAndClose();
+                        try {
+                            metricsClient.pushAndClose();
+                        } catch (Throwable ignore) {
+                            // sometimes fails when connection already closed, e.g. due to flaky internet connection
+                        }
                     }
                 });
             }
@@ -127,6 +147,16 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
         if (meterRegistry != null) {
             task.setMeterRegistry(meterRegistry);
         }
+    }
+
+    @NotNull
+    private ClientTransport websocketClientTransport(TcpClient tcpClient) {
+        HttpClient httpClient = HttpClient.from(tcpClient).wiretap(true);
+        if (extension.getMetricsUsername() != null && extension.getMetricsPassword() != null) {
+            httpClient = httpClient.headers(h -> h.add("Authorization", "Basic: " + Base64.getUrlEncoder()
+                    .encodeToString((extension.getMetricsUsername() + ":" + extension.getMetricsPassword()).getBytes())));
+        }
+        return WebsocketClientTransport.create(httpClient, "/");
     }
 
     protected void runCheckstyleAfterRewriting() {

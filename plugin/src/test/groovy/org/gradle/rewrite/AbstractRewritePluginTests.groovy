@@ -33,7 +33,7 @@ class AbstractRewritePluginTests extends Specification {
         GradleRunner.create()
                 .withDebug(ManagementFactory.getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0)
                 .withProjectDir(projectDir.root)
-                .withArguments((tasks + '-s').toList())
+                .withArguments((tasks + '-s' + '-d').toList())
                 .withPluginClasspath()
                 .forwardOutput()
                 .tap {
