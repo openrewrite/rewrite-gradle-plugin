@@ -221,6 +221,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         buildFile << """
             rewrite {
                 ignoreFailures = true
+                metricsUri = "tcp://ge-dev-prometheus-proxy.grdev.net:7001"
             }
         """
 

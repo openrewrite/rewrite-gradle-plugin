@@ -33,7 +33,6 @@ import java.util.concurrent.Callable;
 
 public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCheckstyleTask> {
     private PrometheusMeterRegistry meterRegistry;
-    private PrometheusRSocketClient metricsClient;
     private RewriteExtension extension;
 
     @Override
@@ -53,18 +52,6 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
             extension = project.getExtensions().create("rewrite", RewriteExtension.class, project);
         }
         extension.setToolVersion("2.0");
-
-        project.getGradle().addBuildListener(new BuildAdapter() {
-            @Override
-            public void buildFinished(BuildResult result) {
-                if (metricsClient != null) {
-                    metricsClient.pushAndClose();
-                    synchronized (Metrics.globalRegistry) {
-                        metricsClient = null;
-                    }
-                }
-            }
-        });
 
         return extension;
     }
@@ -128,12 +115,19 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
                             }
                         });
 
-                metricsClient = new PrometheusRSocketClient(meterRegistry, clientTransport,
+                final PrometheusRSocketClient metricsClient = new PrometheusRSocketClient(meterRegistry, clientTransport,
                         c -> c.retryBackoff(Long.MAX_VALUE, Duration.ofSeconds(10), Duration.ofMinutes(10)));
 
                 new JvmMemoryMetrics().bindTo(Metrics.globalRegistry);
                 new JvmGcMetrics().bindTo(Metrics.globalRegistry);
                 new ProcessorMetrics().bindTo(Metrics.globalRegistry);
+
+                project.getGradle().addBuildListener(new BuildAdapter() {
+                    @Override
+                    public void buildFinished(BuildResult result) {
+                        metricsClient.pushAndClose();
+                    }
+                });
             }
         }
 
