@@ -1,6 +1,7 @@
 package org.gradle.rewrite;
 
 import groovy.lang.Closure;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.Git;
@@ -45,7 +46,9 @@ import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.StreamSupport.stream;
 
-public class RewriteCheckstyleTask extends SourceTask implements VerificationTask, Reporting<RewriteCheckstyleReports> {
+public class RewriteCheckstyleTask extends SourceTask implements VerificationTask,
+        Reporting<RewriteCheckstyleReports>, RewriteTask {
+
     private TextResource config;
     private Map<String, Object> configProperties = new LinkedHashMap<>();
     private boolean ignoreFailures;
@@ -54,6 +57,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
     private Set<String> excludeChecks = new HashSet<>();
 
     private MeterRegistry meterRegistry;
+    private DistributionSummary sourcesEvaluated;
 
     private final FileCollection stableSources = getProject().files((Callable<Object>) this::getSource);
 
@@ -129,9 +133,15 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
             return;
         }
 
-        RewriteCheckstyle rewrite = new RewriteCheckstyle(new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)),
+        RewriteCheckstyle rewrite = new RewriteCheckstyle(
+                new ByteArrayInputStream(config.asString().getBytes(StandardCharsets.UTF_8)),
                 getExcludeChecks(),
-                configProperties);
+                configProperties
+        );
+
+        if(sourcesEvaluated != null) {
+            sourcesEvaluated.record(sourceChanges.size());
+        }
 
         getLogger().debug("Checking {} files for checkstyle auto-remediation", sourceChanges.size());
 
@@ -216,7 +226,7 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
                                         .setMessage("Resolved checkstyle issues.")
                                         .call();
 
-                                if(getAction().equals(RewriteAction.REBASE_FIXUP)) {
+                                if (getAction().equals(RewriteAction.REBASE_FIXUP)) {
                                     git.rebase()
                                             .setOperation(RebaseCommand.Operation.BEGIN)
                                             .setUpstream(lastTwoCommits.get(1))
@@ -374,7 +384,12 @@ public class RewriteCheckstyleTask extends SourceTask implements VerificationTas
         this.configProperties = configProperties;
     }
 
-    void setMeterRegistry(MeterRegistry meterRegistry) {
+    @Override
+    public void setMeterRegistry(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
+        this.sourcesEvaluated = DistributionSummary.builder("rewrite.evaluated")
+                .description("Number of source files checked for checkstyle problems")
+                .baseUnit("source files")
+                .register(meterRegistry);
     }
 }

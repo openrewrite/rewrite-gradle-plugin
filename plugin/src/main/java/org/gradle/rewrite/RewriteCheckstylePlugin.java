@@ -1,18 +1,7 @@
 package org.gradle.rewrite;
 
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.config.MeterFilter;
-import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
-import io.micrometer.prometheus.rsocket.PrometheusRSocketClient;
-import io.netty.handler.codec.base64.Base64Encoder;
-import io.rsocket.transport.ClientTransport;
-import io.rsocket.transport.netty.client.TcpClientTransport;
-import io.rsocket.transport.netty.client.WebsocketClientTransport;
-import org.gradle.BuildAdapter;
-import org.gradle.BuildResult;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.internal.ConventionMapping;
@@ -22,22 +11,20 @@ import org.gradle.api.plugins.quality.internal.AbstractCodeQualityPlugin;
 import org.gradle.api.resources.TextResource;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
-import org.jetbrains.annotations.NotNull;
-import reactor.netty.http.client.HttpClient;
-import reactor.netty.tcp.TcpClient;
 
 import java.io.File;
-import java.net.URI;
-import java.time.Duration;
-import java.util.Base64;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import static io.rsocket.transport.netty.UriUtils.getPort;
+public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCheckstyleTask> implements RewritePlugin {
+    PrometheusMeterRegistry meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
 
-public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCheckstyleTask> {
-    private PrometheusMeterRegistry meterRegistry;
     private RewriteExtension extension;
+
+    @Override
+    public String getRewritePlanName() {
+        return "Checkstyle";
+    }
 
     @Override
     protected String getToolName() {
@@ -55,18 +42,19 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
         if (extension == null) {
             extension = project.getExtensions().create("rewrite", RewriteExtension.class, project);
         }
-        extension.setToolVersion("2.0");
+        extension.setToolVersion("2.x");
 
         return extension;
     }
 
     @Override
     protected void configureConfiguration(Configuration configuration) {
+        // don't need any configurations for this plugin
     }
 
     @Override
     protected void createConfigurations() {
-        // don't need any configuration customization
+        // don't need any configurations for this plugin
     }
 
     @Override
@@ -75,88 +63,6 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
         configureTaskConventionMapping(task);
         configureReportsConventionMapping(task, baseName);
         runCheckstyleAfterRewriting();
-    }
-
-    private void configureMetrics(RewriteCheckstyleTask task) {
-        synchronized (Metrics.globalRegistry) {
-            if (extension.getMetricsUri() != null && meterRegistry == null) {
-                URI uri = URI.create(extension.getMetricsUri());
-
-                ClientTransport clientTransport;
-                switch (uri.getScheme()) {
-                    case "https":
-                    case "wss": {
-                        TcpClient tcpClient = TcpClient.create().secure().host(uri.getHost()).port(getPort(uri, 443));
-                        clientTransport = websocketClientTransport(tcpClient);
-                        break;
-                    }
-                    case "http":
-                    case "ws": {
-                        TcpClient tcpClient = TcpClient.create().host(uri.getHost()).port(getPort(uri, 80));
-                        clientTransport = websocketClientTransport(tcpClient);
-                        break;
-                    }
-                    case "tcp":
-                        clientTransport = TcpClientTransport.create(uri.getHost(), uri.getPort());
-                        break;
-                    default:
-                        project.getLogger().warn("Unable to publish metrics. Unrecognized scheme {}", uri.getScheme());
-                        return;
-                }
-
-                // one per project, because they will have different tags
-                meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-                meterRegistry.config()
-                        .commonTags(
-                                "project.name", project.getName(),
-                                "project.display.name", project.getDisplayName(),
-                                "project.path", project.getPath(),
-                                "project.root.project.name", project.getRootProject().getName(),
-                                "gradle.version", project.getGradle().getGradleVersion())
-                        .commonTags(extension.getExtraMetricsTags())
-                        .meterFilter(new MeterFilter() {
-                            @Override
-                            public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
-                                if (id.getName().startsWith("rewrite")) {
-                                    return DistributionStatisticConfig.builder()
-                                            .percentilesHistogram(true)
-                                            .maximumExpectedValue(Duration.ofMillis(100).toNanos())
-                                            .build()
-                                            .merge(config);
-                                }
-                                return config;
-                            }
-                        });
-
-                final PrometheusRSocketClient metricsClient = new PrometheusRSocketClient(meterRegistry, clientTransport,
-                        c -> c.retryBackoff(Long.MAX_VALUE, Duration.ofSeconds(10), Duration.ofMinutes(10)));
-
-                project.getGradle().addBuildListener(new BuildAdapter() {
-                    @Override
-                    public void buildFinished(BuildResult result) {
-                        try {
-                            metricsClient.pushAndClose();
-                        } catch (Throwable ignore) {
-                            // sometimes fails when connection already closed, e.g. due to flaky internet connection
-                        }
-                    }
-                });
-            }
-        }
-
-        if (meterRegistry != null) {
-            task.setMeterRegistry(meterRegistry);
-        }
-    }
-
-    @NotNull
-    private ClientTransport websocketClientTransport(TcpClient tcpClient) {
-        HttpClient httpClient = HttpClient.from(tcpClient).wiretap(true);
-        if (extension.getMetricsUsername() != null && extension.getMetricsPassword() != null) {
-            httpClient = httpClient.headers(h -> h.add("Authorization", "Basic: " + Base64.getUrlEncoder()
-                    .encodeToString((extension.getMetricsUsername() + ":" + extension.getMetricsPassword()).getBytes())));
-        }
-        return WebsocketClientTransport.create(httpClient, "/");
     }
 
     protected void runCheckstyleAfterRewriting() {
@@ -198,5 +104,9 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
             report.getOutputLocation().convention(project.getLayout().getProjectDirectory().file(project.provider(() ->
                     new File(extension.getReportsDir(), baseName + "." + report.getName()).getAbsolutePath())));
         });
+    }
+
+    public PrometheusMeterRegistry getMeterRegistry() {
+        return meterRegistry;
     }
 }

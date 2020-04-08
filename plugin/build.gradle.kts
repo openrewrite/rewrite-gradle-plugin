@@ -14,6 +14,7 @@ plugins {
 }
 
 repositories {
+    mavenLocal()
     maven {
         url = uri("https://repo.gradle.org/gradle/enterprise-libs-releases-local/")
         credentials {
@@ -34,7 +35,7 @@ repositories {
             create<BasicAuthentication>("basic")
         }
     }
-    mavenCentral()
+    jcenter()
 }
 
 configurations.all {
@@ -61,14 +62,14 @@ dependencies {
     plugin("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
     plugin("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
-    plugin("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
+    plugin("io.micrometer.prometheus:prometheus-rsocket-client:0.11.0-SNAPSHOT")
     plugin("io.rsocket:rsocket-transport-netty:latest.release")
 
     api("org.gradle.rewrite:rewrite-java:latest.integration")
     api("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
     api("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
-    api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
+    api("io.micrometer.prometheus:prometheus-rsocket-client:0.11.0-SNAPSHOT")
     api("io.rsocket:rsocket-transport-netty:latest.release")
 
     testImplementation(gradleTestKit())
