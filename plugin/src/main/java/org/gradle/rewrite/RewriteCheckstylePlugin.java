@@ -32,6 +32,11 @@ public class RewriteCheckstylePlugin extends AbstractCodeQualityPlugin<RewriteCh
     }
 
     @Override
+    protected String getTaskBaseName() {
+        return "rewriteCheckstyle";
+    }
+
+    @Override
     protected Class<RewriteCheckstyleTask> getTaskType() {
         return RewriteCheckstyleTask.class;
     }

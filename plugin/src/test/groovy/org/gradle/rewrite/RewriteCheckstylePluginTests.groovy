@@ -103,6 +103,12 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         def sourceFile = writeSource(javaSourceWithCheckstyleViolation)
         def git = setupAutoCommit()
 
+        buildFile << """
+            rewrite {
+                action = org.gradle.rewrite.RewriteAction.REBASE_FIXUP
+            }
+        """
+
         when:
         gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').build()
 
@@ -169,8 +175,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
 
         buildFile << """
             rewrite {
-                fixInPlace = false // autoCommit also fixes in place but goes further, so this value doesn't matter
-                autoCommit = true
+                action = org.gradle.rewrite.RewriteAction.COMMIT
             }
         """
 
@@ -221,9 +226,6 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         buildFile << """
             rewrite {
                 ignoreFailures = true
-                metricsUri = "ws://ge-dev-prometheus-proxy.grdev.net:8081"
-                metricsUsername = "ge-dev-prometheus-proxy"
-                metricsPassword = "wXCfMkbA8S5yb8wzyQMqHVC5nSid1uyp"
             }
         """
 
@@ -244,7 +246,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
 
         buildFile << """
             rewrite {
-                fixInPlace = false
+                action = org.gradle.rewrite.RewriteAction.WARN_ONLY
             }
         """
 
