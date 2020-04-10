@@ -79,8 +79,7 @@ class RewriteMetricsPluginTests extends AbstractRewritePluginTests {
                 .acceptor { setup, sendingSocket ->
                     serverSocket.set(sendingSocket)
                     acceptLatch.countDown()
-                    return Mono.just(new AbstractRSocket() {
-                    })
+                    return Mono.empty()
                 }
                 .transport(TcpServerTransport.create(7102))
                 .start()
@@ -93,7 +92,8 @@ class RewriteMetricsPluginTests extends AbstractRewritePluginTests {
         acceptLatch.await(30, TimeUnit.SECONDS)
 
         when:
-        serverSocket.get().requestResponse(DefaultPayload.create("plaintext"))
+        serverSocket.get()
+                .requestResponse(DefaultPayload.create("plaintext"))
                 .map { payload ->
                     def scrape = new String(ByteBufUtil.getBytes(payload.sliceData()), StandardCharsets.UTF_8)
                     println(scrape)

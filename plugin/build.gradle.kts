@@ -14,6 +14,9 @@ plugins {
 }
 
 repositories {
+    jcenter()
+    maven { url = uri("http://oss.jfrog.org/oss-snapshot-local") }
+
     maven {
         url = uri("https://repo.gradle.org/gradle/enterprise-libs-releases-local/")
         credentials {
@@ -24,6 +27,7 @@ repositories {
             create<BasicAuthentication>("basic")
         }
     }
+
     maven {
         url = uri("https://repo.gradle.org/gradle/enterprise-libs-snapshots-local/")
         credentials {
@@ -34,7 +38,6 @@ repositories {
             create<BasicAuthentication>("basic")
         }
     }
-    jcenter()
 }
 
 configurations.all {
@@ -62,14 +65,14 @@ dependencies {
     plugin("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
     plugin("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    plugin("io.rsocket:rsocket-transport-netty:latest.release")
+    plugin("io.rsocket:rsocket-transport-netty:1.0.0-RC7-SNAPSHOT")
 
     api("org.gradle.rewrite:rewrite-java:latest.integration")
     api("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
     api("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
     api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    api("io.rsocket:rsocket-transport-netty:latest.release")
+    api("io.rsocket:rsocket-transport-netty:1.0.0-RC7-SNAPSHOT")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.8")

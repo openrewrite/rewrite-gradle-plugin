@@ -18,6 +18,7 @@ import org.gradle.api.Project;
 import org.jetbrains.annotations.NotNull;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.tcp.TcpClient;
+import reactor.util.retry.Retry;
 
 import java.net.URI;
 import java.time.Duration;
@@ -98,14 +99,15 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
                             () -> rootProjectMeterRegistry.scrape() + scrapeFromEachProject(project),
                             clientTransport
                     )
-                    .customizeAndRetry(r -> r.retryBackoff(Long.MAX_VALUE, Duration.ofSeconds(1), Duration.ofSeconds(3)))
+                    .retry(Retry.backoff(Long.MAX_VALUE, Duration.ofSeconds(1)).maxBackoff(Duration.ofSeconds(3)))
                     .connect();
 
             project.getGradle().addBuildListener(new BuildAdapter() {
                 @Override
                 public void buildFinished(BuildResult result) {
                     try {
-                        metricsClient.pushAndClose();
+                        // Don't bother blocking here. If the daemon dies before the dying push can happen, so be it.
+                        metricsClient.pushAndClose().subscribe();
                     } catch (Throwable ignore) {
                         // sometimes fails when connection already closed, e.g. due to flaky internet connection
                     }
