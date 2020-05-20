@@ -1,7 +1,6 @@
 import nl.javadude.gradle.plugins.license.LicenseExtension
 import org.gradle.rewrite.build.GradleVersionData
 import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
-import java.net.URI
 import java.util.*
 
 plugins {
@@ -11,12 +10,35 @@ plugins {
     checkstyle
     codenarc
     `kotlin-dsl`
-    id("nebula.maven-publish") version "17.2.1"
-    id("nebula.maven-resolved-dependencies") version "17.2.1"
+    id("com.gradle.plugin-publish") version "0.11.0"
     id("io.spring.release") version "0.20.1" apply false
 }
 
 apply(plugin = "license")
+
+pluginBundle {
+    website = "https://github.com/openrewrite/rewrite-gradle-plugin"
+    vcsUrl = "https://github.com/openrewrite/rewrite-gradle-plugin.git"
+    tags = listOf("rewrite", "refactoring", "java", "checkstyle")
+}
+
+gradlePlugin {
+    plugins {
+        create("rewriteMetrics") {
+            id = "org.openrewrite.rewrite-metrics"
+            displayName = "Rewrite metrics publishing"
+            description = "Publish metrics about refactoring operations happening across your organization."
+            implementationClass = "org.openrewrite.gradle.RewriteMetricsPlugin"
+        }
+
+        create("rewriteCheckstyle") {
+            id = "org.openrewrite.rewrite-checkstyle"
+            displayName = "Rewrite Checkstyle"
+            description = "Automatically fix checkstyle issues."
+            implementationClass = "org.openrewrite.gradle.RewriteCheckstylePlugin"
+        }
+    }
+}
 
 repositories {
     jcenter()
@@ -62,47 +84,7 @@ tasks.pluginUnderTestMetadata {
     pluginClasspath.from(plugin)
 }
 
-fun shouldUseReleaseRepo(): Boolean {
-    return project.gradle.startParameter.taskNames.contains("final") || project.gradle.startParameter.taskNames.contains(":final")
-}
-
-project.gradle.taskGraph.whenReady(object : Action<TaskExecutionGraph> {
-    override fun execute(graph: TaskExecutionGraph) {
-        if (graph.hasTask(":snapshot") || graph.hasTask(":immutableSnapshot")) {
-            throw GradleException("You cannot use the snapshot or immutableSnapshot task from the release plugin. Please use the devSnapshot task.")
-        }
-    }
-})
-
-project.afterEvaluate {
-    publishing {
-        publications.named<MavenPublication>("nebula") {
-            pom {
-                artifactId = "rewrite-gradle-plugin"
-                name.set("rewrite-gradle-plugin")
-            }
-        }
-    }
-}
-
-publishing {
-    repositories {
-        maven {
-            name = "GradleEnterprise"
-            url = if (shouldUseReleaseRepo()) {
-                URI.create("https://repo.gradle.org/gradle/enterprise-libs-releases-local")
-            } else {
-                URI.create("https://repo.gradle.org/gradle/enterprise-libs-snapshots-local")
-            }
-            credentials {
-                username = project.findProperty("artifactoryUsername") as String?
-                password = project.findProperty("artifactoryPassword") as String?
-            }
-        }
-    }
-}
-
-project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishNebulaPublicationToGradleEnterpriseRepository"))
+project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))
 
 tasks.named<Test>("test") {
     systemProperty(
