@@ -1,6 +1,7 @@
 ![Logo](https://github.com/openrewrite/rewrite/raw/master/doc/logo-oss.png)
 ### Eliminate Tech-Debt. At build time.
 
+[![Build Status](https://circleci.com/gh/openrewrite/rewrite-gradle-plugin.svg?style=shield)](https://circleci.com/gh/openrewrite/rewrite-gradle-plugin)
 [![Apache 2.0](https://img.shields.io/github/license/openrewrite/rewrite-gradle-plugin.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
 ## What is this?

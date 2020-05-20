@@ -8,3 +8,11 @@ allprojects {
 }
 
 evaluationDependsOn("plugin")
+
+tasks.register("downloadDependencies") {
+    doLast {
+        configurations.filter { it.isCanBeResolved }.forEach {
+            it.files
+        }
+    }
+}
