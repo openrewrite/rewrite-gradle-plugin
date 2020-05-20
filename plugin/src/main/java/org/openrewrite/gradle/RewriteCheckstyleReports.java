@@ -17,10 +17,12 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.reporting.ReportContainer;
 import org.gradle.api.reporting.SingleFileReport;
+import org.gradle.api.tasks.Input;
 
 public interface RewriteCheckstyleReports extends ReportContainer<SingleFileReport> {
     /**
      * A diff file that can be applied with <pre>{@code git apply}</pre>.
      */
+    @Input
     SingleFileReport getPatch();
 }
