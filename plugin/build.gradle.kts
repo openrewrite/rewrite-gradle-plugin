@@ -1,6 +1,8 @@
+import nl.javadude.gradle.plugins.license.LicenseExtension
 import org.gradle.rewrite.build.GradleVersionData
 import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
 import java.net.URI
+import java.util.*
 
 plugins {
     java
@@ -11,33 +13,13 @@ plugins {
     `kotlin-dsl`
     id("nebula.maven-publish") version "17.2.1"
     id("nebula.maven-resolved-dependencies") version "17.2.1"
+    id("io.spring.release") version "0.20.1" apply false
 }
+
+apply(plugin = "license")
 
 repositories {
     jcenter()
-    maven { url = uri("http://oss.jfrog.org/oss-snapshot-local") }
-
-    maven {
-        url = uri("https://repo.gradle.org/gradle/enterprise-libs-releases-local/")
-        credentials {
-            username = project.findProperty("artifactoryUsername") as String
-            password = project.findProperty("artifactoryPassword") as String
-        }
-        authentication {
-            create<BasicAuthentication>("basic")
-        }
-    }
-
-    maven {
-        url = uri("https://repo.gradle.org/gradle/enterprise-libs-snapshots-local/")
-        credentials {
-            username = project.findProperty("artifactoryUsername") as String
-            password = project.findProperty("artifactoryPassword") as String
-        }
-        authentication {
-            create<BasicAuthentication>("basic")
-        }
-    }
 }
 
 configurations.all {
@@ -46,9 +28,6 @@ configurations.all {
         cacheDynamicVersionsFor(0, TimeUnit.SECONDS)
     }
 }
-
-group = "org.gradle"
-description = "Refactor source code automatically"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -60,22 +39,22 @@ val plugin: Configuration by configurations.creating
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
 dependencies {
-    plugin("org.gradle.rewrite:rewrite-java:latest.integration")
-    plugin("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
+    plugin("org.openrewrite:rewrite-java:latest.release")
+    plugin("org.openrewrite.plan:rewrite-checkstyle:latest.release")
     plugin("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
     plugin("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    plugin("io.rsocket:rsocket-transport-netty:1.0.0-RC7-SNAPSHOT")
+    plugin("io.rsocket:rsocket-transport-netty:1.0.0")
 
-    api("org.gradle.rewrite:rewrite-java:latest.integration")
-    api("org.gradle.rewrite.plan:rewrite-checkstyle:latest.integration")
+    api("org.openrewrite:rewrite-java:latest.release")
+    api("org.openrewrite.plan:rewrite-checkstyle:latest.release")
     api("org.eclipse.jgit:org.eclipse.jgit:latest.release")
 
     api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    api("io.rsocket:rsocket-transport-netty:1.0.0-RC7-SNAPSHOT")
+    api("io.rsocket:rsocket-transport-netty:1.0.0")
 
     testImplementation(gradleTestKit())
-    testImplementation("org.codehaus.groovy:groovy-all:2.5.8")
+    testImplementation("org.codehaus.groovy:groovy-all:2.5.10")
     testImplementation("org.spockframework:spock-core:1.3-groovy-2.5")
 }
 
@@ -138,4 +117,12 @@ tasks.register<Test>("testGradleReleases") {
 
 tasks.register<Test>("testGradleNightlies") {
     jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getNightlyVersions))
+}
+
+configure<LicenseExtension> {
+    ext.set("year", Calendar.getInstance().get(Calendar.YEAR))
+    skipExistingHeaders = true
+    header = project.rootProject.file("gradle/licenseHeader.txt")
+    mapping(mapOf("kt" to "SLASHSTAR_STYLE", "java" to "SLASHSTAR_STYLE"))
+    strictCheck = true
 }

@@ -1,4 +1,19 @@
-package org.gradle.rewrite;
+/*
+ * Copyright 2020 the original author or authors.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * https://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.openrewrite.gradle;
 
 import groovy.lang.Closure;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -21,13 +36,13 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.reporting.Reporting;
 import org.gradle.api.resources.TextResource;
-import org.gradle.api.tasks.*;
 import org.gradle.api.tasks.Optional;
-import org.gradle.rewrite.checkstyle.RewriteCheckstyle;
+import org.gradle.api.tasks.*;
 import org.gradle.util.ClosureBackedAction;
 import org.gradle.work.ChangeType;
 import org.gradle.work.InputChanges;
 import org.openrewrite.Change;
+import org.openrewrite.checkstyle.RewriteCheckstyle;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.tree.J;
 

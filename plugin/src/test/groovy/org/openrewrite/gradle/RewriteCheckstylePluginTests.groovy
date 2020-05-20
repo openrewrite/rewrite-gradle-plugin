@@ -1,4 +1,19 @@
-package org.gradle.rewrite
+/*
+ * Copyright 2020 the original author or authors.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * https://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.openrewrite.gradle
 
 import org.gradle.internal.impldep.org.eclipse.jgit.api.Git
 import spock.lang.Unroll
@@ -69,7 +84,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
             plugins {
                 id 'java'
                 id 'checkstyle'
-                id 'org.gradle.rewrite-checkstyle'
+                id 'org.openrewrite.rewrite-checkstyle'
             }
             
             repositories {
@@ -94,7 +109,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         output.contains("rewriteCheckstyleTest")
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << AbstractRewritePluginTests.GRADLE_VERSIONS_UNDER_TEST
     }
 
     @Unroll
@@ -105,7 +120,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
 
         buildFile << """
             rewrite {
-                action = org.gradle.rewrite.RewriteAction.REBASE_FIXUP
+                action = org.openrewrite.gradle.RewriteAction.REBASE_FIXUP
             }
         """
 
@@ -117,7 +132,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         git.log().call()[0].fullMessage == 'Add java source file'
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << AbstractRewritePluginTests.GRADLE_VERSIONS_UNDER_TEST
     }
 
     @Unroll
@@ -140,7 +155,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         git.status().call().getChanged().contains('src/main/java/acme/A.java')
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << AbstractRewritePluginTests.GRADLE_VERSIONS_UNDER_TEST
     }
 
     @Unroll
@@ -163,7 +178,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         git.status().call().getModified().contains('src/main/java/acme/A.java')
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << AbstractRewritePluginTests.GRADLE_VERSIONS_UNDER_TEST
     }
 
     private Git setupAutoCommit() {
@@ -175,7 +190,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
 
         buildFile << """
             rewrite {
-                action = org.gradle.rewrite.RewriteAction.COMMIT
+                action = org.openrewrite.gradle.RewriteAction.COMMIT
             }
         """
 
@@ -215,7 +230,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         sourceFile.text == javaSourceFixed
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << AbstractRewritePluginTests.GRADLE_VERSIONS_UNDER_TEST
     }
 
     @Unroll
@@ -236,7 +251,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         sourceFile.text == javaSourceFixed
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << AbstractRewritePluginTests.GRADLE_VERSIONS_UNDER_TEST
     }
 
     @Unroll
@@ -246,7 +261,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
 
         buildFile << """
             rewrite {
-                action = org.gradle.rewrite.RewriteAction.WARN_ONLY
+                action = org.openrewrite.gradle.RewriteAction.WARN_ONLY
             }
         """
 
@@ -257,7 +272,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         sourceFile.text == javaSourceWithCheckstyleViolation
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << AbstractRewritePluginTests.GRADLE_VERSIONS_UNDER_TEST
     }
 
     @Unroll
@@ -277,7 +292,7 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').build()
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << AbstractRewritePluginTests.GRADLE_VERSIONS_UNDER_TEST
     }
 
     @Unroll
@@ -301,6 +316,6 @@ class RewriteCheckstylePluginTests extends AbstractRewritePluginTests {
         gradleRunner(gradleVersion as String, 'rewriteCheckstyleMain').build()
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << AbstractRewritePluginTests.GRADLE_VERSIONS_UNDER_TEST
     }
 }

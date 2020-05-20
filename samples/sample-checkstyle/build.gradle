@@ -1,20 +1,10 @@
 buildscript {
     dependencies {
-        classpath 'org.gradle:rewrite-gradle-plugin:latest.integration'
+        classpath 'org.openrewrite:rewrite-gradle-plugin:latest.integration'
     }
 
     repositories {
-        mavenCentral()
-        maven {
-            url 'https://repo.gradle.org/gradle/enterprise-libs-snapshots-local'
-            credentials {
-                username = project.property('artifactoryUsername')
-                password = project.property('artifactoryPassword')
-            }
-            authentication {
-                basic(BasicAuthentication)
-            }
-        }
+        jcenter()
     }
 
     configurations.classpath {
@@ -34,4 +24,4 @@ repositories {
     mavenCentral()
 }
 
-apply plugin: 'org.gradle.rewrite-checkstyle'
+apply plugin: 'org.openrewrite.rewrite-checkstyle'
