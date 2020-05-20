@@ -7,8 +7,6 @@ plugins {
     java
     groovy
     `java-gradle-plugin`
-    checkstyle
-    codenarc
     `kotlin-dsl`
     id("com.gradle.plugin-publish") version "0.11.0"
     id("io.spring.release") version "0.20.1" apply false
