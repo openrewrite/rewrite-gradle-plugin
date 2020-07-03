@@ -64,7 +64,6 @@ dependencies {
     plugin("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
     plugin("io.rsocket:rsocket-transport-netty:1.0.0")
 
-    compileOnly("org.jetbrains:annotations:16.0.2")
     implementation("org.openrewrite:rewrite-java-11:$rewriteVersion")
     implementation("org.openrewrite:rewrite-java-8:$rewriteVersion")
     api("org.openrewrite:rewrite-java:$rewriteVersion")

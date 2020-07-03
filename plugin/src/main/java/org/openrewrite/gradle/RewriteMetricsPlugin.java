@@ -31,7 +31,6 @@ import org.gradle.BuildAdapter;
 import org.gradle.BuildResult;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.jetbrains.annotations.NotNull;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.tcp.TcpClient;
 import reactor.util.retry.Retry;
@@ -140,7 +139,6 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
 //                .collect(Collectors.joining(""));
     }
 
-    @NotNull
     private ClientTransport websocketClientTransport(TcpClient tcpClient) {
         HttpClient httpClient = HttpClient.from(tcpClient).wiretap(true);
         if (extension.getMetricsUsername() != null && extension.getMetricsPassword() != null) {
