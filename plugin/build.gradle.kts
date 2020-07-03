@@ -7,9 +7,8 @@ plugins {
     java
     groovy
     `java-gradle-plugin`
-    `kotlin-dsl`
-    id("com.gradle.plugin-publish") version "0.11.0"
-    id("io.spring.release") version "0.20.1" apply false
+    id("com.gradle.plugin-publish") version("0.11.0")
+    id("io.spring.release") version ("0.20.1") apply (false)
 }
 
 apply(plugin = "license")
@@ -29,11 +28,11 @@ gradlePlugin {
             implementationClass = "org.openrewrite.gradle.RewriteMetricsPlugin"
         }
 
-        create("rewriteCheckstyle") {
-            id = "org.openrewrite.rewrite-checkstyle"
-            displayName = "Rewrite Checkstyle"
-            description = "Automatically fix checkstyle issues."
-            implementationClass = "org.openrewrite.gradle.RewriteCheckstylePlugin"
+        create("rewrite") {
+            id = "org.openrewrite.rewrite"
+            displayName = "Rewrite"
+            description = "Automatically eliminate technical debt"
+            implementationClass = "org.openrewrite.gradle.RewritePlugin"
         }
     }
 }
@@ -57,19 +56,18 @@ java {
 val plugin: Configuration by configurations.creating
 
 configurations.getByName("compileOnly").extendsFrom(plugin)
+val rewriteVersion = "2.0.1"
 
 dependencies {
-    plugin("org.openrewrite:rewrite-java:latest.release")
-    plugin("org.openrewrite.plan:rewrite-checkstyle:latest.release")
-    plugin("org.eclipse.jgit:org.eclipse.jgit:latest.release")
+    plugin("org.openrewrite:rewrite-java:$rewriteVersion")
 
     plugin("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
     plugin("io.rsocket:rsocket-transport-netty:1.0.0")
 
-    api("org.openrewrite:rewrite-java:latest.release")
-    api("org.openrewrite.plan:rewrite-checkstyle:latest.release")
+    implementation("org.openrewrite:rewrite-java-11:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-java-8:$rewriteVersion")
+    api("org.openrewrite:rewrite-java:$rewriteVersion")
     api("org.eclipse.jgit:org.eclipse.jgit:latest.release")
-
     api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
     api("io.rsocket:rsocket-transport-netty:1.0.0")
 

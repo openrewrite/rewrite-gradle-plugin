@@ -17,38 +17,28 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.Project;
 import org.gradle.api.plugins.quality.CodeQualityExtension;
-import org.gradle.api.resources.TextResource;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class RewriteExtension extends CodeQualityExtension {
-    private RewriteAction action = RewriteAction.FIX;
-    private Set<String> excludeChecks = new HashSet<>();
-    private Checkstyle checkstyle = new Checkstyle();
+    private static final String magicalMetricsLogString = "LOG";
+
     private boolean showViolations = true;
+    private final List<String> activeProfiles = new ArrayList<>();
+    private Project project;
+    private File configFile;
+    private final List<GradleProfileConfiguration> profiles = new ArrayList<>();
+    private String metricsUri = magicalMetricsLogString;
 
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
+        this.project = project;
+        configFile = project.file("rewrite.yml");
     }
 
-    public RewriteAction getAction() {
-        return action;
-    }
-
-    public void setAction(RewriteAction action) {
-        this.action = action;
-    }
-
-    public Set<String> getExcludeChecks() {
-        return excludeChecks;
-    }
-
-    public void setExcludeChecks(Set<String> excludeChecks) {
-        this.excludeChecks = excludeChecks;
-    }
-
-    public boolean isShowViolations() {
+    public boolean getShowViolations() {
         return showViolations;
     }
 
@@ -56,23 +46,53 @@ public class RewriteExtension extends CodeQualityExtension {
         this.showViolations = showViolations;
     }
 
-    public Checkstyle getCheckstyle() {
-        return checkstyle;
+    public void setConfigFile(File configFile) {
+        this.configFile = configFile;
     }
 
-    public void setCheckstyle(Checkstyle checkstyle) {
-        this.checkstyle = checkstyle;
+    public void setConfigFile(String configFilePath) {
+        configFile = project.file(configFilePath);
     }
 
-    public static class Checkstyle {
-        private TextResource config;
-
-        public TextResource getConfig() {
-            return config;
-        }
-
-        public void setConfig(TextResource config) {
-            this.config = config;
-        }
+    public File getConfigFile() {
+        return configFile;
     }
+
+    public void enableRouteMetricsToLog() {
+        metricsUri = magicalMetricsLogString;
+    }
+    public boolean isRouteMetricsToLog() {
+        return metricsUri.equals(magicalMetricsLogString);
+    }
+    public String getMetricsUri() {
+        return metricsUri;
+    }
+    public void setMetricsUri(String value) {
+        metricsUri = value;
+    }
+
+
+    public void activeProfile(String... profiles) {
+        activeProfiles.addAll(List.of(profiles));
+    }
+
+    public void clearActiveProfiles() {
+        activeProfiles.clear();
+    }
+    public void setActiveProfile(List<String> activeProfiles) {
+        this.activeProfiles.clear();
+        this.activeProfiles.addAll(activeProfiles);
+    }
+    public List<String> getActiveProfiles() {
+        return List.copyOf(activeProfiles);
+    }
+
+    public void profile(GradleProfileConfiguration ... profiles) {
+        this.profiles.addAll(List.of(profiles));
+    }
+
+    public List<GradleProfileConfiguration> getProfiles() {
+        return List.copyOf(profiles);
+    }
+
 }
