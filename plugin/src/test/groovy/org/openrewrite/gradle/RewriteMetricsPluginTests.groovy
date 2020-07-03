@@ -29,7 +29,10 @@ import spock.lang.Unroll
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-class RewriteMetricsPluginTests extends AbstractRewritePluginTests {
+class RewriteMetricsPluginTests extends RewriteTestBase {
+
+    File settingsFile
+
     def setup() {
         Hooks.onOperatorDebug()
 
@@ -47,10 +50,10 @@ class RewriteMetricsPluginTests extends AbstractRewritePluginTests {
         """.stripIndent()
 
         settingsFile = projectDir.newFile('settings.gradle')
-        settingsFile << """
+        settingsFile << """\
             rootProject.name = 'hello-world'
             include 'a', 'b'    
-        """
+        """.stripIndent()
 
         projectDir.newFolder('b')
 
@@ -59,7 +62,7 @@ class RewriteMetricsPluginTests extends AbstractRewritePluginTests {
         new File(aSourceFolder, 'A.java') << 'public class A {}'
 
         buildFile = projectDir.newFile('build.gradle')
-        buildFile << """
+        buildFile << """\
             plugins {
                 id 'org.openrewrite.rewrite-metrics'
                 id 'org.openrewrite.rewrite-checkstyle' apply false
@@ -79,7 +82,7 @@ class RewriteMetricsPluginTests extends AbstractRewritePluginTests {
                     mavenCentral()
                 }
             }
-        """
+        """.stripIndent()
     }
 
     @Ignore("ByteBuf leaking while trying to send dying push?")

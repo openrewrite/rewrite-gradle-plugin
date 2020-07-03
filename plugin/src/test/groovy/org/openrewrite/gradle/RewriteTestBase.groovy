@@ -23,21 +23,17 @@ import spock.lang.Specification
 
 import java.lang.management.ManagementFactory
 
-class AbstractRewritePluginTests extends Specification {
+class RewriteTestBase extends Specification {
     static final List<String> GRADLE_VERSIONS_UNDER_TEST = gradleVersionsUnderTest()
 
     @Rule
     TemporaryFolder projectDir = new TemporaryFolder()
 
-    File settingsFile
-
-    File buildFile
-
     @SuppressWarnings("GroovyAssignabilityCheck")
-    File writeSource(String source) {
+    File writeSource(String source, String sourceSet = "main") {
         String packageName = (source =~ /package\s+([\w.]+)/)[0][1]
         String className = (source =~ /(class|interface)\s+(\w+)\s+/)[0][2]
-        String sourceFilePackage = "src/main/java/${packageName.replace('.', '/')}"
+        String sourceFilePackage = "src/$sourceSet/java/${packageName.replace('.', '/')}"
         new File(projectDir.root, sourceFilePackage).mkdirs()
         def file = projectDir.newFile("$sourceFilePackage/${className}.java")
         file << source
@@ -48,7 +44,7 @@ class AbstractRewritePluginTests extends Specification {
         GradleRunner.create()
                 .withDebug(ManagementFactory.getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0)
                 .withProjectDir(projectDir.root)
-                .withArguments((tasks + '-s').toList())
+                .withArguments((tasks + '--full-stacktrace').toList())
                 .withPluginClasspath()
                 .forwardOutput()
                 .tap {
@@ -64,4 +60,5 @@ class AbstractRewritePluginTests extends Specification {
             [GradleVersion.current().toString()]
         }
     }
+
 }
