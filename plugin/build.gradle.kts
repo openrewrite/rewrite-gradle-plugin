@@ -56,7 +56,7 @@ java {
 val plugin: Configuration by configurations.creating
 
 configurations.getByName("compileOnly").extendsFrom(plugin)
-val rewriteVersion = "2.0.1"
+val rewriteVersion = "3.0.3"
 
 dependencies {
     plugin("org.openrewrite:rewrite-java:$rewriteVersion")
@@ -66,6 +66,10 @@ dependencies {
 
     implementation("org.openrewrite:rewrite-java-11:$rewriteVersion")
     implementation("org.openrewrite:rewrite-java-8:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-xml:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-maven:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-properties:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-yaml:$rewriteVersion")
     api("org.openrewrite:rewrite-java:$rewriteVersion")
     api("org.eclipse.jgit:org.eclipse.jgit:latest.release")
     api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")

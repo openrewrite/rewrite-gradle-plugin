@@ -22,19 +22,26 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
+import org.openrewrite.Refactor;
+import org.openrewrite.properties.PropertiesParser;
+import org.openrewrite.yaml.YamlParser;
 import org.openrewrite.Change;
 import org.openrewrite.RefactorPlan;
-import org.openrewrite.SourceVisitor;
+import org.openrewrite.RefactorVisitor;
+import org.openrewrite.SourceFile;
 import org.openrewrite.config.YamlResourceLoader;
 import org.openrewrite.java.JavaParser;
+import org.openrewrite.java.style.ImportLayoutStyle;
 import org.openrewrite.java.tree.J;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -52,13 +59,28 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     private final SortedSet<String> excludes = new TreeSet<>();
     private FileCollection sources = null;
     private FileCollection dependencies = null;
+    private FileCollection resources = null;
 
     /**
      * The Java source files that will be subject to rewriting
      */
     @InputFiles
-    public FileCollection getSources() {
+    public FileCollection getJavaSources() {
         return sources;
+    }
+
+    public void setJavaSources(FileCollection sources) {
+        this.sources = sources;
+    }
+
+
+    @InputFiles
+    public FileCollection getResources() {
+        return resources;
+    }
+
+    public void setResources(FileCollection resources) {
+        this.resources = resources;
     }
 
     /**
@@ -84,10 +106,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return excludes;
     }
 
-    public void setSources(FileCollection sources) {
-        this.sources = sources;
-    }
-
     @InputFiles
     public FileCollection getDependencies() {
         return dependencies;
@@ -105,7 +123,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     protected RefactorPlan plan() {
         RefactorPlan.Builder plan = RefactorPlan.builder()
                 .compileClasspath(
-                       getSources().getFiles().stream().map(File::toPath).collect(Collectors.toList())
+                       getJavaSources().getFiles().stream().map(File::toPath).collect(Collectors.toList())
                 ).scanResources()
                 .scanUserHome();
 
@@ -125,58 +143,61 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return plan.build();
     }
 
-    protected List<Change<J.CompilationUnit>> listChanges() {
+    protected Collection<Change> listChanges() {
         try(MeterRegistryProvider meterRegistryProvider = new MeterRegistryProvider(getLog(), metricsUri, metricsUsername, metricsPassword)) {
             MeterRegistry meterRegistry = meterRegistryProvider.registry();
 
             RefactorPlan plan = plan();
-            Collection<SourceVisitor<J>> javaVisitors = plan.visitors(J.class, getActiveProfiles());
+            Set<String> profiles = getActiveProfiles();
+            Collection<RefactorVisitor<?>> visitors = plan.visitors(profiles);
 
-            JavaParser.Builder<? extends JavaParser, ?> javaParser;
-            try {
-                if (System.getProperty("java.version").startsWith("1.8")) {
-                    javaParser = (JavaParser.Builder<? extends JavaParser, ?>) Class
-                            .forName("org.openrewrite.java.Java8Parser")
-                            .getDeclaredMethod("builder")
-                            .invoke(null);
-                } else {
-                    javaParser = (JavaParser.Builder<? extends JavaParser, ?>) Class
-                            .forName("org.openrewrite.java.Java11Parser")
-                            .getDeclaredMethod("builder")
-                            .invoke(null);
-                }
-            } catch (Exception e) {
-                throw new IllegalStateException("Unable to create a Java parser instance. " +
-                        "`org.openrewrite:rewrite-java-8` or `org.openrewrite:rewrite-java-11` must be on the plugin classpath.");
-            }
+            List<SourceFile> sourceFiles = new ArrayList<>();
+            List<Path> sourcePaths = getJavaSources().getFiles().stream()
+                    .filter(it -> it.isFile() && it.getName().endsWith(".java"))
+                    .map(File::toPath)
+                    .collect(toList());
+            List<Path> dependencyPaths = getDependencies().getFiles().stream()
+                    .map(File::toPath)
+                    .collect(toList());
 
-            List<Path> sourcePaths = getSources().getFiles().stream().map(File::toPath).collect(toList());
-            List<Path> dependencyPaths = getDependencies().getFiles().stream().map(File::toPath).collect(toList());
+            Path projectDir = getProject().getProjectDir().toPath();
 
-            List<J.CompilationUnit> cus = javaParser
+            ImportLayoutStyle importLayoutStyle = plan.style(ImportLayoutStyle.class, profiles);
+            sourceFiles.addAll(JavaParser.fromJavaVersion()
+                    .importStyle(importLayoutStyle)
                     .classpath(dependencyPaths)
                     .logCompilationWarningsAndErrors(false)
                     .meterRegistry(meterRegistry)
                     .build()
-                    .parse(sourcePaths, getProject().getProjectDir().toPath());
+                    .parse(sourcePaths, projectDir)
+            );
 
-            return cus.stream()
-                    .map(cu -> cu.refactor()
-                            .visit(javaVisitors)
-                            .setMeterRegistry(meterRegistry)
-                            .fix())
-                    .filter(change -> !change.getRulesThatMadeChanges().isEmpty())
-                    .collect(toList());
+            sourceFiles.addAll(new YamlParser().parse(
+                    getResources().getFiles().stream()
+                            .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
+                            .map(File::getAbsolutePath)
+                            .collect(toList())
+            ));
+
+            sourceFiles.addAll(
+                    new PropertiesParser().parse(
+                        getResources().getFiles().stream()
+                        .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
+                        .map(File::getAbsolutePath)
+                        .collect(toList())
+                    )
+            );
+
+            return new Refactor().visit(visitors).setMeterRegistry(meterRegistry).fix(sourceFiles);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
-
     private MeterRegistry registry;
+
     @Override
     public void setMeterRegistry(MeterRegistry registry) {
         this.registry = registry;
     }
-
 
 }

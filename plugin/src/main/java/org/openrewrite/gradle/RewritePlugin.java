@@ -49,8 +49,9 @@ public class RewritePlugin implements Plugin<Project> {
             rewriteFixTaskProvider.configure(rewriteFixTask -> {
                 rewriteFixTask.setGroup("rewrite");
                 rewriteFixTask.setDescription("Automatically fix all known rule violations within the " + sourceSet.getName() + " SourceSet");
-                rewriteFixTask.setSources(sourceSet.getAllJava());
+                rewriteFixTask.setJavaSources(sourceSet.getAllJava());
                 rewriteFixTask.setDependencies(sourceSet.getCompileClasspath());
+                rewriteFixTask.setResources(sourceSet.getResources().getSourceDirectories());
                 rewriteFixTask.getActiveProfiles().addAll(extension.getActiveProfiles());
                 rewriteFixTask.getProfiles().addAll(extension.getProfiles());
             });
@@ -64,8 +65,9 @@ public class RewritePlugin implements Plugin<Project> {
             rewriteWarnTaskProvider.configure(rewriteWarnTask -> {
                 rewriteWarnTask.setGroup("rewrite");
                 rewriteWarnTask.setDescription("Warn about all known rule violations within the " + sourceSet.getName() + "SourceSet. No changes will be made.");
-                rewriteWarnTask.setSources(sourceSet.getAllJava());
+                rewriteWarnTask.setJavaSources(sourceSet.getAllJava());
                 rewriteWarnTask.setDependencies(sourceSet.getCompileClasspath());
+                rewriteWarnTask.setResources(sourceSet.getResources().getSourceDirectories());
                 rewriteWarnTask.getActiveProfiles().addAll(extension.getActiveProfiles());
                 rewriteWarnTask.getProfiles().addAll(extension.getProfiles());
             });

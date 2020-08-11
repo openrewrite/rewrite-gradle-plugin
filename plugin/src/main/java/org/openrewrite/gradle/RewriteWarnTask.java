@@ -21,6 +21,7 @@ import org.gradle.api.tasks.TaskAction;
 import org.openrewrite.Change;
 import org.openrewrite.java.tree.J;
 
+import java.util.Collection;
 import java.util.List;
 
 public class RewriteWarnTask extends AbstractRewriteTask{
@@ -33,10 +34,10 @@ public class RewriteWarnTask extends AbstractRewriteTask{
 
     @TaskAction
     public void execute() {
-        List<Change<J.CompilationUnit>> changes = listChanges();
+        Collection<Change> changes = listChanges();
 
         if (!changes.isEmpty()) {
-            for (Change<J.CompilationUnit> change : changes) {
+            for (Change change : changes) {
                 log.warn("Changes are suggested to " +
                         change.getOriginal().getSourcePath() +
                         " by:");

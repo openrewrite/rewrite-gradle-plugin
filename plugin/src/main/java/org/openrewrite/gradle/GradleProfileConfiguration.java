@@ -29,8 +29,6 @@ public class GradleProfileConfiguration {
 
     public final Set<String> exclude = new HashSet<>();
 
-    public final Set<String> extend = new HashSet<>();
-
     public final List<GradleProfileProperty> configure = new ArrayList<>();
 
     public ProfileConfiguration toProfileConfiguration() {
@@ -39,7 +37,6 @@ public class GradleProfileConfiguration {
         profile.setName(name);
         profile.setInclude(include);
         profile.setExclude(exclude);
-        profile.setExtend(extend);
         profile.setConfigure(configure.stream()
                 .collect(toMap(prop -> prop.visitor + "." + prop.key, prop -> prop.value)));
 

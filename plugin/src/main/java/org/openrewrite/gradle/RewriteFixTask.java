@@ -24,6 +24,7 @@ import org.openrewrite.java.tree.J;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collection;
 import java.util.List;
 
 public class RewriteFixTask extends AbstractRewriteTask {
@@ -37,10 +38,10 @@ public class RewriteFixTask extends AbstractRewriteTask {
 
     @TaskAction
     public void execute() {
-        List<Change<J.CompilationUnit>> changes = listChanges();
+        Collection<Change> changes = listChanges();
 
         if(!changes.isEmpty()) {
-            for(Change<J.CompilationUnit> change : changes) {
+            for(Change change : changes) {
                 getLog().warn("Changes have been made to " +
                         change.getOriginal().getSourcePath() + " by: ");
                 for(String rule : change.getRulesThatMadeChanges()) {
@@ -52,7 +53,7 @@ public class RewriteFixTask extends AbstractRewriteTask {
         log.warn("Please review and commit the changes.");
 
         try {
-            for(Change<J.CompilationUnit> change : changes) {
+            for(Change change : changes) {
                 try(BufferedWriter sourceFileWriter = Files.newBufferedWriter(
                         getProject().getProjectDir().toPath().resolve(change.getOriginal().getSourcePath()))) {
                     sourceFileWriter.write(change.getFixed().print());
