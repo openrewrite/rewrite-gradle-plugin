@@ -5,10 +5,6 @@ plugins {
 allprojects {
     group = "org.openrewrite"
     description = "Eliminate Tech-Debt. At build time."
-
-    repositories {
-        mavenCentral()
-    }
 }
 
 evaluationDependsOn("plugin")
