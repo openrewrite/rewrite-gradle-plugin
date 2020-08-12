@@ -27,6 +27,8 @@ import java.util.List;
 public class RewriteWarnTask extends AbstractRewriteTask{
     private static final Logger log = Logging.getLogger(RewriteWarnTask.class);
 
+    // Visible for testing
+    public static String reviewAndCommitChanges = "Run rewriteFix to apply the fixes. Afterwards, review and commit the changes.";
     @Override
     protected Logger getLog() {
         return log;
@@ -46,7 +48,7 @@ public class RewriteWarnTask extends AbstractRewriteTask{
                 }
             }
 
-            log.warn("Run rewriteFix to apply the fixes. Afterwards, review and commit the changes.");
+            log.warn(reviewAndCommitChanges);
         }
     }
 }

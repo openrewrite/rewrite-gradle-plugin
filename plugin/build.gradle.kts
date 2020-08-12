@@ -37,10 +37,6 @@ gradlePlugin {
     }
 }
 
-repositories {
-    jcenter()
-}
-
 configurations.all {
     resolutionStrategy {
         cacheChangingModulesFor(0, TimeUnit.SECONDS)

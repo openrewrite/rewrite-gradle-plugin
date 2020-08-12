@@ -19,34 +19,69 @@ import org.gradle.testkit.runner.TaskOutcome
 
 class RewritePluginTest extends RewriteTestBase {
 
-    def "rewriteWarn task will run as part of a normal Java Build"() {
-        given:
-        projectDir.newFile("settings.gradle")
-        File buildGradleFile = projectDir.newFile("build.gradle")
-        buildGradleFile.text = """\
+    String rewriteYamlText =  """\
+            ---
+            type: beta.openrewrite.org/v1/visitor
+            name: org.openrewrite.gradle.SayHello
+            visitors:
+              - org.openrewrite.java.ChangeMethodName:
+                  method: org.openrewrite.gradle.HelloWorld sayGoodbye()
+                  name: sayHello
+            ---
+            type: beta.openrewrite.org/v1/profile
+            name: testProfile
+            include:
+              - 'org.openrewrite.gradle.SayHello'
+            """.stripIndent()
+    String buildGradleFileText = """\
             plugins {
                 id("java")
                 id("org.openrewrite.rewrite")
             }
             
             rewrite {
-            
+                configFile = "rewrite-config.yml"
+                activeProfile("testProfile")
             }
             """.stripIndent()
-        writeSource("""\
+    String HelloWorldJavaBeforeRefactor = """\
+            package org.openrewrite.gradle;
+            
+            public class HelloWorld {
+                public static void sayGoodbye() {
+                    System.out.println("Hello world");
+                }
+                public static void main(String[] args) {
+                    sayGoodbye();
+                }
+            }
+            """.stripIndent()
+    String HelloWorldJavaAfterRefactor = """\
             package org.openrewrite.gradle;
             
             public class HelloWorld {
                 public static void sayHello() {
                     System.out.println("Hello world");
                 }
+                public static void main(String[] args) {
+                    sayHello();
+                }
             }
-            """.stripIndent())
+            """.stripIndent()
 
-        def runner = gradleRunner("6.5.1", "build")
+
+    def "rewriteWarn task will run as part of a normal Java Build"() {
+        given:
+        projectDir.newFile("settings.gradle")
+        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
+        rewriteYaml.text = rewriteYamlText
+
+        File buildGradleFile = projectDir.newFile("build.gradle")
+        buildGradleFile.text = buildGradleFileText
+        File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
 
         when:
-        def result = runner.build()
+        def result = gradleRunner("6.5.1", "build").build()
 
         def rewriteWarnMainResult = result.task(":rewriteWarnMain")
         def rewriteWarnTestResult = result.task(":rewriteWarnTest")
@@ -54,8 +89,29 @@ class RewritePluginTest extends RewriteTestBase {
 
         then:
         rewriteWarnMainResult.outcome == TaskOutcome.SUCCESS
+        // The "warn" task should not have touched the source file and the "fix" task shouldn't have run
+        sourceFile.text == HelloWorldJavaBeforeRefactor
         // With no test source in this project any of these are potentially reasonable results
         // Ultimately NO_SOURCE is probably the most appropriate, but in this early stage of development SUCCESS is acceptable
         rewriteWarnTestResult.outcome == TaskOutcome.SUCCESS || rewriteWarnTestResult.outcome == TaskOutcome.NO_SOURCE || rewriteWarnTestResult.outcome == TaskOutcome.SKIPPED
+    }
+
+    def "rewriteFix will alter the source file according to the provided active profile"() {
+        given:
+        projectDir.newFile("settings.gradle")
+        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
+        rewriteYaml.text = rewriteYamlText
+
+        File buildGradleFile = projectDir.newFile("build.gradle")
+        buildGradleFile.text = buildGradleFileText
+        File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
+
+        when:
+        def result = gradleRunner("6.5.1", "rewriteFixMain").build()
+        def rewriteFixMainResult = result.task(":rewriteFixMain")
+
+        then:
+        rewriteFixMainResult.outcome == TaskOutcome.SUCCESS
+        sourceFile.text == HelloWorldJavaAfterRefactor
     }
 }

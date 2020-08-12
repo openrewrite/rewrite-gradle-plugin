@@ -15,6 +15,7 @@
  */
 package org.openrewrite.gradle
 
+import groovy.transform.CompileStatic
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.util.GradleVersion
 import org.junit.Rule
@@ -60,5 +61,4 @@ class RewriteTestBase extends Specification {
             [GradleVersion.current().toString()]
         }
     }
-
 }
