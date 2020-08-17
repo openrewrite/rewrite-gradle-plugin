@@ -42,8 +42,10 @@ public class RewriteFixTask extends AbstractRewriteTask {
 
         if(!changes.isEmpty()) {
             for(Change change : changes) {
-                getLog().warn("Changes have been made to " +
-                        change.getOriginal().getSourcePath() + " by: ");
+                if (change.getOriginal() != null) {
+                    getLog().warn("Changes have been made to " +
+                            change.getOriginal().getSourcePath() + " by: ");
+                }
                 for(String rule : change.getRulesThatMadeChanges()) {
                     log.warn("   " + rule);
                 }
@@ -54,9 +56,11 @@ public class RewriteFixTask extends AbstractRewriteTask {
 
         try {
             for(Change change : changes) {
-                try(BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                        getProject().getProjectDir().toPath().resolve(change.getOriginal().getSourcePath()))) {
-                    sourceFileWriter.write(change.getFixed().print());
+                if (change.getOriginal() != null) {
+                    try(BufferedWriter sourceFileWriter = Files.newBufferedWriter(
+                            getProject().getProjectDir().toPath().resolve(change.getOriginal().getSourcePath()))) {
+                        sourceFileWriter.write(change.getFixed().print());
+                    }
                 }
             }
         } catch (IOException e) {

@@ -32,16 +32,13 @@ import org.openrewrite.SourceFile;
 import org.openrewrite.config.YamlResourceLoader;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.style.ImportLayoutStyle;
-import org.openrewrite.java.tree.J;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -53,8 +50,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     private String metricsUri;
     private String metricsUsername;
     private String metricsPassword;
-    private final List<GradleProfileConfiguration> profiles = new ArrayList<>();
-    private final SortedSet<String> activeProfiles = new TreeSet<>(Collections.singletonList("default"));
+    private final List<GradleRecipeConfiguration> recipes = new ArrayList<>();
+    private final SortedSet<String> activeRecipes = new TreeSet<>();
     private final SortedSet<String> includes = new TreeSet<>();
     private final SortedSet<String> excludes = new TreeSet<>();
     private FileCollection sources = null;
@@ -87,13 +84,13 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
      * The dependencies required to compile the java source files in #sources
      */
     @Input
-    public List<GradleProfileConfiguration> getProfiles() {
-        return profiles;
+    public List<GradleRecipeConfiguration> getRecipes() {
+        return recipes;
     }
 
     @Input
-    public SortedSet<String> getActiveProfiles() {
-        return activeProfiles;
+    public SortedSet<String> getActiveRecipes() {
+        return activeRecipes;
     }
 
     @Input
@@ -127,13 +124,13 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 ).scanResources()
                 .scanUserHome();
 
-        getProfiles().forEach(profile -> plan.loadProfile(profile.toProfileConfiguration()));
+        getRecipes().forEach(recipe -> plan.loadRecipe(recipe.toRecipeConfiguration()));
 
         File rewriteConfig = getExtension().getConfigFile();
         if(rewriteConfig != null && rewriteConfig.exists()) {
             try (FileInputStream is = new FileInputStream(rewriteConfig)) {
                 YamlResourceLoader resourceLoader = new YamlResourceLoader(is);
-                plan.loadProfiles(resourceLoader);
+                plan.loadRecipes(resourceLoader);
                 plan.loadVisitors(resourceLoader);
             } catch (IOException e) {
                 throw new RuntimeException("Unable to load rewrite configuration", e);
@@ -148,8 +145,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             MeterRegistry meterRegistry = meterRegistryProvider.registry();
 
             RefactorPlan plan = plan();
-            Set<String> profiles = getActiveProfiles();
-            Collection<RefactorVisitor<?>> visitors = plan.visitors(profiles);
+            Set<String> recipes = getActiveRecipes();
+            Collection<RefactorVisitor<?>> visitors = plan.visitors(recipes);
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             List<Path> sourcePaths = getJavaSources().getFiles().stream()
@@ -162,7 +159,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             Path projectDir = getProject().getProjectDir().toPath();
 
-            ImportLayoutStyle importLayoutStyle = plan.style(ImportLayoutStyle.class, profiles);
+            ImportLayoutStyle importLayoutStyle = plan.style(ImportLayoutStyle.class, recipes);
             sourceFiles.addAll(JavaParser.fromJavaVersion()
                     .importStyle(importLayoutStyle)
                     .classpath(dependencyPaths)

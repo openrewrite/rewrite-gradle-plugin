@@ -26,10 +26,10 @@ public class RewriteExtension extends CodeQualityExtension {
     private static final String magicalMetricsLogString = "LOG";
 
     private boolean showViolations = true;
-    private final List<String> activeProfiles = new ArrayList<>();
+    private final List<String> activeRecipes = new ArrayList<>();
     private Project project;
     private File configFile;
-    private final List<GradleProfileConfiguration> profiles = new ArrayList<>();
+    private final List<GradleRecipeConfiguration> recipes = new ArrayList<>();
     private String metricsUri = magicalMetricsLogString;
 
     @SuppressWarnings("unused")
@@ -72,27 +72,27 @@ public class RewriteExtension extends CodeQualityExtension {
     }
 
 
-    public void activeProfile(String... profiles) {
-        activeProfiles.addAll(List.of(profiles));
+    public void activeRecipe(String... profiles) {
+        activeRecipes.addAll(List.of(profiles));
     }
 
-    public void clearActiveProfiles() {
-        activeProfiles.clear();
+    public void clearActiveRecipes() {
+        activeRecipes.clear();
     }
-    public void setActiveProfile(List<String> activeProfiles) {
-        this.activeProfiles.clear();
-        this.activeProfiles.addAll(activeProfiles);
+    public void setActiveRecipes(List<String> activeProfiles) {
+        this.activeRecipes.clear();
+        this.activeRecipes.addAll(activeProfiles);
     }
-    public List<String> getActiveProfiles() {
-        return List.copyOf(activeProfiles);
-    }
-
-    public void profile(GradleProfileConfiguration ... profiles) {
-        this.profiles.addAll(List.of(profiles));
+    public List<String> getActiveRecipes() {
+        return activeRecipes;
     }
 
-    public List<GradleProfileConfiguration> getProfiles() {
-        return List.copyOf(profiles);
+    public void recipe(GradleRecipeConfiguration... profiles) {
+        this.recipes.addAll(List.of(profiles));
+    }
+
+    public List<GradleRecipeConfiguration> getRecipes() {
+        return List.copyOf(recipes);
     }
 
 }

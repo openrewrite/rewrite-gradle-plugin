@@ -21,15 +21,15 @@ class RewritePluginTest extends RewriteTestBase {
 
     String rewriteYamlText =  """\
             ---
-            type: beta.openrewrite.org/v1/visitor
+            type: openrewrite.org/v1beta/visitor
             name: org.openrewrite.gradle.SayHello
             visitors:
               - org.openrewrite.java.ChangeMethodName:
                   method: org.openrewrite.gradle.HelloWorld sayGoodbye()
                   name: sayHello
             ---
-            type: beta.openrewrite.org/v1/profile
-            name: testProfile
+            type: openrewrite.org/v1beta/recipe
+            name: org.openrewrite.testProfile
             include:
               - 'org.openrewrite.gradle.SayHello'
             """.stripIndent()
@@ -41,7 +41,7 @@ class RewritePluginTest extends RewriteTestBase {
             
             rewrite {
                 configFile = "rewrite-config.yml"
-                activeProfile("testProfile")
+                activeRecipe("org.openrewrite.testProfile")
             }
             """.stripIndent()
     String HelloWorldJavaBeforeRefactor = """\

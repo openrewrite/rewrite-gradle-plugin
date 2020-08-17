@@ -15,13 +15,13 @@
  */
 package org.openrewrite.gradle;
 
-import org.openrewrite.config.ProfileConfiguration;
+import org.openrewrite.config.RecipeConfiguration;
 
 import java.util.*;
 
 import static java.util.stream.Collectors.toMap;
 
-public class GradleProfileConfiguration {
+public class GradleRecipeConfiguration {
 
     public String name;
 
@@ -31,15 +31,15 @@ public class GradleProfileConfiguration {
 
     public final List<GradleProfileProperty> configure = new ArrayList<>();
 
-    public ProfileConfiguration toProfileConfiguration() {
-        ProfileConfiguration profile = new ProfileConfiguration();
+    public RecipeConfiguration toRecipeConfiguration() {
+        RecipeConfiguration recipe = new RecipeConfiguration();
 
-        profile.setName(name);
-        profile.setInclude(include);
-        profile.setExclude(exclude);
-        profile.setConfigure(configure.stream()
+        recipe.setName(name);
+        recipe.setInclude(include);
+        recipe.setExclude(exclude);
+        recipe.setConfigure(configure.stream()
                 .collect(toMap(prop -> prop.visitor + "." + prop.key, prop -> prop.value)));
 
-        return profile;
+        return recipe;
     }
 }

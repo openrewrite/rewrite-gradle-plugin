@@ -52,8 +52,8 @@ public class RewritePlugin implements Plugin<Project> {
                 rewriteFixTask.setJavaSources(sourceSet.getAllJava());
                 rewriteFixTask.setDependencies(sourceSet.getCompileClasspath());
                 rewriteFixTask.setResources(sourceSet.getResources().getSourceDirectories());
-                rewriteFixTask.getActiveProfiles().addAll(extension.getActiveProfiles());
-                rewriteFixTask.getProfiles().addAll(extension.getProfiles());
+                rewriteFixTask.getActiveRecipes().addAll(extension.getActiveRecipes());
+                rewriteFixTask.getRecipes().addAll(extension.getRecipes());
             });
 
             String compileTaskName = sourceSet.getCompileTaskName("java");
@@ -68,8 +68,8 @@ public class RewritePlugin implements Plugin<Project> {
                 rewriteWarnTask.setJavaSources(sourceSet.getAllJava());
                 rewriteWarnTask.setDependencies(sourceSet.getCompileClasspath());
                 rewriteWarnTask.setResources(sourceSet.getResources().getSourceDirectories());
-                rewriteWarnTask.getActiveProfiles().addAll(extension.getActiveProfiles());
-                rewriteWarnTask.getProfiles().addAll(extension.getProfiles());
+                rewriteWarnTask.getActiveRecipes().addAll(extension.getActiveRecipes());
+                rewriteWarnTask.getRecipes().addAll(extension.getRecipes());
             });
             TaskProvider<?> checkTaskProvider = tasks.named("check");
             checkTaskProvider.configure(checkTask -> checkTask.dependsOn(rewriteWarnTaskProvider));
