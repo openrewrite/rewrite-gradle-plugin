@@ -57,7 +57,7 @@ java {
 val plugin: Configuration by configurations.creating
 
 configurations.getByName("compileOnly").extendsFrom(plugin)
-val rewriteVersion = "4.0.0"
+val rewriteVersion = "4.0.1"
 
 dependencies {
     plugin("org.openrewrite:rewrite-java:$rewriteVersion")

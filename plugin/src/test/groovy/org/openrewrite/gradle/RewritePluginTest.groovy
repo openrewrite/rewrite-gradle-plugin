@@ -21,14 +21,14 @@ class RewritePluginTest extends RewriteTestBase {
 
     String rewriteYamlText =  """\
             ---
-            type: openrewrite.org/v1beta/visitor
+            type: specs.openrewrite.org/v1beta/visitor
             name: org.openrewrite.gradle.SayHello
             visitors:
               - org.openrewrite.java.ChangeMethodName:
                   method: org.openrewrite.gradle.HelloWorld sayGoodbye()
                   name: sayHello
             ---
-            type: openrewrite.org/v1beta/recipe
+            type: specs.openrewrite.org/v1beta/recipe
             name: org.openrewrite.testProfile
             include:
               - 'org.openrewrite.gradle.SayHello'
