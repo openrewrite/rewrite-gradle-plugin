@@ -56,6 +56,18 @@ public class RewritePlugin implements Plugin<Project> {
                 rewriteFixTask.getRecipes().addAll(extension.getRecipes());
             });
 
+            String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+            TaskProvider<RewriteDiscoverTask> rewriteDiscoverTaskProvider = tasks.register(rewriteDiscoverTaskName, RewriteDiscoverTask.class);
+            rewriteDiscoverTaskProvider.configure(rewriteDiscoverTask -> {
+                rewriteDiscoverTask.setGroup("rewrite");
+                rewriteDiscoverTask.setDescription("Lists all available recipes and their visitors within the " + sourceSet.getName() + " SourceSet");
+                rewriteDiscoverTask.setJavaSources(sourceSet.getAllJava());
+                rewriteDiscoverTask.setDependencies(sourceSet.getCompileClasspath());
+                rewriteDiscoverTask.setResources(sourceSet.getResources().getSourceDirectories());
+                rewriteDiscoverTask.getActiveRecipes().addAll(extension.getActiveRecipes());
+                rewriteDiscoverTask.getRecipes().addAll(extension.getRecipes());
+            });
+
             String compileTaskName = sourceSet.getCompileTaskName("java");
             TaskProvider<?> compileTaskProvider = tasks.named(compileTaskName);
             compileTaskProvider.configure(compileTask -> compileTask.mustRunAfter(rewriteFixTaskProvider));
