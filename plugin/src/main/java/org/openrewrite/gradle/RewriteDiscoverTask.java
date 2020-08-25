@@ -18,14 +18,21 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     }
 
     @TaskAction
-    public void run() {
+    public void execute() {
         RefactorPlan plan = plan();
 
         Set<String> activeRecipes = getActiveRecipes();
-        // Print active recipes via log.quiet("message to print")
-        log.quiet("");
-
         List<GradleRecipeConfiguration> recipes = getRecipes();
+
+        log.quiet("Found " + activeRecipes.size() + " active recipes and " + recipes.size() + " total recipes.\n");
+        log.quiet("Active Recipe Names:\n");
+
+        for(String activeRecipe : activeRecipes) {
+            log.quiet("\t" + activeRecipe + "\n");
+        }
+
+        log.quiet("Recipes:\n");
+
         for(GradleRecipeConfiguration recipe : recipes) {
             // Print recipe name
             Collection<RefactorVisitor<?>> visitors = plan.visitors(recipe.name);

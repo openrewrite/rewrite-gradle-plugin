@@ -117,28 +117,6 @@ class RewritePluginTest extends RewriteTestBase {
         sourceFile.text == HelloWorldJavaAfterRefactor
     }
 
-    def "rewriteDiscover"() {
-        given:
-        projectDir.newFile("settings.gradle")
-        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
-        rewriteYaml.text = rewriteYamlText
-
-        File buildGradleFile = projectDir.newFile("build.gradle")
-        buildGradleFile.text = buildGradleFileText
-        File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
-
-        when:
-        Project project = ProjectBuilder.builder()
-                .withProjectDir(projectDir.getRoot())
-                .build()
-
-        RewriteDiscoverTask rewriteDiscoverTask = project.tasks.getByName("rewriteDiscoverMain") as RewriteDiscoverTask
-        rewriteDiscoverTask.run()
-
-        then:
-        true
-    }
-
     def "rewriteDiscover will print some stuff"() {
         given:
         projectDir.newFile("settings.gradle")
@@ -155,5 +133,6 @@ class RewritePluginTest extends RewriteTestBase {
 
         then:
         rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
+
     }
 }
