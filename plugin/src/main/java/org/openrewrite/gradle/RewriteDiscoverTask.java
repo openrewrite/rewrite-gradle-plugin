@@ -1,13 +1,27 @@
+/*
+ * Copyright 2020 the original author or authors.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * https://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.openrewrite.gradle;
 
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.TaskAction;
 import org.openrewrite.RefactorPlan;
-import org.openrewrite.RefactorVisitor;
+import org.openrewrite.Recipe;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class RewriteDiscoverTask extends AbstractRewriteTask {
@@ -20,26 +34,32 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     @TaskAction
     public void execute() {
         RefactorPlan plan = plan();
-
         Set<String> activeRecipes = getActiveRecipes();
-        List<GradleRecipeConfiguration> recipes = getRecipes();
+        Map<String, Recipe> recipesByName = plan.getRecipesByName();
 
-        log.quiet("Found " + activeRecipes.size() + " active recipes and " + recipes.size() + " total recipes.\n");
-        log.quiet("Active Recipe Names:\n");
+        log.quiet("Found " + activeRecipes.size() + " active recipes and " + recipesByName.size() + " total recipes.\n");
 
+        log.quiet("Active Recipe Names:");
         for(String activeRecipe : activeRecipes) {
-            log.quiet("\t" + activeRecipe + "\n");
+            log.quiet("\t" + activeRecipe);
         }
 
-        log.quiet("Recipes:\n");
-
-        for(GradleRecipeConfiguration recipe : recipes) {
-            // Print recipe name
-            Collection<RefactorVisitor<?>> visitors = plan.visitors(recipe.name);
-            for(RefactorVisitor<?> visitor : visitors) {
-                // Print visitor name
-                log.quiet(visitor.toString());
-            }
+        log.quiet("\nRecipes:");
+        for(Recipe recipe : recipesByName.values()) {
+            log.quiet("\tname: " + recipe.getName());
+            log.quiet("\tinclude: ");
+            recipe.getInclude().forEach( rec -> {
+                log.quiet("\t\t" + rec.pattern().replace("\\", ""));
+            });
+            log.quiet("\texclude: ");
+            recipe.getExclude().forEach( rec -> {
+                log.quiet("\t\t" + rec.pattern().replace("\\", ""));
+            });
+            log.quiet("\tvisitors: ");
+            plan.visitors(recipe.getName()).forEach( rec -> {
+                log.quiet("\t\t" + rec.getName());
+            });
+            log.quiet("");
         }
     }
 }

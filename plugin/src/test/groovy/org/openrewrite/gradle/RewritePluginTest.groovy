@@ -15,8 +15,6 @@
  */
 package org.openrewrite.gradle
 
-import org.gradle.api.Project
-import org.gradle.testfixtures.ProjectBuilder
 import org.gradle.testkit.runner.TaskOutcome
 
 class RewritePluginTest extends RewriteTestBase {

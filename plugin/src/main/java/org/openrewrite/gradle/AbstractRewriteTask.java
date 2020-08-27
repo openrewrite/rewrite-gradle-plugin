@@ -170,18 +170,18 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             );
 
             sourceFiles.addAll(new YamlParser().parse(
-                    getResources().getFiles().stream()
+                    ((String[])getResources().getFiles().stream()
                             .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
                             .map(File::getAbsolutePath)
-                            .collect(toList())
+                            .collect(toList()).toArray())
             ));
 
             sourceFiles.addAll(
                     new PropertiesParser().parse(
-                        getResources().getFiles().stream()
+                        ((String[])getResources().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
                         .map(File::getAbsolutePath)
-                        .collect(toList())
+                        .collect(toList()).toArray())
                     )
             );
 
