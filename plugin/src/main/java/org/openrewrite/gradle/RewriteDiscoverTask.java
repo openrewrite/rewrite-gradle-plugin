@@ -18,7 +18,7 @@ package org.openrewrite.gradle;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.RefactorPlan;
+import org.openrewrite.Environment;
 import org.openrewrite.Recipe;
 
 import java.util.Map;
@@ -33,9 +33,9 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
 
     @TaskAction
     public void execute() {
-        RefactorPlan plan = plan();
+        Environment env = environment();
         Set<String> activeRecipes = getActiveRecipes();
-        Map<String, Recipe> recipesByName = plan.getRecipesByName();
+        Map<String, Recipe> recipesByName = env.getRecipesByName();
 
         log.quiet("Found " + activeRecipes.size() + " active recipes and " + recipesByName.size() + " total recipes.\n");
 
@@ -56,7 +56,7 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
                 log.quiet("\t\t" + rec.pattern().replace("\\", ""));
             });
             log.quiet("\tvisitors: ");
-            plan.visitors(recipe.getName()).forEach( rec -> {
+            env.visitors(recipe.getName()).forEach( rec -> {
                 log.quiet("\t\t" + rec.getName());
             });
             log.quiet("");
