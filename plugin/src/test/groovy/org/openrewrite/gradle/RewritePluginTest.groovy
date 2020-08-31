@@ -114,4 +114,23 @@ class RewritePluginTest extends RewriteTestBase {
         rewriteFixMainResult.outcome == TaskOutcome.SUCCESS
         sourceFile.text == HelloWorldJavaAfterRefactor
     }
+
+    def "rewriteDiscover will print some stuff"() {
+        given:
+        projectDir.newFile("settings.gradle")
+        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
+        rewriteYaml.text = rewriteYamlText
+
+        File buildGradleFile = projectDir.newFile("build.gradle")
+        buildGradleFile.text = buildGradleFileText
+        File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
+
+        when:
+        def result = gradleRunner("6.5.1", "rewriteDiscoverMain").build()
+        def rewriteDiscoverResult = result.task(":rewriteDiscoverMain")
+
+        then:
+        rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
+
+    }
 }

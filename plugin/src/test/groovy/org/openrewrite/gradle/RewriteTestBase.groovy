@@ -15,7 +15,6 @@
  */
 package org.openrewrite.gradle
 
-import groovy.transform.CompileStatic
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.util.GradleVersion
 import org.junit.Rule
@@ -29,6 +28,9 @@ class RewriteTestBase extends Specification {
 
     @Rule
     TemporaryFolder projectDir = new TemporaryFolder()
+
+    @Rule
+    TemporaryFolder tempDir = new TemporaryFolder()
 
     @SuppressWarnings("GroovyAssignabilityCheck")
     File writeSource(String source, String sourceSet = "main") {
@@ -46,6 +48,7 @@ class RewriteTestBase extends Specification {
                 .withDebug(ManagementFactory.getRuntimeMXBean().getInputArguments().toString().indexOf("-agentlib:jdwp") > 0)
                 .withProjectDir(projectDir.root)
                 .withArguments((tasks + '--full-stacktrace').toList())
+                .withTestKitDir(tempDir.getRoot())
                 .withPluginClasspath()
                 .forwardOutput()
                 .tap {

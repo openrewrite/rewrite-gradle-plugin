@@ -26,12 +26,11 @@ import org.openrewrite.Refactor;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.yaml.YamlParser;
 import org.openrewrite.Change;
-import org.openrewrite.RefactorPlan;
+import org.openrewrite.Environment;
 import org.openrewrite.RefactorVisitor;
 import org.openrewrite.SourceFile;
 import org.openrewrite.config.YamlResourceLoader;
 import org.openrewrite.java.JavaParser;
-import org.openrewrite.java.style.ImportLayoutStyle;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -117,36 +116,41 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return getProject().getExtensions().findByType(RewriteExtension.class);
     }
 
-    protected RefactorPlan plan() {
-        RefactorPlan.Builder plan = RefactorPlan.builder()
+    protected Environment environment() {
+        Environment.Builder env = Environment.builder()
                 .compileClasspath(
                        getJavaSources().getFiles().stream().map(File::toPath).collect(Collectors.toList())
                 ).scanResources()
                 .scanUserHome();
 
-        getRecipes().forEach(recipe -> plan.loadRecipe(recipe.toRecipeConfiguration()));
-
         File rewriteConfig = getExtension().getConfigFile();
         if(rewriteConfig != null && rewriteConfig.exists()) {
             try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                YamlResourceLoader resourceLoader = new YamlResourceLoader(is);
-                plan.loadRecipes(resourceLoader);
-                plan.loadVisitors(resourceLoader);
+                Map<Object, Object> gradleProps = getProject().getProperties().entrySet().stream()
+                        .filter(entry -> entry.getKey() != null && entry.getValue() != null)
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                Map.Entry::getValue));
+                Properties props = new Properties();
+                props.putAll(gradleProps);
+
+                YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), props);
+                env.load(resourceLoader);
             } catch (IOException e) {
                 throw new RuntimeException("Unable to load rewrite configuration", e);
             }
         }
 
-        return plan.build();
+        return env.build();
     }
 
     protected Collection<Change> listChanges() {
         try(MeterRegistryProvider meterRegistryProvider = new MeterRegistryProvider(getLog(), metricsUri, metricsUsername, metricsPassword)) {
             MeterRegistry meterRegistry = meterRegistryProvider.registry();
 
-            RefactorPlan plan = plan();
+            Environment env = environment();
             Set<String> recipes = getActiveRecipes();
-            Collection<RefactorVisitor<?>> visitors = plan.visitors(recipes);
+            Collection<RefactorVisitor<?>> visitors = env.visitors(recipes);
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             List<Path> sourcePaths = getJavaSources().getFiles().stream()
@@ -159,9 +163,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             Path projectDir = getProject().getProjectDir().toPath();
 
-            ImportLayoutStyle importLayoutStyle = plan.style(ImportLayoutStyle.class, recipes);
             sourceFiles.addAll(JavaParser.fromJavaVersion()
-                    .importStyle(importLayoutStyle)
                     .classpath(dependencyPaths)
                     .logCompilationWarningsAndErrors(false)
                     .meterRegistry(meterRegistry)
@@ -172,18 +174,18 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             sourceFiles.addAll(new YamlParser().parse(
                     getResources().getFiles().stream()
                             .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
-                            .map(File::getAbsolutePath)
-                            .collect(toList())
+                            .map(File::toPath)
+                            .collect(toList()),
+                    getProject().getProjectDir().toPath()
             ));
 
-            sourceFiles.addAll(
-                    new PropertiesParser().parse(
-                        getResources().getFiles().stream()
+            sourceFiles.addAll(new PropertiesParser().parse(
+                    getResources().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
-                        .map(File::getAbsolutePath)
-                        .collect(toList())
-                    )
-            );
+                        .map(File::toPath)
+                        .collect(toList()),
+                    getProject().getProjectDir().toPath()
+            ));
 
             return new Refactor().visit(visitors).setMeterRegistry(meterRegistry).fix(sourceFiles);
         } catch (Exception e) {
