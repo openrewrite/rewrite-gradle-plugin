@@ -22,6 +22,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.util.Arrays.asList;
+
 public class RewriteExtension extends CodeQualityExtension {
     private static final String magicalMetricsLogString = "LOG";
 
@@ -71,28 +73,28 @@ public class RewriteExtension extends CodeQualityExtension {
         metricsUri = value;
     }
 
-
     public void activeRecipe(String... profiles) {
-        activeRecipes.addAll(List.of(profiles));
+        activeRecipes.addAll(asList(profiles));
     }
 
     public void clearActiveRecipes() {
         activeRecipes.clear();
     }
+
     public void setActiveRecipes(List<String> activeProfiles) {
         this.activeRecipes.clear();
         this.activeRecipes.addAll(activeProfiles);
     }
+
     public List<String> getActiveRecipes() {
         return activeRecipes;
     }
 
     public void recipe(GradleRecipeConfiguration... profiles) {
-        this.recipes.addAll(List.of(profiles));
+        this.recipes.addAll(asList(profiles));
     }
 
     public List<GradleRecipeConfiguration> getRecipes() {
-        return List.copyOf(recipes);
+        return new ArrayList<>(recipes);
     }
-
 }

@@ -50,8 +50,14 @@ configurations.all {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+tasks.named<JavaCompile>("compileJava") {
+    options.isFork = true
+    options.forkOptions.executable = "javac"
+    options.compilerArgs.addAll(listOf("--release", "8"))
 }
 
 val plugin: Configuration by configurations.creating

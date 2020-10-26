@@ -43,8 +43,8 @@ public class RewriteWarnTask extends AbstractRewriteTask{
                 log.warn("Changes are suggested to " +
                         change.getOriginal().getSourcePath() +
                         " by:");
-                for (String rule : change.getRulesThatMadeChanges()) {
-                    log.warn("   " + rule);
+                for (String visitor : change.getVisitorsThatMadeChanges()) {
+                    log.warn("   " + visitor);
                 }
             }
 

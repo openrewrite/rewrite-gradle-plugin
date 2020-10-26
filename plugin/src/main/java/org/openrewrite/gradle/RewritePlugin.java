@@ -19,6 +19,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 
 /**
@@ -35,8 +36,8 @@ public class RewritePlugin implements Plugin<Project> {
             maybeExtension = project.getExtensions().create("rewrite", RewriteExtension.class, project);
             maybeExtension.setToolVersion("2.x");
         }
-        final var extension = maybeExtension;
-        var tasks = project.getTasks();
+        final RewriteExtension extension = maybeExtension;
+        TaskContainer tasks = project.getTasks();
 
         JavaPluginConvention javaPlugin = project.getConvention().getPlugin(JavaPluginConvention.class);
         SourceSetContainer sourceSets = javaPlugin.getSourceSets();

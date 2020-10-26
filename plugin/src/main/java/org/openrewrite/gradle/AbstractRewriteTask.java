@@ -118,13 +118,13 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
     protected Environment environment() {
         Environment.Builder env = Environment.builder()
-                .compileClasspath(
-                       getJavaSources().getFiles().stream().map(File::toPath).collect(Collectors.toList())
-                ).scanResources()
+                .scanClasspath(
+                        getJavaSources().getFiles().stream().map(File::toPath).collect(Collectors.toList())
+                )
                 .scanUserHome();
 
         File rewriteConfig = getExtension().getConfigFile();
-        if(rewriteConfig != null && rewriteConfig.exists()) {
+        if (rewriteConfig != null && rewriteConfig.exists()) {
             try (FileInputStream is = new FileInputStream(rewriteConfig)) {
                 Map<Object, Object> gradleProps = getProject().getProperties().entrySet().stream()
                         .filter(entry -> entry.getKey() != null && entry.getValue() != null)
@@ -145,7 +145,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     }
 
     protected Collection<Change> listChanges() {
-        try(MeterRegistryProvider meterRegistryProvider = new MeterRegistryProvider(getLog(), metricsUri, metricsUsername, metricsPassword)) {
+        try (MeterRegistryProvider meterRegistryProvider = new MeterRegistryProvider(getLog(), metricsUri, metricsUsername, metricsPassword)) {
             MeterRegistry meterRegistry = meterRegistryProvider.registry();
 
             Environment env = environment();
@@ -181,9 +181,9 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             sourceFiles.addAll(new PropertiesParser().parse(
                     getResources().getFiles().stream()
-                        .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
-                        .map(File::toPath)
-                        .collect(toList()),
+                            .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
+                            .map(File::toPath)
+                            .collect(toList()),
                     getProject().getProjectDir().toPath()
             ));
 
@@ -192,6 +192,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             throw new RuntimeException(e);
         }
     }
+
     private MeterRegistry registry;
 
     @Override

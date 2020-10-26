@@ -19,13 +19,11 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.TaskAction;
 import org.openrewrite.Change;
-import org.openrewrite.java.tree.J;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
-import java.util.List;
 
 public class RewriteFixTask extends AbstractRewriteTask {
 
@@ -46,8 +44,8 @@ public class RewriteFixTask extends AbstractRewriteTask {
                     getLog().warn("Changes have been made to " +
                             change.getOriginal().getSourcePath() + " by: ");
                 }
-                for(String rule : change.getRulesThatMadeChanges()) {
-                    log.warn("   " + rule);
+                for(String visitor : change.getVisitorsThatMadeChanges()) {
+                    log.warn("   " + visitor);
                 }
             }
         }
