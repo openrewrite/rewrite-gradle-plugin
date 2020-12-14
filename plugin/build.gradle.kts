@@ -68,7 +68,7 @@ dependencies {
     plugin("org.openrewrite:rewrite-java:latest.release")
 
     plugin("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    plugin("io.rsocket:rsocket-transport-netty:1.0.0")
+    plugin("io.rsocket:rsocket-transport-netty:latest.release")
 
     implementation("org.openrewrite:rewrite-java-11:latest.release")
     implementation("org.openrewrite:rewrite-java-8:latest.release")
@@ -79,7 +79,7 @@ dependencies {
     api("org.openrewrite:rewrite-java:latest.release")
     api("org.eclipse.jgit:org.eclipse.jgit:latest.release")
     api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    api("io.rsocket:rsocket-transport-netty:1.0.0")
+    api("io.rsocket:rsocket-transport-netty:latest.release")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.10")

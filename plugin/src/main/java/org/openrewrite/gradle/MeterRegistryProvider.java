@@ -34,7 +34,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Base64;
 
-import static io.rsocket.transport.netty.UriUtils.getPort;
+import static org.openrewrite.gradle.RewriteMetricsPlugin.getPort;
 
 public class MeterRegistryProvider implements AutoCloseable {
     private final Logger log;

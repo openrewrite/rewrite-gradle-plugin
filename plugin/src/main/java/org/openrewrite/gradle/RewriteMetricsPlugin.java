@@ -38,8 +38,7 @@ import reactor.util.retry.Retry;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Base64;
-
-import static io.rsocket.transport.netty.UriUtils.getPort;
+import java.util.Objects;
 
 /**
  * Coordinates the publication of metrics for each rewrite plugin and each subproject along with general purpose metrics
@@ -89,6 +88,7 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
                 case "ephemeral":
                 case "https":
                 case "wss": {
+
                     TcpClient tcpClient = TcpClient.create().secure().host(uri.getHost()).port(getPort(uri, 443));
                     clientTransport = websocketClientTransport(tcpClient);
                     break;
@@ -146,6 +146,20 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
                     .encodeToString((extension.getMetricsUsername() + ":" + extension.getMetricsPassword()).getBytes())));
         }
         return WebsocketClientTransport.create(httpClient, "/");
+    }
+
+    /**
+     * Returns the port of a URI. If the port is unset (i.e. {@code -1}) then returns the {@code
+     * defaultPort}.
+     *
+     * @param uri the URI to extract the port from
+     * @param defaultPort the default to use if the port is unset
+     * @return the port of a URI or {@code defaultPort} if unset
+     * @throws NullPointerException if {@code uri} is {@code null}
+     */
+    static int getPort(URI uri, int defaultPort) {
+        Objects.requireNonNull(uri, "uri must not be null");
+        return uri.getPort() == -1 ? defaultPort : uri.getPort();
     }
 
     Iterable<Tag> getExtraTags() {

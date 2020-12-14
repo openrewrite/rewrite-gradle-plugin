@@ -161,7 +161,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .map(File::toPath)
                     .collect(toList());
 
-            Path projectDir = getProject().getProjectDir().toPath();
+            Path projectDir = getProject().getRootProject().getProjectDir().toPath();
 
             sourceFiles.addAll(JavaParser.fromJavaVersion()
                     .classpath(dependencyPaths)
