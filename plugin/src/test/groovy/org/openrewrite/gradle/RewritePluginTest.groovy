@@ -96,7 +96,7 @@ class RewritePluginTest extends RewriteTestBase {
         rewriteWarnTestResult.outcome == TaskOutcome.SUCCESS || rewriteWarnTestResult.outcome == TaskOutcome.NO_SOURCE || rewriteWarnTestResult.outcome == TaskOutcome.SKIPPED
     }
 
-    def "rewriteFix will alter the source file according to the provided active profile"() {
+    def "rewriteFix will alter the source file according to the provided active recipe"() {
         given:
         projectDir.newFile("settings.gradle")
         File rewriteYaml = projectDir.newFile("rewrite-config.yml")
@@ -115,6 +115,74 @@ class RewritePluginTest extends RewriteTestBase {
         sourceFile.text == HelloWorldJavaAfterRefactor
     }
 
+    def "rewriteFix works on multi-project builds"() {
+        given:
+        File settings = projectDir.newFile("settings.gradle")
+        settings.text = """
+                include("a")
+                include("b")
+            """.stripIndent()
+        File rootBuildGradle = projectDir.newFile("build.gradle")
+        rootBuildGradle.text = """
+                buildscript {
+                    repositories {
+                        maven {
+                            url "https://plugins.gradle.org/m2/"
+                        }
+                    }
+                    dependencies {
+                        classpath "gradle.plugin.org.openrewrite:plugin:+"
+                    }
+                }
+                
+                subprojects {
+                    apply plugin: "java"
+                    apply plugin: "org.openrewrite.rewrite"
+                
+                    repositories {
+                        jcenter()
+                    }
+                
+                    dependencies {
+                        testImplementation("junit:junit:4.12")
+                        compileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:+")
+                    }
+                }
+            """.stripIndent()
+        File aSrcDir = projectDir.newFolder("a", "src", "test", "java", "com", "foo");
+        File aTestClass = new File(aSrcDir, "ATestClass.java")
+        aTestClass.text = """
+                package com.foo;
+    
+                import org.junit.Test;
+                
+                public class ATestClass {
+                    @Test
+                    public void passes() { }
+                }
+            """.stripIndent()
+        File bSrcDir = projectDir.newFolder("b", "src", "test", "java", "com", "foo");
+        File bTestClass = new File(bSrcDir, "BTestClass.java")
+        bTestClass.text = """
+                package com.foo;
+    
+                import org.junit.Test;
+                
+                public class BTestClass {
+                    @Test
+                    public void passes() { }
+                }
+            """.stripIndent()
+        when:
+        def result = gradleRunner("6.5.1", "rewriteFix").build()
+        def aRewriteFixMainResult = result.task(":a:rewriteFixTest")
+        def bRewriteFixMainResult = result.task(":b:rewriteFixTest")
+
+        then:
+        aRewriteFixMainResult.outcome == TaskOutcome.SUCCESS
+        bRewriteFixMainResult.outcome == TaskOutcome.SUCCESS
+    }
+
     def "rewriteDiscover will print some stuff"() {
         given:
         projectDir.newFile("settings.gradle")
@@ -131,6 +199,5 @@ class RewritePluginTest extends RewriteTestBase {
 
         then:
         rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
-
     }
 }

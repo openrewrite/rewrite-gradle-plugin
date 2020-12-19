@@ -24,6 +24,7 @@ import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.openrewrite.Refactor;
 import org.openrewrite.properties.PropertiesParser;
+import org.openrewrite.xml.XmlParser;
 import org.openrewrite.yaml.YamlParser;
 import org.openrewrite.Change;
 import org.openrewrite.Environment;
@@ -38,7 +39,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 
 public abstract class AbstractRewriteTask extends DefaultTask implements RewriteTask {
@@ -51,6 +54,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     private String metricsPassword;
     private final List<GradleRecipeConfiguration> recipes = new ArrayList<>();
     private final SortedSet<String> activeRecipes = new TreeSet<>();
+    private final SortedSet<String> activeStyles = new TreeSet<>();
     private final SortedSet<String> includes = new TreeSet<>();
     private final SortedSet<String> excludes = new TreeSet<>();
     private FileCollection sources = null;
@@ -90,6 +94,11 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     @Input
     public SortedSet<String> getActiveRecipes() {
         return activeRecipes;
+    }
+
+    @Input
+    public SortedSet<String> getActiveStyles() {
+        return activeStyles;
     }
 
     @Input
@@ -144,13 +153,23 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return env.build();
     }
 
-    protected Collection<Change> listChanges() {
+    protected ChangesContainer listChanges() {
         try (MeterRegistryProvider meterRegistryProvider = new MeterRegistryProvider(getLog(), metricsUri, metricsUsername, metricsPassword)) {
             MeterRegistry meterRegistry = meterRegistryProvider.registry();
 
+            Path baseDir = getProject().getRootProject().getProjectDir().toPath();
+
             Environment env = environment();
             Set<String> recipes = getActiveRecipes();
+            if (activeRecipes == null || activeRecipes.isEmpty()) {
+                return new ChangesContainer(baseDir, emptyList());
+            }
             Collection<RefactorVisitor<?>> visitors = env.visitors(recipes);
+            if(visitors.size() == 0) {
+                getLog().warn("Could not find any Rewrite visitors matching active recipe(s): " + String.join(", ", activeRecipes) + ". " +
+                        "Double check that you have taken a dependency on the jar containing these recipes.");
+                return new ChangesContainer(baseDir, emptyList());
+            }
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             List<Path> sourcePaths = getJavaSources().getFiles().stream()
@@ -161,14 +180,13 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .map(File::toPath)
                     .collect(toList());
 
-            Path projectDir = getProject().getRootProject().getProjectDir().toPath();
-
             sourceFiles.addAll(JavaParser.fromJavaVersion()
+                    .styles(env.styles(activeStyles))
                     .classpath(dependencyPaths)
                     .logCompilationWarningsAndErrors(false)
                     .meterRegistry(meterRegistry)
                     .build()
-                    .parse(sourcePaths, projectDir)
+                    .parse(sourcePaths, baseDir)
             );
 
             sourceFiles.addAll(new YamlParser().parse(
@@ -176,7 +194,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
                             .map(File::toPath)
                             .collect(toList()),
-                    getProject().getProjectDir().toPath()
+                    baseDir
             ));
 
             sourceFiles.addAll(new PropertiesParser().parse(
@@ -184,10 +202,23 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
                             .map(File::toPath)
                             .collect(toList()),
-                    getProject().getProjectDir().toPath()
+                    baseDir
             ));
 
-            return new Refactor().visit(visitors).setMeterRegistry(meterRegistry).fix(sourceFiles);
+            sourceFiles.addAll(new XmlParser().parse(
+                    getResources().getFiles().stream()
+                            .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
+                            .map(File::toPath)
+                            .collect(toList()),
+                    baseDir
+            ));
+
+            Collection<Change> changes = new Refactor()
+                    .visit(visitors)
+                    .setMeterRegistry(meterRegistry)
+                    .fix(sourceFiles);
+
+            return new ChangesContainer(baseDir, changes);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -200,4 +231,52 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         this.registry = registry;
     }
 
+    public static class ChangesContainer {
+        final Path projectRoot;
+        final List<Change> generated = new ArrayList<>();
+        final List<Change> deleted = new ArrayList<>();
+        final List<Change> moved = new ArrayList<>();
+        final List<Change> refactoredInPlace = new ArrayList<>();
+
+        public ChangesContainer(Path projectRoot, Collection<Change> changes) {
+            this.projectRoot = projectRoot;
+            for (Change change : changes) {
+                if (change.getOriginal() == null && change.getFixed() == null) {
+                    // This situation shouldn't happen / makes no sense, log and skip
+                    continue;
+                }
+                if (change.getOriginal() == null && change.getFixed() != null) {
+                    generated.add(change);
+                } else if (change.getOriginal() != null && change.getFixed() == null) {
+                    deleted.add(change);
+                } else if (change.getOriginal() != null && !change.getOriginal().getSourcePath().equals(change.getFixed().getSourcePath())) {
+                    moved.add(change);
+                } else {
+                    refactoredInPlace.add(change);
+                }
+            }
+        }
+
+        public Path getProjectRoot() {
+            return projectRoot;
+        }
+
+        public boolean isNotEmpty() {
+            return !generated.isEmpty() || !deleted.isEmpty() || !moved.isEmpty() || !refactoredInPlace.isEmpty();
+        }
+
+        public Stream<Change> stream() {
+            return Stream.concat(
+                    Stream.concat(generated.stream(), deleted.stream()),
+                    Stream.concat(moved.stream(), refactoredInPlace.stream())
+            );
+        }
+
+    }
+
+    protected void logVisitorsThatMadeChanges(Change change) {
+        for (String visitor : change.getVisitorsThatMadeChanges()) {
+            getLog().warn("  " + visitor);
+        }
+    }
 }

@@ -1,4 +1,5 @@
 build/
+out/
 !*/src/**/build
 .gradle/
 **/gradle.properties

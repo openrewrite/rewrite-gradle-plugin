@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class RewriteDiscoverTask extends AbstractRewriteTask {
-    private static Logger log = Logging.getLogger(RewriteDiscoverTask.class);
+    private static final Logger log = Logging.getLogger(RewriteDiscoverTask.class);
     @Override
     protected Logger getLog() {
         return log;

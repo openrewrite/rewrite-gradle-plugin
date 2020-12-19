@@ -29,6 +29,7 @@ public class RewriteExtension extends CodeQualityExtension {
 
     private boolean showViolations = true;
     private final List<String> activeRecipes = new ArrayList<>();
+    private final List<String> activeStyles = new ArrayList<>();
     private Project project;
     private File configFile;
     private final List<GradleRecipeConfiguration> recipes = new ArrayList<>();
@@ -73,18 +74,29 @@ public class RewriteExtension extends CodeQualityExtension {
         metricsUri = value;
     }
 
-    public void activeRecipe(String... profiles) {
-        activeRecipes.addAll(asList(profiles));
+    public void activeRecipe(String... recipes) {
+        activeRecipes.addAll(asList(recipes));
     }
 
     public void clearActiveRecipes() {
         activeRecipes.clear();
     }
 
-    public void setActiveRecipes(List<String> activeProfiles) {
+    public void setActiveRecipes(List<String> activeRecipes) {
         this.activeRecipes.clear();
-        this.activeRecipes.addAll(activeProfiles);
+        this.activeRecipes.addAll(activeRecipes);
     }
+
+    public void activeStyle(String... styles) { activeStyles.addAll(asList(styles)); }
+    public void clearActiveStyles() {
+        activeStyles.clear();
+    }
+
+    public void setActiveStyles(List<String> activeStyles) {
+        this.activeRecipes.clear();
+        this.activeRecipes.addAll(activeStyles);
+    }
+    public List<String> getActiveStyles() { return activeStyles; }
 
     public List<String> getActiveRecipes() {
         return activeRecipes;
