@@ -128,7 +128,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     protected Environment environment() {
         Environment.Builder env = Environment.builder()
                 .scanClasspath(
-                        getJavaSources().getFiles().stream().map(File::toPath).collect(Collectors.toList())
+                        Stream.concat(
+                            getDependencies().getFiles().stream(),
+                            getJavaSources().getFiles().stream()
+                        )
+                                .map(File::toPath)
+                                .collect(Collectors.toList())
                 )
                 .scanUserHome();
 
@@ -166,7 +171,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             }
             Collection<RefactorVisitor<?>> visitors = env.visitors(recipes);
             if(visitors.size() == 0) {
-                getLog().warn("Could not find any Rewrite visitors matching active recipe(s): " + String.join(", ", activeRecipes) + ". " +
+                getLog().info("Could not find any Rewrite visitors matching active recipe(s): " + String.join(", ", activeRecipes) + ". " +
                         "Double check that you have taken a dependency on the jar containing these recipes.");
                 return new ChangesContainer(baseDir, emptyList());
             }

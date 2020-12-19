@@ -45,19 +45,19 @@ public class RewritePlugin implements Plugin<Project> {
         SourceSetContainer sourceSets = javaPlugin.getSourceSets();
 
         // Fix is meant to be invoked manually and so is not made a dependency of any existing task
-        TaskProvider<Task> rewriteFixLifecycleProvider = tasks.register("rewriteFix");
-        rewriteFixLifecycleProvider.configure(it -> {
+        TaskProvider<Task> rewriteFixAllProvider = tasks.register("rewriteFix");
+        rewriteFixAllProvider.configure(it -> {
             it.setGroup("rewrite");
             it.setDescription("Apply the active refactoring recipes to all sources");
         });
         // Warn hooks into the regular Java build by becoming a dependency of "check", the same way that checkstyle or unit tests do
-        TaskProvider<Task> rewriteWarnLifecycleProvider = tasks.register("rewriteWarn");
-        rewriteWarnLifecycleProvider.configure(it -> {
+        TaskProvider<Task> rewriteWarnAllProvider = tasks.register("rewriteWarn");
+        rewriteWarnAllProvider.configure(it -> {
             it.setGroup("rewrite");
             it.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
         });
         TaskProvider<?> checkTaskProvider = tasks.named("check");
-        checkTaskProvider.configure(checkTask -> checkTask.dependsOn(rewriteWarnLifecycleProvider));
+        checkTaskProvider.configure(checkTask -> checkTask.dependsOn(rewriteWarnAllProvider));
 
         sourceSets.configureEach(sourceSet -> {
 
@@ -74,7 +74,7 @@ public class RewritePlugin implements Plugin<Project> {
                 rewriteFixTask.getActiveStyles().addAll(extension.getActiveStyles());
                 rewriteFixTask.getRecipes().addAll(extension.getRecipes());
             });
-            rewriteFixLifecycleProvider.configure(it -> it.dependsOn(rewriteFixProvider));
+            rewriteFixAllProvider.configure(it -> it.dependsOn(rewriteFixProvider));
 
             String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
             TaskProvider<RewriteDiscoverTask> rewriteDiscoverProvider = tasks.register(rewriteDiscoverTaskName, RewriteDiscoverTask.class);
@@ -105,7 +105,7 @@ public class RewritePlugin implements Plugin<Project> {
                 rewriteWarnTask.getActiveStyles().addAll(extension.getActiveStyles());
                 rewriteWarnTask.getRecipes().addAll(extension.getRecipes());
             });
-            rewriteWarnLifecycleProvider.configure(it -> it.dependsOn(rewriteWarnProvider));
+            rewriteWarnAllProvider.configure(it -> it.dependsOn(rewriteWarnProvider));
         });
     }
 

@@ -16,7 +16,17 @@
 package org.openrewrite.gradle
 
 import org.gradle.testkit.runner.TaskOutcome
+import spock.lang.Ignore
 
+/**
+ * Because of how the Gradle Test Kit manages the classpath of the project under test, these may fail when run from an IDE.
+ * To run & debug these tests from IntelliJ ensure you're delegating test execution to Gradle:
+ *  Settings > Build, Execution, Deployment > Build Tools > Gradle > Run tests using Gradle
+ *
+ * That should be all you have to do.
+ * If breakpoints within your plugin aren't being hit try adding -Dorg.gradle.testkit.debug=true to the arguments and
+ * connecting a remote debugger on port 5005.
+ */
 class RewritePluginTest extends RewriteTestBase {
 
     String rewriteYamlText =  """\
@@ -118,21 +128,14 @@ class RewritePluginTest extends RewriteTestBase {
     def "rewriteFix works on multi-project builds"() {
         given:
         File settings = projectDir.newFile("settings.gradle")
-        settings.text = """
+        settings.text = """\
                 include("a")
                 include("b")
             """.stripIndent()
         File rootBuildGradle = projectDir.newFile("build.gradle")
-        rootBuildGradle.text = """
-                buildscript {
-                    repositories {
-                        maven {
-                            url "https://plugins.gradle.org/m2/"
-                        }
-                    }
-                    dependencies {
-                        classpath "gradle.plugin.org.openrewrite:plugin:+"
-                    }
+        rootBuildGradle.text = """\
+                plugins {
+                    id("org.openrewrite.rewrite").apply(false)
                 }
                 
                 subprojects {
@@ -145,13 +148,17 @@ class RewritePluginTest extends RewriteTestBase {
                 
                     dependencies {
                         testImplementation("junit:junit:4.12")
-                        compileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:+")
+                        testImplementation("org.openrewrite.recipe:rewrite-testing-frameworks:+")
+                    }
+                    
+                    rewrite {
+                        activeRecipe("org.openrewrite.java.testing.JUnit5Migration")
                     }
                 }
             """.stripIndent()
-        File aSrcDir = projectDir.newFolder("a", "src", "test", "java", "com", "foo");
+        File aSrcDir = projectDir.newFolder("a", "src", "test", "java", "com", "foo")
         File aTestClass = new File(aSrcDir, "ATestClass.java")
-        aTestClass.text = """
+        aTestClass.text = """\
                 package com.foo;
     
                 import org.junit.Test;
@@ -161,9 +168,9 @@ class RewritePluginTest extends RewriteTestBase {
                     public void passes() { }
                 }
             """.stripIndent()
-        File bSrcDir = projectDir.newFolder("b", "src", "test", "java", "com", "foo");
+        File bSrcDir = projectDir.newFolder("b", "src", "test", "java", "com", "foo")
         File bTestClass = new File(bSrcDir, "BTestClass.java")
-        bTestClass.text = """
+        bTestClass.text = """\
                 package com.foo;
     
                 import org.junit.Test;
@@ -175,12 +182,33 @@ class RewritePluginTest extends RewriteTestBase {
             """.stripIndent()
         when:
         def result = gradleRunner("6.5.1", "rewriteFix").build()
-        def aRewriteFixMainResult = result.task(":a:rewriteFixTest")
-        def bRewriteFixMainResult = result.task(":b:rewriteFixTest")
-
+        def aRewriteFixnResult = result.task(":a:rewriteFixTest")
+        def bRewriteFixResult = result.task(":b:rewriteFixTest")
+        String bTestClassExpected = """\
+                package com.foo;
+    
+                import org.junit.jupiter.api.Test;
+                
+                public class BTestClass {
+                    @Test
+                    public void passes() { }
+                }
+        """.stripIndent()
+        String aTestClassExpected = """\
+                package com.foo;
+    
+                import org.junit.jupiter.api.Test;
+                
+                public class ATestClass {
+                    @Test
+                    public void passes() { }
+                }
+        """.stripIndent()
         then:
-        aRewriteFixMainResult.outcome == TaskOutcome.SUCCESS
-        bRewriteFixMainResult.outcome == TaskOutcome.SUCCESS
+        aRewriteFixnResult.outcome == TaskOutcome.SUCCESS
+        bRewriteFixResult.outcome == TaskOutcome.SUCCESS
+        aTestClass.text == aTestClassExpected
+        bTestClass.text == bTestClassExpected
     }
 
     def "rewriteDiscover will print some stuff"() {
