@@ -38,7 +38,7 @@ public class RewriteExtension extends CodeQualityExtension {
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
         this.project = project;
-        configFile = project.file("rewrite.yml");
+        configFile = project.getRootProject().file("rewrite.yml");
     }
 
     public boolean getShowViolations() {
