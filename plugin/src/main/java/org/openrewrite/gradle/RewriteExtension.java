@@ -27,7 +27,6 @@ import static java.util.Arrays.asList;
 public class RewriteExtension extends CodeQualityExtension {
     private static final String magicalMetricsLogString = "LOG";
 
-    private boolean showViolations = true;
     private final List<String> activeRecipes = new ArrayList<>();
     private final List<String> activeStyles = new ArrayList<>();
     private Project project;
@@ -39,14 +38,6 @@ public class RewriteExtension extends CodeQualityExtension {
     public RewriteExtension(Project project) {
         this.project = project;
         configFile = project.getRootProject().file("rewrite.yml");
-    }
-
-    public boolean getShowViolations() {
-        return showViolations;
-    }
-
-    public void setShowViolations(boolean showViolations) {
-        this.showViolations = showViolations;
     }
 
     public void setConfigFile(File configFile) {

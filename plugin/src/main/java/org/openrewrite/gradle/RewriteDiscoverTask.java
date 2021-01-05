@@ -17,10 +17,12 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
 import org.openrewrite.Environment;
 import org.openrewrite.Recipe;
 
+import javax.inject.Inject;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +31,13 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     @Override
     protected Logger getLog() {
         return log;
+    }
+
+    @Inject
+    public RewriteDiscoverTask(SourceSet sourceSet, RewriteExtension extension) {
+        super(sourceSet, extension);
+        setGroup("rewrite");
+        setDescription("Lists all available recipes and their visitors within the " + sourceSet.getName() + " SourceSet");
     }
 
     @TaskAction

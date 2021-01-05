@@ -79,7 +79,6 @@ class RewritePluginTest extends RewriteTestBase {
             }
             """.stripIndent()
 
-
     def "rewriteWarn task will run as part of a normal Java Build"() {
         given:
         projectDir.newFile("settings.gradle")

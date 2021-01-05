@@ -17,18 +17,22 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
 import org.openrewrite.Change;
-import org.openrewrite.java.tree.J;
 
-import java.util.Collection;
-import java.util.List;
+import javax.inject.Inject;
 
 public class RewriteWarnTask extends AbstractRewriteTask{
     private static final Logger log = Logging.getLogger(RewriteWarnTask.class);
 
-    // Visible for testing
-    public static String reviewAndCommitChanges = "Run rewriteFix to apply the fixes. Afterwards, review and commit the changes.";
+    @Inject
+    public RewriteWarnTask(SourceSet sourceSet, RewriteExtension extension) {
+        super(sourceSet, extension);
+        setGroup("rewrite");
+        setDescription("Dry run the active refactoring recipes to sources within the " + sourceSet.getName() + "SourceSet. No changes will be made.");
+    }
+
     @Override
     protected Logger getLog() {
         return log;

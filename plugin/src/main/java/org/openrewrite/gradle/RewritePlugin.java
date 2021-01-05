@@ -15,7 +15,6 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.DefaultTask;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -62,53 +61,21 @@ public class RewritePlugin implements Plugin<Project> {
         sourceSets.configureEach(sourceSet -> {
 
             String rewriteFixTaskName = "rewriteFix" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            TaskProvider<RewriteFixTask> rewriteFixProvider = tasks.register(rewriteFixTaskName, RewriteFixTask.class);
-
-            rewriteFixProvider.configure(rewriteFixTask -> {
-                rewriteFixTask.setGroup("rewrite");
-                rewriteFixTask.setDescription("Apply the active refactoring recipes to sources within the " + sourceSet.getName() + " SourceSet");
-                rewriteFixTask.setJavaSources(sourceSet.getAllJava());
-                rewriteFixTask.setDependencies(sourceSet.getCompileClasspath());
-                rewriteFixTask.setResources(sourceSet.getResources().getSourceDirectories());
-                rewriteFixTask.getActiveRecipes().addAll(extension.getActiveRecipes());
-                rewriteFixTask.getActiveStyles().addAll(extension.getActiveStyles());
-                rewriteFixTask.getRecipes().addAll(extension.getRecipes());
-            });
+            TaskProvider<RewriteFixTask> rewriteFixProvider = tasks.register(rewriteFixTaskName, RewriteFixTask.class, sourceSet, extension);
             rewriteFixAllProvider.configure(it -> it.dependsOn(rewriteFixProvider));
 
             String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            TaskProvider<RewriteDiscoverTask> rewriteDiscoverProvider = tasks.register(rewriteDiscoverTaskName, RewriteDiscoverTask.class);
-            rewriteDiscoverProvider.configure(rewriteDiscoverTask -> {
-                rewriteDiscoverTask.setGroup("rewrite");
-                rewriteDiscoverTask.setDescription("Lists all available recipes and their visitors within the " + sourceSet.getName() + " SourceSet");
-                rewriteDiscoverTask.setJavaSources(sourceSet.getAllJava());
-                rewriteDiscoverTask.setDependencies(sourceSet.getCompileClasspath());
-                rewriteDiscoverTask.setResources(sourceSet.getResources().getSourceDirectories());
-                rewriteDiscoverTask.getActiveRecipes().addAll(extension.getActiveRecipes());
-                rewriteDiscoverTask.getActiveStyles().addAll(extension.getActiveStyles());
-                rewriteDiscoverTask.getRecipes().addAll(extension.getRecipes());
-            });
+            tasks.register(rewriteDiscoverTaskName, RewriteDiscoverTask.class, sourceSet, extension);
 
             String compileTaskName = sourceSet.getCompileTaskName("java");
             TaskProvider<?> compileTaskProvider = tasks.named(compileTaskName);
             compileTaskProvider.configure(compileTask -> compileTask.mustRunAfter(rewriteFixProvider));
 
             String rewriteWarnTaskName = "rewriteWarn" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            TaskProvider<RewriteWarnTask> rewriteWarnProvider = tasks.register(rewriteWarnTaskName, RewriteWarnTask.class);
-            rewriteWarnProvider.configure(rewriteWarnTask -> {
-                rewriteWarnTask.setGroup("rewrite");
-                rewriteWarnTask.setDescription("Dry run the active refactoring recipes to sources within the " + sourceSet.getName() + "SourceSet. No changes will be made.");
-                rewriteWarnTask.setJavaSources(sourceSet.getAllJava());
-                rewriteWarnTask.setDependencies(sourceSet.getCompileClasspath());
-                rewriteWarnTask.setResources(sourceSet.getResources().getSourceDirectories());
-                rewriteWarnTask.getActiveRecipes().addAll(extension.getActiveRecipes());
-                rewriteWarnTask.getActiveStyles().addAll(extension.getActiveStyles());
-                rewriteWarnTask.getRecipes().addAll(extension.getRecipes());
-            });
+            TaskProvider<RewriteWarnTask> rewriteWarnProvider = tasks.register(rewriteWarnTaskName, RewriteWarnTask.class, sourceSet, extension);
             rewriteWarnAllProvider.configure(it -> it.dependsOn(rewriteWarnProvider));
         });
     }
-
 
 //    void configureMetrics(RewriteTask task) {
 //        Project project = task.getProject();

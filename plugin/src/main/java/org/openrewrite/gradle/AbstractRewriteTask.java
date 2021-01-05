@@ -22,6 +22,7 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.SourceSet;
 import org.openrewrite.Refactor;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.xml.XmlParser;
@@ -46,83 +47,58 @@ import static java.util.stream.Collectors.toList;
 
 public abstract class AbstractRewriteTask extends DefaultTask implements RewriteTask {
 
-    @Internal
-    protected abstract Logger getLog();
-
     private String metricsUri;
     private String metricsUsername;
     private String metricsPassword;
-    private final List<GradleRecipeConfiguration> recipes = new ArrayList<>();
-    private final SortedSet<String> activeRecipes = new TreeSet<>();
-    private final SortedSet<String> activeStyles = new TreeSet<>();
-    private final SortedSet<String> includes = new TreeSet<>();
-    private final SortedSet<String> excludes = new TreeSet<>();
-    private FileCollection sources = null;
-    private FileCollection dependencies = null;
-    private FileCollection resources = null;
+    private MeterRegistry registry;
+
+    private final SourceSet sourceSet;
+    private final RewriteExtension extension;
+
+    public AbstractRewriteTask(SourceSet sourceSet, RewriteExtension extension) {
+        this.sourceSet = sourceSet;
+        this.extension = extension;
+    }
+
+    @Internal
+    protected abstract Logger getLog();
 
     /**
      * The Java source files that will be subject to rewriting
      */
     @InputFiles
     public FileCollection getJavaSources() {
-        return sources;
+        return sourceSet.getAllJava();
     }
 
-    public void setJavaSources(FileCollection sources) {
-        this.sources = sources;
+    @Override
+    public void setMeterRegistry(MeterRegistry registry) {
+        this.registry = registry;
     }
-
 
     @InputFiles
     public FileCollection getResources() {
-        return resources;
+        return sourceSet.getResources().getSourceDirectories();
     }
 
-    public void setResources(FileCollection resources) {
-        this.resources = resources;
-    }
-
-    /**
-     * The dependencies required to compile the java source files in #sources
-     */
     @Input
     public List<GradleRecipeConfiguration> getRecipes() {
-        return recipes;
+        return extension.getRecipes();
     }
 
     @Input
     public SortedSet<String> getActiveRecipes() {
-        return activeRecipes;
+        return new TreeSet<>(extension.getActiveRecipes());
     }
 
     @Input
     public SortedSet<String> getActiveStyles() {
-        return activeStyles;
-    }
-
-    @Input
-    public SortedSet<String> getIncludes() {
-        return includes;
-    }
-
-    @Input
-    public SortedSet<String> getExcludes() {
-        return excludes;
+        return new TreeSet<>(extension.getActiveStyles());
     }
 
     @InputFiles
     public FileCollection getDependencies() {
-        return dependencies;
-    }
-
-    public void setDependencies(FileCollection dependencies) {
-        this.dependencies = dependencies;
-    }
-
-
-    private RewriteExtension getExtension() {
-        return getProject().getExtensions().findByType(RewriteExtension.class);
+        return sourceSet.getCompileClasspath();
     }
 
     protected Environment environment() {
@@ -137,7 +113,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 )
                 .scanUserHome();
 
-        File rewriteConfig = getExtension().getConfigFile();
+        File rewriteConfig = extension.getConfigFile();
         if (rewriteConfig != null && rewriteConfig.exists()) {
             try (FileInputStream is = new FileInputStream(rewriteConfig)) {
                 Map<Object, Object> gradleProps = getProject().getProperties().entrySet().stream()
@@ -166,12 +142,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             Environment env = environment();
             Set<String> recipes = getActiveRecipes();
-            if (activeRecipes == null || activeRecipes.isEmpty()) {
+            if (recipes == null || recipes.isEmpty()) {
                 return new ChangesContainer(baseDir, emptyList());
             }
             Collection<RefactorVisitor<?>> visitors = env.visitors(recipes);
             if(visitors.size() == 0) {
-                getLog().info("Could not find any Rewrite visitors matching active recipe(s): " + String.join(", ", activeRecipes) + ". " +
+                getLog().info("Could not find any Rewrite visitors matching active recipe(s): " + String.join(", ", recipes) + ". " +
                         "Double check that you have taken a dependency on the jar containing these recipes.");
                 return new ChangesContainer(baseDir, emptyList());
             }
@@ -186,7 +162,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .collect(toList());
 
             sourceFiles.addAll(JavaParser.fromJavaVersion()
-                    .styles(env.styles(activeStyles))
+                    .styles(env.styles(getActiveStyles()))
                     .classpath(dependencyPaths)
                     .logCompilationWarningsAndErrors(false)
                     .meterRegistry(meterRegistry)
@@ -227,13 +203,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private MeterRegistry registry;
-
-    @Override
-    public void setMeterRegistry(MeterRegistry registry) {
-        this.registry = registry;
     }
 
     public static class ChangesContainer {

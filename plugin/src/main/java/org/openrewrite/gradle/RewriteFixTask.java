@@ -17,19 +17,25 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.internal.impldep.org.apache.maven.plugin.MojoExecutionException;
 import org.openrewrite.Change;
 
+import javax.inject.Inject;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
 
 public class RewriteFixTask extends AbstractRewriteTask {
-
     private static final Logger log = Logging.getLogger(RewriteFixTask.class);
+
+    @Inject
+    public RewriteFixTask(SourceSet sourceSet, RewriteExtension extension) {
+        super(sourceSet, extension);
+        setGroup("rewrite");
+        setDescription("Apply the active refactoring recipes to sources within the " + sourceSet.getName() + " SourceSet");
+    }
 
     @Override
     protected Logger getLog() {
