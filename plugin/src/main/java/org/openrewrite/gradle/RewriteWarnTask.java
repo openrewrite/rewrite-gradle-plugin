@@ -30,7 +30,7 @@ public class RewriteWarnTask extends AbstractRewriteTask{
     public RewriteWarnTask(SourceSet sourceSet, RewriteExtension extension) {
         super(sourceSet, extension);
         setGroup("rewrite");
-        setDescription("Dry run the active refactoring recipes to sources within the " + sourceSet.getName() + "SourceSet. No changes will be made.");
+        setDescription("Dry run the active refactoring recipes to sources within the " + sourceSet.getName() + " SourceSet. No changes will be made.");
     }
 
     @Override
