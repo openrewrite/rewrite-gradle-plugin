@@ -129,6 +129,9 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             } catch (IOException e) {
                 throw new RuntimeException("Unable to load rewrite configuration", e);
             }
+        } else if(extension.getConfigFileSetDeliberately()) {
+            getLog().warn("Rewrite configuration file " + rewriteConfig + " does not exist." +
+                    "Supplied path: " + rewriteConfig + " configured for project " + getProject().getPath() + " does not exist");
         }
 
         return env.build();

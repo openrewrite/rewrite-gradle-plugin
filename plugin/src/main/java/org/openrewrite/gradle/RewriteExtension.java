@@ -29,6 +29,7 @@ public class RewriteExtension extends CodeQualityExtension {
 
     private final List<String> activeRecipes = new ArrayList<>();
     private final List<String> activeStyles = new ArrayList<>();
+    private boolean configFileSetDeliberately = false;
     private Project project;
     private File configFile;
     private final List<GradleRecipeConfiguration> recipes = new ArrayList<>();
@@ -41,11 +42,23 @@ public class RewriteExtension extends CodeQualityExtension {
     }
 
     public void setConfigFile(File configFile) {
+        configFileSetDeliberately = true;
         this.configFile = configFile;
     }
 
     public void setConfigFile(String configFilePath) {
+        configFileSetDeliberately = true;
         configFile = project.file(configFilePath);
+    }
+
+    /**
+     * Supplying a rewrite configuration file is optional, so if it doesn't exist it isn't an error or a warning.
+     * But if the user has deliberately specified a different location from the default, that seems like a reasonable
+     * signal that the file should be expected to exist. So this signal can be used to decide if a warning should be
+     * displayed if the specified file cannot be found.
+     */
+    boolean getConfigFileSetDeliberately() {
+        return configFileSetDeliberately;
     }
 
     public File getConfigFile() {
