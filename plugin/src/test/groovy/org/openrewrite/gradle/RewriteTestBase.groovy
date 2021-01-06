@@ -52,7 +52,9 @@ class RewriteTestBase extends Specification {
                 .withPluginClasspath()
                 .forwardOutput()
                 .tap {
-                    gradleVersion == GradleVersion.current().toString() ? null : it.withGradleVersion(gradleVersion)
+                    if(gradleVersion != null) {
+                        withGradleVersion(gradleVersion)
+                    }
                 }
     }
 
@@ -61,7 +63,7 @@ class RewriteTestBase extends Specification {
         if (explicitGradleVersions) {
             return Arrays.asList(explicitGradleVersions.split("\\|"))
         } else {
-            [GradleVersion.current().toString()]
+            [GradleVersion.current().version]
         }
     }
 }

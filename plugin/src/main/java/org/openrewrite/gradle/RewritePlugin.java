@@ -15,13 +15,14 @@
  */
 package org.openrewrite.gradle;
 
+import groovy.lang.Closure;
+import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
-import org.gradle.api.tasks.TaskProvider;
 
 /**
  * Adds the RewriteExtension to the current project and registers tasks per-sourceSet that implement rewrite fixing and
@@ -29,6 +30,15 @@ import org.gradle.api.tasks.TaskProvider;
  * not have java sources of its own, such as the root project in a multi-project builds.
  */
 public class RewritePlugin implements Plugin<Project> {
+
+    /*
+     Note on compatibility:
+     Since we're in the software modernization and improvement business we want to support old versions of Gradle.
+     As written this project doesn't use any APIs not present as of Gradle 4.7.
+     That predates Gradle supporting Java 11, which came in Gradle 5.0.
+     So our automated tests wont currently _enforce_ this compatibility guarantee.
+     Until that changes, tread carefully and test manually if you introduce any new usage of any Gradle API.
+     */
 
     @Override
     public void apply(Project project) {
@@ -44,37 +54,48 @@ public class RewritePlugin implements Plugin<Project> {
         SourceSetContainer sourceSets = javaPlugin.getSourceSets();
 
         // Fix is meant to be invoked manually and so is not made a dependency of any existing task
-        TaskProvider<Task> rewriteFixAllProvider = tasks.register("rewriteFix");
-        rewriteFixAllProvider.configure(it -> {
-            it.setGroup("rewrite");
-            it.setDescription("Apply the active refactoring recipes to all sources");
-        });
+        Task rewriteFixAll = tasks.create("rewriteFix",
+                taskClosure(task -> {
+                    task.setGroup("rewrite");
+                    task.setDescription("Apply the active refactoring recipes to all sources");
+                })
+        );
+
         // Warn hooks into the regular Java build by becoming a dependency of "check", the same way that checkstyle or unit tests do
-        TaskProvider<Task> rewriteWarnAllProvider = tasks.register("rewriteWarn");
-        rewriteWarnAllProvider.configure(it -> {
-            it.setGroup("rewrite");
-            it.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
-        });
-        TaskProvider<?> checkTaskProvider = tasks.named("check");
-        checkTaskProvider.configure(checkTask -> checkTask.dependsOn(rewriteWarnAllProvider));
+        Task rewriteWarnAll = tasks.create("rewriteWarn", taskClosure(task -> {
+                    task.setGroup("rewrite");
+                    task.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
+                })
+        );
 
-        sourceSets.configureEach(sourceSet -> {
+        Task checkTask = tasks.getByName("check");
+        checkTask.dependsOn(rewriteWarnAll);
 
+        sourceSets.all(sourceSet -> {
             String rewriteFixTaskName = "rewriteFix" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            TaskProvider<RewriteFixTask> rewriteFixProvider = tasks.register(rewriteFixTaskName, RewriteFixTask.class, sourceSet, extension);
-            rewriteFixAllProvider.configure(it -> it.dependsOn(rewriteFixProvider));
+
+            RewriteFixTask rewriteFix = tasks.create(rewriteFixTaskName, RewriteFixTask.class, sourceSet, extension);
+            rewriteFixAll.configure(taskClosure(it -> it.dependsOn(rewriteFix)));
 
             String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            tasks.register(rewriteDiscoverTaskName, RewriteDiscoverTask.class, sourceSet, extension);
+            tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, sourceSet, extension);
 
             String compileTaskName = sourceSet.getCompileTaskName("java");
-            TaskProvider<?> compileTaskProvider = tasks.named(compileTaskName);
-            compileTaskProvider.configure(compileTask -> compileTask.mustRunAfter(rewriteFixProvider));
+            Task compileTask = tasks.getByName(compileTaskName);
+            compileTask.configure(taskClosure(it -> it.mustRunAfter(rewriteFix)));
 
             String rewriteWarnTaskName = "rewriteWarn" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            TaskProvider<RewriteWarnTask> rewriteWarnProvider = tasks.register(rewriteWarnTaskName, RewriteWarnTask.class, sourceSet, extension);
-            rewriteWarnAllProvider.configure(it -> it.dependsOn(rewriteWarnProvider));
+            RewriteWarnTask rewriteWarn = tasks.create(rewriteWarnTaskName, RewriteWarnTask.class, sourceSet, extension);
+            rewriteWarnAll.configure(taskClosure(it -> it.dependsOn(rewriteWarn)));
         });
+    }
+
+    private Closure<Task> taskClosure(Action<Task> configFun) {
+        return new Closure<Task>(this) {
+            public void doCall(Task arg) {
+                configFun.execute(arg);
+            }
+        };
     }
 
 //    void configureMetrics(RewriteTask task) {

@@ -39,7 +39,7 @@ public class RewriteWarnTask extends AbstractRewriteTask{
     }
 
     @TaskAction
-    public void execute() {
+    public void run() {
         ChangesContainer changes = listChanges();
 
         if (changes.isNotEmpty()) {

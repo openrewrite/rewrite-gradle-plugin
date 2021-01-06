@@ -16,7 +16,7 @@
 package org.openrewrite.gradle
 
 import org.gradle.testkit.runner.TaskOutcome
-import spock.lang.Ignore
+import spock.lang.Unroll
 
 /**
  * Because of how the Gradle Test Kit manages the classpath of the project under test, these may fail when run from an IDE.
@@ -27,6 +27,7 @@ import spock.lang.Ignore
  * If breakpoints within your plugin aren't being hit try adding -Dorg.gradle.testkit.debug=true to the arguments and
  * connecting a remote debugger on port 5005.
  */
+@Unroll
 class RewritePluginTest extends RewriteTestBase {
 
     String rewriteYamlText =  """\
@@ -90,7 +91,7 @@ class RewritePluginTest extends RewriteTestBase {
         File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
 
         when:
-        def result = gradleRunner("6.5.1", "build").build()
+        def result = gradleRunner(gradleVersion, "build").build()
 
         def rewriteWarnMainResult = result.task(":rewriteWarnMain")
         def rewriteWarnTestResult = result.task(":rewriteWarnTest")
@@ -103,6 +104,9 @@ class RewritePluginTest extends RewriteTestBase {
         // With no test source in this project any of these are potentially reasonable results
         // Ultimately NO_SOURCE is probably the most appropriate, but in this early stage of development SUCCESS is acceptable
         rewriteWarnTestResult.outcome == TaskOutcome.SUCCESS || rewriteWarnTestResult.outcome == TaskOutcome.NO_SOURCE || rewriteWarnTestResult.outcome == TaskOutcome.SKIPPED
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
     def "rewriteFix will alter the source file according to the provided active recipe"() {
@@ -116,12 +120,15 @@ class RewritePluginTest extends RewriteTestBase {
         File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
 
         when:
-        def result = gradleRunner("6.5.1", "rewriteFixMain").build()
+        def result = gradleRunner(gradleVersion, "rewriteFixMain").build()
         def rewriteFixMainResult = result.task(":rewriteFixMain")
 
         then:
         rewriteFixMainResult.outcome == TaskOutcome.SUCCESS
         sourceFile.text == HelloWorldJavaAfterRefactor
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
     def "rewriteFix works on multi-project builds"() {
@@ -180,7 +187,7 @@ class RewritePluginTest extends RewriteTestBase {
                 }
             """.stripIndent()
         when:
-        def result = gradleRunner("6.5.1", "rewriteFix").build()
+        def result = gradleRunner(gradleVersion, "rewriteFix").build()
         def aRewriteFixnResult = result.task(":a:rewriteFixTest")
         def bRewriteFixResult = result.task(":b:rewriteFixTest")
         String bTestClassExpected = """\
@@ -208,8 +215,12 @@ class RewritePluginTest extends RewriteTestBase {
         bRewriteFixResult.outcome == TaskOutcome.SUCCESS
         aTestClass.text == aTestClassExpected
         bTestClass.text == bTestClassExpected
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
+    @spock.lang.Ignore
     def "rewriteDiscover will print some stuff"() {
         given:
         projectDir.newFile("settings.gradle")
@@ -221,10 +232,13 @@ class RewritePluginTest extends RewriteTestBase {
         File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
 
         when:
-        def result = gradleRunner("6.5.1", "rewriteDiscoverMain").build()
+        def result = gradleRunner(gradleVersion, "rewriteDiscoverMain").build()
         def rewriteDiscoverResult = result.task(":rewriteDiscoverMain")
 
         then:
         rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 }

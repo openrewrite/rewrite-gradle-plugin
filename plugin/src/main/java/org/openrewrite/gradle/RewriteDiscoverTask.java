@@ -41,7 +41,7 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     }
 
     @TaskAction
-    public void execute() {
+    public void run() {
         Environment env = environment();
         Set<String> activeRecipes = getActiveRecipes();
         Map<String, Recipe> recipesByName = env.getRecipesByName();
