@@ -154,7 +154,7 @@ class RewritePluginTest extends RewriteTestBase {
                 
                     dependencies {
                         testImplementation("junit:junit:4.12")
-                        testImplementation("org.openrewrite.recipe:rewrite-testing-frameworks:+")
+                        testCompileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:+")
                     }
                     
                     rewrite {
@@ -220,7 +220,6 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    @spock.lang.Ignore
     def "rewriteDiscover will print some stuff"() {
         given:
         projectDir.newFile("settings.gradle")
