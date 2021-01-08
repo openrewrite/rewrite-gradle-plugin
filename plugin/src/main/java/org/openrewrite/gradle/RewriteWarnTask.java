@@ -72,7 +72,7 @@ public class RewriteWarnTask extends AbstractRewriteTask{
                         " by:");
                 logVisitorsThatMadeChanges(change);
             }
-            getLog().warn("Run 'mvn rewrite:fix' to apply the fixes. Afterwards, review and commit the changes.");
+            getLog().warn("Run 'gradle rewriteFix' to apply the fixes. Afterwards, review and commit the changes.");
         }
     }
 }

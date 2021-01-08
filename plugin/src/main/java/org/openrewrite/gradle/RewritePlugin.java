@@ -71,6 +71,11 @@ public class RewritePlugin implements Plugin<Project> {
         Task checkTask = tasks.getByName("check");
         checkTask.dependsOn(rewriteWarnAll);
 
+        Task rewriteDiscoverAll = tasks.create("rewriteDiscover", taskClosure(task -> {
+            task.setGroup("rewrite");
+            task.setDescription("Lists all available recipes and their visitors available to each SourceSet");
+        }));
+
         sourceSets.all(sourceSet -> {
             String rewriteFixTaskName = "rewriteFix" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
 
@@ -78,7 +83,8 @@ public class RewritePlugin implements Plugin<Project> {
             rewriteFixAll.configure(taskClosure(it -> it.dependsOn(rewriteFix)));
 
             String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, sourceSet, extension);
+            RewriteDiscoverTask discoverTask = tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, sourceSet, extension);
+            rewriteDiscoverAll.dependsOn(discoverTask);
 
             String compileTaskName = sourceSet.getCompileTaskName("java");
             Task compileTask = tasks.getByName(compileTaskName);
