@@ -170,6 +170,7 @@ class RewritePluginTest extends RewriteTestBase {
                 import org.junit.Test;
                 
                 public class ATestClass {
+                
                     @Test
                     public void passes() { }
                 }
@@ -182,6 +183,7 @@ class RewritePluginTest extends RewriteTestBase {
                 import org.junit.Test;
                 
                 public class BTestClass {
+                
                     @Test
                     public void passes() { }
                 }
@@ -196,8 +198,9 @@ class RewritePluginTest extends RewriteTestBase {
                 import org.junit.jupiter.api.Test;
                 
                 public class BTestClass {
+                
                     @Test
-                    public void passes() { }
+                    void passes() { }
                 }
         """.stripIndent()
         String aTestClassExpected = """\
@@ -206,8 +209,9 @@ class RewritePluginTest extends RewriteTestBase {
                 import org.junit.jupiter.api.Test;
                 
                 public class ATestClass {
+                
                     @Test
-                    public void passes() { }
+                    void passes() { }
                 }
         """.stripIndent()
         then:

@@ -7,7 +7,7 @@ plugins {
     java
     groovy
     `java-gradle-plugin`
-    id("com.gradle.plugin-publish") version("0.11.0")
+    id("com.gradle.plugin-publish") version("0.12.0")
     id("io.spring.release") version ("0.20.1") apply (false)
 }
 
@@ -64,21 +64,23 @@ val plugin: Configuration by configurations.creating
 
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
+val rewriteVersion = "6.1.15"
+val prometheusVersion = "1.3.0"
+val nettyVersion = "1.1.0"
 dependencies {
-    plugin("org.openrewrite:rewrite-java:latest.release")
+    plugin("org.openrewrite:rewrite-java:$rewriteVersion")
+    plugin("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
+    plugin("io.rsocket:rsocket-transport-netty:$nettyVersion")
 
-    plugin("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    plugin("io.rsocket:rsocket-transport-netty:latest.release")
-
-    implementation("org.openrewrite:rewrite-java-11:latest.release")
-    implementation("org.openrewrite:rewrite-java-8:latest.release")
-    implementation("org.openrewrite:rewrite-xml:latest.release")
-    implementation("org.openrewrite:rewrite-maven:latest.release")
-    implementation("org.openrewrite:rewrite-properties:latest.release")
-    implementation("org.openrewrite:rewrite-yaml:latest.release")
-    api("org.openrewrite:rewrite-java:latest.release")
-    api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    api("io.rsocket:rsocket-transport-netty:latest.release")
+    implementation("org.openrewrite:rewrite-java-11:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-java-8:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-xml:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-maven:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-properties:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-yaml:$rewriteVersion")
+    api("org.openrewrite:rewrite-java:$rewriteVersion")
+    api("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
+    api("io.rsocket:rsocket-transport-netty:$nettyVersion")
 
     testImplementation(gradleTestKit())
     testImplementation("org.codehaus.groovy:groovy-all:2.5.10")
