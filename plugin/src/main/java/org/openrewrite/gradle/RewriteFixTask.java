@@ -19,7 +19,7 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.Change;
+import org.openrewrite.Result;
 
 import javax.inject.Inject;
 import java.io.BufferedWriter;
@@ -47,75 +47,74 @@ public class RewriteFixTask extends AbstractRewriteTask {
         ChangesContainer changes = listChanges();
 
         if (changes.isNotEmpty()) {
-            for(Change change : changes.generated) {
-                assert change.getFixed() != null;
+            for(Result change : changes.generated) {
+                assert change.getAfter() != null;
                 getLog().warn("Generated new file " +
-                        change.getFixed().getSourcePath() +
+                        change.getAfter().getSourcePath() +
                         " by:");
                 logVisitorsThatMadeChanges(change);
             }
-            for(Change change : changes.deleted) {
-                assert change.getOriginal() != null;
+            for(Result change : changes.deleted) {
+                assert change.getBefore() != null;
                 getLog().warn("Deleted file " +
-                        change.getOriginal().getSourcePath() +
+                        change.getBefore().getSourcePath() +
                         " by:");
                 logVisitorsThatMadeChanges(change);
             }
-            for(Change change : changes.moved) {
-                assert change.getFixed() != null;
-                assert change.getOriginal() != null;
+            for(Result change : changes.moved) {
+                assert change.getAfter() != null;
+                assert change.getBefore() != null;
                 getLog().warn("File has been moved from " +
-                        change.getOriginal().getSourcePath() + " to " +
-                        change.getFixed().getSourcePath() + " by:");
+                        change.getBefore().getSourcePath() + " to " +
+                        change.getAfter().getSourcePath() + " by:");
                 logVisitorsThatMadeChanges(change);
             }
-            for(Change change : changes.refactoredInPlace) {
-                assert change.getOriginal() != null;
+            for(Result change : changes.refactoredInPlace) {
+                assert change.getBefore() != null;
                 getLog().warn("Changes have been made to " +
-                        change.getOriginal().getSourcePath() +
+                        change.getBefore().getSourcePath() +
                         " by:");
                 logVisitorsThatMadeChanges(change);
             }
-
 
             getLog().warn("Please review and commit the changes.");
 
             try {
-                for (Change change : changes.generated) {
-                    assert change.getFixed() != null;
+                for (Result change : changes.generated) {
+                    assert change.getAfter() != null;
                     try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                            changes.getProjectRoot().resolve(change.getFixed().getSourcePath()))) {
-                        sourceFileWriter.write(change.getFixed().print());
+                            changes.getProjectRoot().resolve(change.getAfter().getSourcePath()))) {
+                        sourceFileWriter.write(change.getAfter().print());
                     }
                 }
-                for (Change change: changes.deleted) {
-                    assert change.getOriginal() != null;
-                    Path originalLocation = changes.getProjectRoot().resolve(change.getOriginal().getSourcePath());
+                for (Result change: changes.deleted) {
+                    assert change.getBefore() != null;
+                    Path originalLocation = changes.getProjectRoot().resolve(change.getBefore().getSourcePath());
                     boolean deleteSucceeded = originalLocation.toFile().delete();
                     if(!deleteSucceeded) {
                         throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
                     }
                 }
-                for (Change change : changes.moved) {
+                for (Result change : changes.moved) {
                     // Should we try to use git to move the file first, and only if that fails fall back to this?
-                    assert change.getOriginal() != null;
-                    Path originalLocation = changes.getProjectRoot().resolve(change.getOriginal().getSourcePath());
+                    assert change.getBefore() != null;
+                    Path originalLocation = changes.getProjectRoot().resolve(change.getBefore().getSourcePath());
                     boolean deleteSucceeded = originalLocation.toFile().delete();
                     if(!deleteSucceeded) {
                         throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
                     }
-                    assert change.getFixed() != null;
+                    assert change.getAfter() != null;
                     try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                            changes.getProjectRoot().resolve(change.getFixed().getSourcePath()))) {
-                        sourceFileWriter.write(change.getFixed().print());
+                            changes.getProjectRoot().resolve(change.getAfter().getSourcePath()))) {
+                        sourceFileWriter.write(change.getAfter().print());
                     }
                 }
-                for (Change change : changes.refactoredInPlace) {
-                    assert change.getOriginal() != null;
+                for (Result change : changes.refactoredInPlace) {
+                    assert change.getBefore() != null;
                     try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                            changes.getProjectRoot().resolve(change.getOriginal().getSourcePath()))) {
-                        assert change.getFixed() != null;
-                        sourceFileWriter.write(change.getFixed().print());
+                            changes.getProjectRoot().resolve(change.getBefore().getSourcePath()))) {
+                        assert change.getAfter() != null;
+                        sourceFileWriter.write(change.getAfter().print());
                     }
                 }
             } catch (IOException e) {

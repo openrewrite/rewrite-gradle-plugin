@@ -32,7 +32,6 @@ public class RewriteExtension extends CodeQualityExtension {
     private boolean configFileSetDeliberately = false;
     private Project project;
     private File configFile;
-    private final List<GradleRecipeConfiguration> recipes = new ArrayList<>();
     private String metricsUri = magicalMetricsLogString;
 
     @SuppressWarnings("unused")
@@ -104,13 +103,5 @@ public class RewriteExtension extends CodeQualityExtension {
 
     public List<String> getActiveRecipes() {
         return activeRecipes;
-    }
-
-    public void recipe(GradleRecipeConfiguration... profiles) {
-        this.recipes.addAll(asList(profiles));
-    }
-
-    public List<GradleRecipeConfiguration> getRecipes() {
-        return new ArrayList<>(recipes);
     }
 }

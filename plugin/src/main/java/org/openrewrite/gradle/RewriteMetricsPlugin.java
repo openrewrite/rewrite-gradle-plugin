@@ -26,7 +26,6 @@ import io.micrometer.prometheus.rsocket.PrometheusRSocketClient;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.transport.netty.client.WebsocketClientTransport;
-import org.apache.commons.lang3.NotImplementedException;
 import org.gradle.BuildAdapter;
 import org.gradle.BuildResult;
 import org.gradle.api.Plugin;
@@ -132,7 +131,7 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
     }
 
     private String scrapeFromEachProject(Project rootProject) {
-        throw new NotImplementedException("Put this back in once metrics have been wired back in to RewritePlugin");
+        throw new RuntimeException("Not implemented. Put this back in once metrics have been wired back in to RewritePlugin");
 //        return rootProject.getAllprojects().stream()
 //                .flatMap(p -> p.getPlugins().withType(RewritePlugin.class).stream()
 //                        .map(plugin -> plugin.getMeterRegistry().scrape()))

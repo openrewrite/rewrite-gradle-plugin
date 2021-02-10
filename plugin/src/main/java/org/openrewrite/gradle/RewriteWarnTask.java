@@ -19,7 +19,7 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.Change;
+import org.openrewrite.Result;
 
 import javax.inject.Inject;
 
@@ -43,32 +43,32 @@ public class RewriteWarnTask extends AbstractRewriteTask{
         ChangesContainer changes = listChanges();
 
         if (changes.isNotEmpty()) {
-            for(Change change : changes.generated) {
-                assert change.getFixed() != null;
+            for(Result change : changes.generated) {
+                assert change.getAfter() != null;
                 getLog().warn("Applying fixes would generate new file " +
-                        change.getFixed().getSourcePath() +
+                        change.getAfter().getSourcePath() +
                         " by:");
                 logVisitorsThatMadeChanges(change);
             }
-            for(Change change : changes.deleted) {
-                assert change.getOriginal() != null;
+            for(Result change : changes.deleted) {
+                assert change.getBefore() != null;
                 getLog().warn("Applying fixes would delete file " +
-                        change.getOriginal().getSourcePath() +
+                        change.getBefore().getSourcePath() +
                         " by:");
                 logVisitorsThatMadeChanges(change);
             }
-            for(Change change : changes.moved) {
-                assert change.getOriginal() != null;
-                assert change.getFixed() != null;
+            for(Result change : changes.moved) {
+                assert change.getBefore() != null;
+                assert change.getAfter() != null;
                 getLog().warn("Applying fixes would move file from " +
-                        change.getOriginal().getSourcePath() + " to " +
-                        change.getFixed().getSourcePath() + " by:");
+                        change.getBefore().getSourcePath() + " to " +
+                        change.getAfter().getSourcePath() + " by:");
                 logVisitorsThatMadeChanges(change);
             }
-            for(Change change : changes.refactoredInPlace) {
-                assert change.getOriginal() != null;
+            for(Result change : changes.refactoredInPlace) {
+                assert change.getBefore() != null;
                 getLog().warn("Applying fixes would make changes to " +
-                        change.getOriginal().getSourcePath() +
+                        change.getBefore().getSourcePath() +
                         " by:");
                 logVisitorsThatMadeChanges(change);
             }

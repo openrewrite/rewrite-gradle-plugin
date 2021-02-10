@@ -23,13 +23,13 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.SourceSet;
-import org.openrewrite.Refactor;
+import org.openrewrite.Recipe;
 import org.openrewrite.properties.PropertiesParser;
+import org.openrewrite.style.NamedStyles;
 import org.openrewrite.xml.XmlParser;
 import org.openrewrite.yaml.YamlParser;
-import org.openrewrite.Change;
-import org.openrewrite.Environment;
-import org.openrewrite.RefactorVisitor;
+import org.openrewrite.Result;
+import org.openrewrite.config.Environment;
 import org.openrewrite.SourceFile;
 import org.openrewrite.config.YamlResourceLoader;
 import org.openrewrite.java.JavaParser;
@@ -79,11 +79,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     @InputFiles
     public FileCollection getResources() {
         return sourceSet.getResources().getSourceDirectories();
-    }
-
-    @Input
-    public List<GradleRecipeConfiguration> getRecipes() {
-        return extension.getRecipes();
     }
 
     @Input
@@ -148,12 +143,9 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if (recipes == null || recipes.isEmpty()) {
                 return new ChangesContainer(baseDir, emptyList());
             }
-            Collection<RefactorVisitor<?>> visitors = env.visitors(recipes);
-            if(visitors.size() == 0) {
-                getLog().info("Could not find any Rewrite visitors matching active recipe(s): " + String.join(", ", recipes) + ". " +
-                        "Double check that you have taken a dependency on the jar containing these recipes.");
-                return new ChangesContainer(baseDir, emptyList());
-            }
+            List<NamedStyles> styles = env.activateStyles(getActiveStyles());
+            Recipe recipe = env.activateRecipes(recipes);
+
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             List<Path> sourcePaths = getJavaSources().getFiles().stream()
@@ -165,10 +157,9 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .collect(toList());
 
             sourceFiles.addAll(JavaParser.fromJavaVersion()
-                    .styles(env.styles(getActiveStyles()))
+                    .styles(styles)
                     .classpath(dependencyPaths)
                     .logCompilationWarningsAndErrors(false)
-                    .meterRegistry(meterRegistry)
                     .build()
                     .parse(sourcePaths, baseDir)
             );
@@ -197,12 +188,9 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     baseDir
             ));
 
-            Collection<Change> changes = new Refactor()
-                    .visit(visitors)
-                    .setMeterRegistry(meterRegistry)
-                    .fix(sourceFiles);
+            List<Result> results = recipe.run(sourceFiles);
 
-            return new ChangesContainer(baseDir, changes);
+            return new ChangesContainer(baseDir, results);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -210,23 +198,23 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
     public static class ChangesContainer {
         final Path projectRoot;
-        final List<Change> generated = new ArrayList<>();
-        final List<Change> deleted = new ArrayList<>();
-        final List<Change> moved = new ArrayList<>();
-        final List<Change> refactoredInPlace = new ArrayList<>();
+        final List<Result> generated = new ArrayList<>();
+        final List<Result> deleted = new ArrayList<>();
+        final List<Result> moved = new ArrayList<>();
+        final List<Result> refactoredInPlace = new ArrayList<>();
 
-        public ChangesContainer(Path projectRoot, Collection<Change> changes) {
+        public ChangesContainer(Path projectRoot, Collection<Result> changes) {
             this.projectRoot = projectRoot;
-            for (Change change : changes) {
-                if (change.getOriginal() == null && change.getFixed() == null) {
+            for (Result change : changes) {
+                if (change.getBefore() == null && change.getAfter() == null) {
                     // This situation shouldn't happen / makes no sense, log and skip
                     continue;
                 }
-                if (change.getOriginal() == null && change.getFixed() != null) {
+                if (change.getBefore() == null && change.getAfter() != null) {
                     generated.add(change);
-                } else if (change.getOriginal() != null && change.getFixed() == null) {
+                } else if (change.getBefore() != null && change.getAfter() == null) {
                     deleted.add(change);
-                } else if (change.getOriginal() != null && !change.getOriginal().getSourcePath().equals(change.getFixed().getSourcePath())) {
+                } else if (change.getBefore() != null && !change.getBefore().getSourcePath().equals(change.getAfter().getSourcePath())) {
                     moved.add(change);
                 } else {
                     refactoredInPlace.add(change);
@@ -241,18 +229,10 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         public boolean isNotEmpty() {
             return !generated.isEmpty() || !deleted.isEmpty() || !moved.isEmpty() || !refactoredInPlace.isEmpty();
         }
-
-        public Stream<Change> stream() {
-            return Stream.concat(
-                    Stream.concat(generated.stream(), deleted.stream()),
-                    Stream.concat(moved.stream(), refactoredInPlace.stream())
-            );
-        }
-
     }
 
-    protected void logVisitorsThatMadeChanges(Change change) {
-        for (String visitor : change.getVisitorsThatMadeChanges()) {
+    protected void logVisitorsThatMadeChanges(Result change) {
+        for (String visitor : change.getRecipesThatMadeChanges()) {
             getLog().warn("  " + visitor);
         }
     }

@@ -39,7 +39,7 @@ gradlePlugin {
 
 repositories {
     mavenCentral()
-    jcenter()
+    mavenLocal()
 }
 
 configurations.all {
@@ -64,7 +64,9 @@ val plugin: Configuration by configurations.creating
 
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
-val rewriteVersion = "6.1.15"
+// Fixed version numbers because com.gradle.plugin-publish will publish poms with requested rather than resolved versions
+// TODO: Update these to point to an 7.0.0-rc3 or the 7.0.0 GA once available
+val rewriteVersion = "7.0.0-SNAPSHOT"
 val prometheusVersion = "1.3.0"
 val nettyVersion = "1.1.0"
 dependencies {
@@ -73,7 +75,7 @@ dependencies {
     plugin("io.rsocket:rsocket-transport-netty:$nettyVersion")
 
     implementation("org.openrewrite:rewrite-java-11:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-java-8:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-java-8:6.2.0-SNAPSHOT")
     implementation("org.openrewrite:rewrite-xml:$rewriteVersion")
     implementation("org.openrewrite:rewrite-maven:$rewriteVersion")
     implementation("org.openrewrite:rewrite-properties:$rewriteVersion")

@@ -19,11 +19,11 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.Environment;
+import org.openrewrite.config.Environment;
 import org.openrewrite.Recipe;
 
 import javax.inject.Inject;
-import java.util.Map;
+import java.util.Collection;
 import java.util.Set;
 
 public class RewriteDiscoverTask extends AbstractRewriteTask {
@@ -44,8 +44,8 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     public void run() {
         Environment env = environment();
         Set<String> activeRecipes = getActiveRecipes();
-        Map<String, Recipe> recipesByName = env.getRecipesByName();
 
+        Collection<Recipe> recipesByName = env.listRecipes();
         log.quiet("Found " + activeRecipes.size() + " active recipes and " + recipesByName.size() + " total recipes.\n");
 
         log.quiet("Active Recipe Names:");
@@ -54,21 +54,8 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
         }
 
         log.quiet("\nRecipes:");
-        for(Recipe recipe : recipesByName.values()) {
+        for(Recipe recipe : recipesByName) {
             log.quiet("\tname: " + recipe.getName());
-            log.quiet("\tinclude: ");
-            recipe.getInclude().forEach( rec -> {
-                log.quiet("\t\t" + rec.pattern().replace("\\", ""));
-            });
-            log.quiet("\texclude: ");
-            recipe.getExclude().forEach( rec -> {
-                log.quiet("\t\t" + rec.pattern().replace("\\", ""));
-            });
-            log.quiet("\tvisitors: ");
-            env.visitors(recipe.getName()).forEach( rec -> {
-                log.quiet("\t\t" + rec.getName());
-            });
-            log.quiet("");
         }
     }
 }
