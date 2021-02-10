@@ -132,7 +132,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return env.build();
     }
 
-    protected ChangesContainer listChanges() {
+    protected ResultsContainer listResults() {
         try (MeterRegistryProvider meterRegistryProvider = new MeterRegistryProvider(getLog(), metricsUri, metricsUsername, metricsPassword)) {
             MeterRegistry meterRegistry = meterRegistryProvider.registry();
 
@@ -141,11 +141,10 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             Environment env = environment();
             Set<String> recipes = getActiveRecipes();
             if (recipes == null || recipes.isEmpty()) {
-                return new ChangesContainer(baseDir, emptyList());
+                return new ResultsContainer(baseDir, emptyList());
             }
             List<NamedStyles> styles = env.activateStyles(getActiveStyles());
             Recipe recipe = env.activateRecipes(recipes);
-
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             List<Path> sourcePaths = getJavaSources().getFiles().stream()
@@ -190,34 +189,34 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             List<Result> results = recipe.run(sourceFiles);
 
-            return new ChangesContainer(baseDir, results);
+            return new ResultsContainer(baseDir, results);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static class ChangesContainer {
+    public static class ResultsContainer {
         final Path projectRoot;
         final List<Result> generated = new ArrayList<>();
         final List<Result> deleted = new ArrayList<>();
         final List<Result> moved = new ArrayList<>();
         final List<Result> refactoredInPlace = new ArrayList<>();
 
-        public ChangesContainer(Path projectRoot, Collection<Result> changes) {
+        public ResultsContainer(Path projectRoot, Collection<Result> results) {
             this.projectRoot = projectRoot;
-            for (Result change : changes) {
-                if (change.getBefore() == null && change.getAfter() == null) {
+            for (Result result : results) {
+                if (result.getBefore() == null && result.getAfter() == null) {
                     // This situation shouldn't happen / makes no sense, log and skip
                     continue;
                 }
-                if (change.getBefore() == null && change.getAfter() != null) {
-                    generated.add(change);
-                } else if (change.getBefore() != null && change.getAfter() == null) {
-                    deleted.add(change);
-                } else if (change.getBefore() != null && !change.getBefore().getSourcePath().equals(change.getAfter().getSourcePath())) {
-                    moved.add(change);
+                if (result.getBefore() == null && result.getAfter() != null) {
+                    generated.add(result);
+                } else if (result.getBefore() != null && result.getAfter() == null) {
+                    deleted.add(result);
+                } else if (result.getBefore() != null && !result.getBefore().getSourcePath().equals(result.getAfter().getSourcePath())) {
+                    moved.add(result);
                 } else {
-                    refactoredInPlace.add(change);
+                    refactoredInPlace.add(result);
                 }
             }
         }
@@ -231,8 +230,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         }
     }
 
-    protected void logVisitorsThatMadeChanges(Result change) {
-        for (String visitor : change.getRecipesThatMadeChanges()) {
+    protected void logVisitorsThatMadeChanges(Result result) {
+        for (String visitor : result.getRecipesThatMadeChanges()) {
             getLog().warn("  " + visitor);
         }
     }

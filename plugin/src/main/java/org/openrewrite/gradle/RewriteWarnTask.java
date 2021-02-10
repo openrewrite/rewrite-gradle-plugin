@@ -30,7 +30,7 @@ public class RewriteWarnTask extends AbstractRewriteTask{
     public RewriteWarnTask(SourceSet sourceSet, RewriteExtension extension) {
         super(sourceSet, extension);
         setGroup("rewrite");
-        setDescription("Dry run the active refactoring recipes to sources within the " + sourceSet.getName() + " SourceSet. No changes will be made.");
+        setDescription("Dry run the active refactoring recipes to sources within the " + sourceSet.getName() + " SourceSet. No results will be made.");
     }
 
     @Override
@@ -40,39 +40,39 @@ public class RewriteWarnTask extends AbstractRewriteTask{
 
     @TaskAction
     public void run() {
-        ChangesContainer changes = listChanges();
+        ResultsContainer results = listResults();
 
-        if (changes.isNotEmpty()) {
-            for(Result change : changes.generated) {
-                assert change.getAfter() != null;
+        if (results.isNotEmpty()) {
+            for(Result result : results.generated) {
+                assert result.getAfter() != null;
                 getLog().warn("Applying fixes would generate new file " +
-                        change.getAfter().getSourcePath() +
+                        result.getAfter().getSourcePath() +
                         " by:");
-                logVisitorsThatMadeChanges(change);
+                logVisitorsThatMadeChanges(result);
             }
-            for(Result change : changes.deleted) {
-                assert change.getBefore() != null;
+            for(Result result : results.deleted) {
+                assert result.getBefore() != null;
                 getLog().warn("Applying fixes would delete file " +
-                        change.getBefore().getSourcePath() +
+                        result.getBefore().getSourcePath() +
                         " by:");
-                logVisitorsThatMadeChanges(change);
+                logVisitorsThatMadeChanges(result);
             }
-            for(Result change : changes.moved) {
-                assert change.getBefore() != null;
-                assert change.getAfter() != null;
+            for(Result result : results.moved) {
+                assert result.getBefore() != null;
+                assert result.getAfter() != null;
                 getLog().warn("Applying fixes would move file from " +
-                        change.getBefore().getSourcePath() + " to " +
-                        change.getAfter().getSourcePath() + " by:");
-                logVisitorsThatMadeChanges(change);
+                        result.getBefore().getSourcePath() + " to " +
+                        result.getAfter().getSourcePath() + " by:");
+                logVisitorsThatMadeChanges(result);
             }
-            for(Result change : changes.refactoredInPlace) {
-                assert change.getBefore() != null;
-                getLog().warn("Applying fixes would make changes to " +
-                        change.getBefore().getSourcePath() +
+            for(Result result : results.refactoredInPlace) {
+                assert result.getBefore() != null;
+                getLog().warn("Applying fixes would make results to " +
+                        result.getBefore().getSourcePath() +
                         " by:");
-                logVisitorsThatMadeChanges(change);
+                logVisitorsThatMadeChanges(result);
             }
-            getLog().warn("Run 'gradle rewriteFix' to apply the fixes. Afterwards, review and commit the changes.");
+            getLog().warn("Run 'gradle rewriteFix' to apply the fixes. Afterwards, review and commit the results.");
         }
     }
 }
