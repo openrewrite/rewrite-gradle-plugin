@@ -30,7 +30,7 @@ public class RewriteExtension extends CodeQualityExtension {
     private final List<String> activeRecipes = new ArrayList<>();
     private final List<String> activeStyles = new ArrayList<>();
     private boolean configFileSetDeliberately = false;
-    private Project project;
+    private final Project project;
     private File configFile;
     private String metricsUri = magicalMetricsLogString;
 

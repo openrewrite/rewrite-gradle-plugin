@@ -53,7 +53,7 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
             log.quiet("\t" + activeRecipe);
         }
 
-        log.quiet("\nRecipes:");
+        log.quiet("Recipes:");
         for(Recipe recipe : recipesByName) {
             log.quiet("\tname: " + recipe.getName());
         }

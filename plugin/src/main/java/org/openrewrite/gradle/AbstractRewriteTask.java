@@ -23,6 +23,9 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.SourceSet;
+import org.openrewrite.ExecutionContext;
+import org.openrewrite.InMemoryExecutionContext;
+import org.openrewrite.Parser;
 import org.openrewrite.Recipe;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.style.NamedStyles;
@@ -39,17 +42,18 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 public abstract class AbstractRewriteTask extends DefaultTask implements RewriteTask {
 
     private String metricsUri;
     private String metricsUsername;
     private String metricsPassword;
+    @SuppressWarnings("FieldCanBeLocal")
     private MeterRegistry registry;
 
     private final SourceSet sourceSet;
@@ -97,39 +101,58 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     }
 
     protected Environment environment() {
-        Environment.Builder env = Environment.builder()
+        Map<Object, Object> gradleProps = getProject().getProperties().entrySet().stream()
+                .filter(entry -> entry.getKey() != null && entry.getValue() != null)
+                .collect(toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue));
+
+        Properties properties = new Properties();
+        properties.putAll(gradleProps);
+
+        Environment.Builder env = Environment.builder(properties)
                 .scanClasspath(
                         Stream.concat(
-                            getDependencies().getFiles().stream(),
-                            getJavaSources().getFiles().stream()
+                                getDependencies().getFiles().stream(),
+                                getJavaSources().getFiles().stream()
                         )
                                 .map(File::toPath)
-                                .collect(Collectors.toList())
+                                .collect(toList())
                 )
                 .scanUserHome();
 
         File rewriteConfig = extension.getConfigFile();
-        if (rewriteConfig != null && rewriteConfig.exists()) {
+        if (rewriteConfig.exists()) {
             try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                Map<Object, Object> gradleProps = getProject().getProperties().entrySet().stream()
-                        .filter(entry -> entry.getKey() != null && entry.getValue() != null)
-                        .collect(Collectors.toMap(
-                                Map.Entry::getKey,
-                                Map.Entry::getValue));
-                Properties props = new Properties();
-                props.putAll(gradleProps);
-
-                YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), props);
+                YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties);
                 env.load(resourceLoader);
             } catch (IOException e) {
                 throw new RuntimeException("Unable to load rewrite configuration", e);
             }
-        } else if(extension.getConfigFileSetDeliberately()) {
+        } else if (extension.getConfigFileSetDeliberately()) {
             getLog().warn("Rewrite configuration file " + rewriteConfig + " does not exist." +
                     "Supplied path: " + rewriteConfig + " configured for project " + getProject().getPath() + " does not exist");
         }
 
         return env.build();
+    }
+
+    protected ExecutionContext executionContext() {
+        return new InMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
+    }
+
+    protected Parser.Listener listener() {
+        return new Parser.Listener() {
+            @Override
+            public void onError(String message) {
+                getLog().error(message);
+            }
+
+            @Override
+            public void onError(String message, Throwable t) {
+                getLog().error(message, t);
+            }
+        };
     }
 
     protected ResultsContainer listResults() {
@@ -139,53 +162,71 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             Path baseDir = getProject().getRootProject().getProjectDir().toPath();
 
             Environment env = environment();
-            Set<String> recipes = getActiveRecipes();
-            if (recipes == null || recipes.isEmpty()) {
+            Set<String> activeRecipes = getActiveRecipes();
+            if (activeRecipes.isEmpty()) {
                 return new ResultsContainer(baseDir, emptyList());
             }
             List<NamedStyles> styles = env.activateStyles(getActiveStyles());
-            Recipe recipe = env.activateRecipes(recipes);
+            Recipe recipe = env.activateRecipes(activeRecipes);
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             List<Path> sourcePaths = getJavaSources().getFiles().stream()
                     .filter(it -> it.isFile() && it.getName().endsWith(".java"))
                     .map(File::toPath)
+                    .map(AbstractRewriteTask::toRealPath)
                     .collect(toList());
             List<Path> dependencyPaths = getDependencies().getFiles().stream()
                     .map(File::toPath)
+                    .map(AbstractRewriteTask::toRealPath)
                     .collect(toList());
+            ExecutionContext ctx = executionContext();
+            Parser.Listener listener = listener();
 
-            sourceFiles.addAll(JavaParser.fromJavaVersion()
-                    .styles(styles)
-                    .classpath(dependencyPaths)
-                    .logCompilationWarningsAndErrors(false)
-                    .build()
-                    .parse(sourcePaths, baseDir)
+            sourceFiles.addAll(
+                    JavaParser.fromJavaVersion()
+                            .styles(styles)
+                            .classpath(dependencyPaths)
+                            .logCompilationWarningsAndErrors(false)
+                            .build()
+                            .parse(sourcePaths, baseDir, ctx)
             );
 
-            sourceFiles.addAll(new YamlParser().parse(
-                    getResources().getFiles().stream()
-                            .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
-                            .map(File::toPath)
-                            .collect(toList()),
-                    baseDir
-            ));
+            sourceFiles.addAll(
+                    YamlParser.builder()
+                            .doOnParse(listener)
+                            .build()
+                            .parse(getResources().getFiles().stream()
+                                            .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
+                                            .map(File::toPath)
+                                            .collect(toList()),
+                                    baseDir,
+                                    ctx
+                            ));
 
-            sourceFiles.addAll(new PropertiesParser().parse(
-                    getResources().getFiles().stream()
-                            .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
-                            .map(File::toPath)
-                            .collect(toList()),
-                    baseDir
-            ));
+            sourceFiles.addAll(
+                    PropertiesParser.builder()
+                            .doOnParse(listener)
+                            .build()
+                            .parse(
+                                    getResources().getFiles().stream()
+                                            .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
+                                            .map(File::toPath)
+                                            .collect(toList()),
+                                    baseDir,
+                                    ctx
+                            ));
 
-            sourceFiles.addAll(new XmlParser().parse(
-                    getResources().getFiles().stream()
-                            .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
-                            .map(File::toPath)
-                            .collect(toList()),
-                    baseDir
-            ));
+            sourceFiles.addAll(
+                    XmlParser.builder()
+                            .doOnParse(listener)
+                            .build().parse(
+                            getResources().getFiles().stream()
+                                    .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
+                                    .map(File::toPath)
+                                    .collect(toList()),
+                            baseDir,
+                            ctx
+                    ));
 
             List<Result> results = recipe.run(sourceFiles);
 
@@ -230,9 +271,17 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         }
     }
 
-    protected void logVisitorsThatMadeChanges(Result result) {
-        for (String visitor : result.getRecipesThatMadeChanges()) {
-            getLog().warn("  " + visitor);
+    protected void logRecipesThatMadeChanges(Result result) {
+        for (Recipe recipe : result.getRecipesThatMadeChanges()) {
+            getLog().warn("  " + recipe.getName());
+        }
+    }
+
+    private static Path toRealPath(Path path) {
+        try {
+            return path.toRealPath();
+        } catch (IOException e) {
+            return path;
         }
     }
 }

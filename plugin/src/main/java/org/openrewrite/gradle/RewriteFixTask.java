@@ -23,9 +23,12 @@ import org.openrewrite.Result;
 
 import javax.inject.Inject;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+
+import static java.nio.file.StandardOpenOption.CREATE;
 
 public class RewriteFixTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteFixTask.class);
@@ -52,14 +55,14 @@ public class RewriteFixTask extends AbstractRewriteTask {
                 getLog().warn("Generated new file " +
                         result.getAfter().getSourcePath() +
                         " by:");
-                logVisitorsThatMadeChanges(result);
+                logRecipesThatMadeChanges(result);
             }
             for(Result result : results.deleted) {
                 assert result.getBefore() != null;
                 getLog().warn("Deleted file " +
                         result.getBefore().getSourcePath() +
                         " by:");
-                logVisitorsThatMadeChanges(result);
+                logRecipesThatMadeChanges(result);
             }
             for(Result result : results.moved) {
                 assert result.getAfter() != null;
@@ -67,14 +70,14 @@ public class RewriteFixTask extends AbstractRewriteTask {
                 getLog().warn("File has been moved from " +
                         result.getBefore().getSourcePath() + " to " +
                         result.getAfter().getSourcePath() + " by:");
-                logVisitorsThatMadeChanges(result);
+                logRecipesThatMadeChanges(result);
             }
             for(Result result : results.refactoredInPlace) {
                 assert result.getBefore() != null;
                 getLog().warn("Changes have been made to " +
                         result.getBefore().getSourcePath() +
                         " by:");
-                logVisitorsThatMadeChanges(result);
+                logRecipesThatMadeChanges(result);
             }
 
             getLog().warn("Please review and commit the results.");
@@ -104,8 +107,12 @@ public class RewriteFixTask extends AbstractRewriteTask {
                         throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
                     }
                     assert result.getAfter() != null;
-                    try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                            results.getProjectRoot().resolve(result.getAfter().getSourcePath()))) {
+                    // Ensure directories exist in case something was moved into a hitherto non-existent package
+                    Path afterLocation = results.getProjectRoot().resolve(result.getAfter().getSourcePath());
+                    File parentDir = afterLocation.toFile().getParentFile();
+                    //noinspection ResultOfMethodCallIgnored
+                    parentDir.mkdirs();
+                    try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(afterLocation)) {
                         sourceFileWriter.write(result.getAfter().print());
                     }
                 }
