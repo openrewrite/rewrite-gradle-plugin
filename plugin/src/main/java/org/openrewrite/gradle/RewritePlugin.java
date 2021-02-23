@@ -20,6 +20,7 @@ import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
@@ -30,7 +31,6 @@ import org.gradle.api.tasks.TaskContainer;
  * not have java sources of its own, such as the root project in a multi-project builds.
  */
 public class RewritePlugin implements Plugin<Project> {
-
     /*
      Note on compatibility:
      Since we're in the software modernization and improvement business we want to support old versions of Gradle.
@@ -49,9 +49,15 @@ public class RewritePlugin implements Plugin<Project> {
         }
         final RewriteExtension extension = maybeExtension;
         TaskContainer tasks = project.getTasks();
-
-        JavaPluginConvention javaPlugin = project.getConvention().getPlugin(JavaPluginConvention.class);
-        SourceSetContainer sourceSets = javaPlugin.getSourceSets();
+        // The concept of SourceSets comes from the JavaBasePlugin
+        // If it hasn't already been applied, apply it now
+        // This allows the rewrite plugin to be applied before or after the Java plugin is applied
+        JavaBasePlugin javaPlugin = project.getPlugins().findPlugin(JavaBasePlugin.class);
+        if(javaPlugin == null) {
+            project.getPlugins().apply(JavaBasePlugin.class);
+        }
+        JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+        SourceSetContainer sourceSets = javaConvention.getSourceSets();
 
         // Fix is meant to be invoked manually and so is not made a dependency of any existing task
         Task rewriteFixAll = tasks.create("rewriteFix",
@@ -76,6 +82,8 @@ public class RewritePlugin implements Plugin<Project> {
             task.setDescription("Lists all available recipes and their visitors available to each SourceSet");
         }));
 
+        // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
+        // Do not replace all() with any form of collection iteration which does not share this important property
         sourceSets.all(sourceSet -> {
             String rewriteFixTaskName = "rewriteFix" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
 

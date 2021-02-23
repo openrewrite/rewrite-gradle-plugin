@@ -28,8 +28,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static java.nio.file.StandardOpenOption.CREATE;
-
 public class RewriteFixTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteFixTask.class);
 

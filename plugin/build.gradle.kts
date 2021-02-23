@@ -9,6 +9,7 @@ plugins {
     `java-gradle-plugin`
     id("com.gradle.plugin-publish") version("0.12.0")
     id("io.spring.release") version ("0.20.1") apply (false)
+    `maven-publish`
 }
 
 apply(plugin = "license")
@@ -65,9 +66,18 @@ val plugin: Configuration by configurations.creating
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
 // Fixed version numbers because com.gradle.plugin-publish will publish poms with requested rather than resolved versions
-val rewriteVersion = "7.0.0-rc.5"
+val rewriteVersion = "7.0.0-SNAPSHOT"
 val prometheusVersion = "1.3.0"
 val nettyVersion = "1.1.0"
+
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if(requested.group == "org.openrewrite") {
+            useVersion(rewriteVersion)
+        }
+    }
+}
+
 dependencies {
     plugin("org.openrewrite:rewrite-java:$rewriteVersion")
     plugin("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
