@@ -66,7 +66,7 @@ val plugin: Configuration by configurations.creating
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
 // Fixed version numbers because com.gradle.plugin-publish will publish poms with requested rather than resolved versions
-val rewriteVersion = "7.0.0-SNAPSHOT"
+val rewriteVersion = "7.0.0-rc.6"
 val prometheusVersion = "1.3.0"
 val nettyVersion = "1.1.0"
 
