@@ -152,6 +152,16 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             public void onError(String message, Throwable t) {
                 getLog().error(message, t);
             }
+
+            @Override
+            public void onWarn(String message) {
+                getLog().info(message);
+            }
+
+            @Override
+            public void onWarn(String message, Throwable t) {
+                getLog().info(message, t);
+            }
         };
     }
 
@@ -159,7 +169,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         try (MeterRegistryProvider meterRegistryProvider = new MeterRegistryProvider(getLog(), metricsUri, metricsUsername, metricsPassword)) {
             MeterRegistry meterRegistry = meterRegistryProvider.registry();
 
-            Path baseDir = getProject().getRootProject().getProjectDir().toPath();
+            Path baseDir = getProject().getRootProject().getRootDir().toPath();
 
             Environment env = environment();
             Set<String> activeRecipes = getActiveRecipes();
