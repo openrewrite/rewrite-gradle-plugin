@@ -3,5 +3,4 @@ out/
 !*/src/**/build
 .gradle/
 **/gradle.properties
-.java-version
 .idea/

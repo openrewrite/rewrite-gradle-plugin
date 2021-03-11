@@ -15,16 +15,12 @@ plugins {
 }
 
 rewrite {
-    // Reformats Java Code 
+    // Reformats Java Code
     activeRecipe("org.openrewrite.java.format.AutoFormat")
 }
 ```
 
 ## Documentation
 
-[Quick Start Guide](https://docs.openrewrite.org/getting-started/getting-started) 
+[Quick Start Guide](https://docs.openrewrite.org/getting-started/getting-started)
 [Gradle Plugin Reference](https://docs.openrewrite.org/reference/gradle-plugin-configuration)
-
-## Future development
-
-See the [Rewrite Roadmap](https://github.com/orgs/openrewrite/projects/2). 
