@@ -36,7 +36,7 @@ jobs:
       # - name: publish-candidate
       #   if: contains(github.ref, '-rc.')
       #   timeout-minutes: 30
-      #   run: ./gradlew ${GRADLE_SWITCHES} -Prelease.disableGitChecks=true -Prelease.useLastTag=true candidate publish closeAndReleaseSonatypeStagingRepository
+      #   run: ./gradlew ${GRADLE_SWITCHES} -Prelease.disableGitChecks=true -Prelease.useLastTag=true candidate release
       #   env:
       #     OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
       #     OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
@@ -46,7 +46,7 @@ jobs:
       # - name: publish-release
       #   if: (!contains(github.ref, '-rc.'))
       #   timeout-minutes: 30
-      #   run: ./gradlew ${GRADLE_SWITCHES} -Prelease.disableGitChecks=true -Prelease.useLastTag=true final publish closeAndReleaseSonatypeStagingRepository
+      #   run: ./gradlew ${GRADLE_SWITCHES} -Prelease.disableGitChecks=true -Prelease.useLastTag=true final release
       #   env:
       #     OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
       #     OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
