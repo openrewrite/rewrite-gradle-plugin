@@ -1,5 +1,9 @@
 plugins {
-    id("nebula.release") version "13.2.1"
+    id("nebula.release") version "15.3.1"
+}
+
+configure<nebula.plugin.release.git.base.ReleasePluginExtension> {
+    defaultVersionStrategy = nebula.plugin.release.NetflixOssStrategies.SNAPSHOT(project)
 }
 
 allprojects {
@@ -8,11 +12,3 @@ allprojects {
 }
 
 evaluationDependsOn("plugin")
-
-tasks.register("downloadDependencies") {
-    doLast {
-        configurations.filter { it.isCanBeResolved }.forEach {
-            it.files
-        }
-    }
-}

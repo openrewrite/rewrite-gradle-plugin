@@ -1,3 +1,4 @@
+# minified version of circleci; should be removed once fully switched over
 version: 2.1
 
 executors:
@@ -14,35 +15,16 @@ executors:
 
 commands:
   gradlew-build:
-    description: 'Run a Gradle build using the wrapper'
+    description: "Run a Gradle build using the wrapper"
     parameters:
       command:
         type: string
-        default: 'check test'
+        default: "check test"
     steps:
       - checkout
-      - restore_cache:
-          key: gradle-dependencies-{{ checksum "build.gradle.kts" }}
-      - run:
-          name: downloadDependencies
-          command: ./gradlew downloadDependencies
-      - save_cache:
-          key: gradle-dependencies-{{ checksum "build.gradle.kts" }}
-          paths:
-            - ~/.gradle
       - run:
           name: run gradle command
           command: ./gradlew << parameters.command >>
-      - run:
-          name: collect test reports
-          when: always
-          command: |
-            mkdir -p ~/rewrite-gradle-plugin/test-results/junit/
-            find . -type f -regex ".*/build/test-results/.*xml" -exec cp {} ~/rewrite-gradle-plugin/test-results/junit/ \;
-      - store_test_results:
-          path: ~/rewrite-gradle-plugin/test-results/
-      - store_artifacts:
-          path: ~/rewrite-gradle-plugin/test-results/
 
 jobs:
   build:
@@ -50,32 +32,8 @@ jobs:
     steps:
       - gradlew-build
 
-  deploy:
-    executor: circle-jdk-executor
-    steps:
-      - checkout
-      - restore_cache:
-          key: gradle-dependencies-{{ checksum "build.gradle.kts" }}
-      - deploy:
-          name: Deployment
-          command: sh ./gradle/deploy.sh
-
 workflows:
   version: 2
   build_prs_deploy_snapshots:
     jobs:
       - build
-  build_deploy_releases:
-    jobs:
-      - build:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^v\d+\.\d+\.\d+(-rc\.\d+)?$/
-      - deploy:
-          requires:
-            - build
-          filters:
-            tags:
-              only: /^v\d+\.\d+\.\d+(-rc\.\d+)?$/
