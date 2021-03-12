@@ -10,11 +10,10 @@
 
 This project provides a Gradle plugin that applies [Rewrite](https://github.com/openrewrite/rewrite) checking and fixing tasks as build tasks, one of several possible workflows for propagating change across an organization's source code.
 
-```kotlin
-// build.gradle.kts
+```groovy
 plugins {
     id("java")
-    id("org.openrewrite.rewrite") version "3.0.0-rc.4"
+    id("org.openrewrite.rewrite").version("3.0.0-rc.4")
 }
 
 rewrite {
