@@ -1,7 +1,7 @@
 ![Logo](https://github.com/openrewrite/rewrite/raw/master/doc/logo-oss.png)
 ### Eliminate Tech-Debt. At build time.
 
-![ci](https://github.com/openrewrite/rewrite-gradle-plugin/actions/workflows/ci.yml/badge.svg)
+[![ci](https://github.com/openrewrite/rewrite-gradle-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/openrewrite/rewrite-gradle-plugin/actions/workflows/ci.yml)
 [![Build Status](https://circleci.com/gh/openrewrite/rewrite-gradle-plugin.svg?style=shield)](https://circleci.com/gh/openrewrite/rewrite-gradle-plugin)
 [![Gradle Plugin Portal](https://img.shields.io/maven-metadata/v/https/plugins.gradle.org/m2/org.openrewrite/plugin/maven-metadata.xml.svg?label=gradlePluginPortal)](https://plugins.gradle.org/plugin/org.openrewrite.rewrite)
 [![Apache 2.0](https://img.shields.io/github/license/openrewrite/rewrite-gradle-plugin.svg)](https://www.apache.org/licenses/LICENSE-2.0)
