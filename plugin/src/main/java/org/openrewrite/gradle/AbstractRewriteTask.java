@@ -141,30 +141,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return new InMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
     }
 
-    protected Parser.Listener listener() {
-        return new Parser.Listener() {
-            @Override
-            public void onError(String message) {
-                getLog().error(message);
-            }
-
-            @Override
-            public void onError(String message, Throwable t) {
-                getLog().error(message, t);
-            }
-
-            @Override
-            public void onWarn(String message) {
-                getLog().info(message);
-            }
-
-            @Override
-            public void onWarn(String message, Throwable t) {
-                getLog().info(message, t);
-            }
-        };
-    }
-
     protected ResultsContainer listResults() {
         try (MeterRegistryProvider meterRegistryProvider = new MeterRegistryProvider(getLog(), metricsUri, metricsUsername, metricsPassword)) {
             MeterRegistry meterRegistry = meterRegistryProvider.registry();
@@ -190,7 +166,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .map(AbstractRewriteTask::toRealPath)
                     .collect(toList());
             ExecutionContext ctx = executionContext();
-            Parser.Listener listener = listener();
 
             sourceFiles.addAll(
                     JavaParser.fromJavaVersion()
@@ -202,9 +177,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             );
 
             sourceFiles.addAll(
-                    YamlParser.builder()
-                            .doOnParse(listener)
-                            .build()
+                    new YamlParser()
                             .parse(getResources().getFiles().stream()
                                             .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
                                             .map(File::toPath)
@@ -214,9 +187,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             ));
 
             sourceFiles.addAll(
-                    PropertiesParser.builder()
-                            .doOnParse(listener)
-                            .build()
+                    new PropertiesParser()
                             .parse(
                                     getResources().getFiles().stream()
                                             .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
@@ -227,9 +198,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             ));
 
             sourceFiles.addAll(
-                    XmlParser.builder()
-                            .doOnParse(listener)
-                            .build().parse(
+                    new XmlParser().parse(
                             getResources().getFiles().stream()
                                     .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
                                     .map(File::toPath)
