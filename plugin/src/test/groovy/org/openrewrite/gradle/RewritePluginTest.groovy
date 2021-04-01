@@ -128,8 +128,12 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    @Ignore("Not yet updated for rewrite 7.0.0")
-    def "rewriteFix works on multi-project builds"() {
+    def "rewriteFix applies pre-shipped AutoFormat on multi-project builds"() {
+        // note, the "output" result of this test is at least somewhat contingent
+        // on the current state of what the recipe will perform depending on the version
+        // of upstream rewrite used at the time of running this test--
+        // the goal of this test is to determine whether changes are applied to subprojects
+        // on a multi-project build, not so much about the actual output of the tests.
         given:
         File settings = projectDir.newFile("settings.gradle")
         settings.text = """\
@@ -147,16 +151,15 @@ class RewritePluginTest extends RewriteTestBase {
                     apply plugin: "org.openrewrite.rewrite"
                 
                     repositories {
-                        jcenter()
+                        mavenCentral()
                     }
                 
                     dependencies {
                         testImplementation("junit:junit:4.12")
-                        testCompileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:+")
                     }
                     
                     rewrite {
-                        activeRecipe("org.openrewrite.java.testing.JUnit5Migration")
+                        activeRecipe("org.openrewrite.java.format.AutoFormat")
                     }
                 }
             """.stripIndent()
@@ -190,23 +193,119 @@ class RewritePluginTest extends RewriteTestBase {
         def result = gradleRunner(gradleVersion, "rewriteFix").build()
         def aRewriteFixResult = result.task(":a:rewriteFixTest")
         def bRewriteFixResult = result.task(":b:rewriteFixTest")
+        String aTestClassExpected = """\
+                package com.foo;
+    
+                import org.junit.Test;
+                
+                public class ATestClass {
+                
+                    @Test
+                    public void passes() {
+                    }
+                }
+        """.stripIndent()
         String bTestClassExpected = """\
                 package com.foo;
     
-                import org.junit.jupiter.api.Test;
+                import org.junit.Test;
                 
                 public class BTestClass {
                 
                     @Test
-                    void passes() { }
+                    public void passes() {
+                    }
                 }
         """.stripIndent()
+        then:
+        aRewriteFixResult.outcome == TaskOutcome.SUCCESS
+        bRewriteFixResult.outcome == TaskOutcome.SUCCESS
+        aTestClass.text == aTestClassExpected
+        bTestClass.text == bTestClassExpected
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
+    @Ignore("Not yet updated for rewrite 7.0.0")
+    def "rewriteFix applies recipes provided from external dependencies on multi-project builds"() {
+        given:
+        File settings = projectDir.newFile("settings.gradle")
+        settings.text = """\
+                include("a")
+                include("b")
+            """.stripIndent()
+        File rootBuildGradle = projectDir.newFile("build.gradle")
+        rootBuildGradle.text = """\
+                plugins {
+                    id("org.openrewrite.rewrite").apply(false)
+                }
+                
+                subprojects {
+                    apply plugin: "java"
+                    apply plugin: "org.openrewrite.rewrite"
+                
+                    repositories {
+                        mavenCentral()
+                    }
+                
+                    dependencies {
+                        testImplementation("junit:junit:4.12")
+                        testCompileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:+")
+                    }
+                    
+                    rewrite {
+                         activeRecipe("org.openrewrite.java.testing.junit5.JUnit4to5Migration")
+                    }
+                }
+            """.stripIndent()
+        File aSrcDir = projectDir.newFolder("a", "src", "test", "java", "com", "foo")
+        File aTestClass = new File(aSrcDir, "ATestClass.java")
+        aTestClass.text = """\
+                package com.foo;
+    
+                import org.junit.Test;
+                
+                public class ATestClass {
+                
+                    @Test
+                    public void passes() { }
+                }
+            """.stripIndent()
+        File bSrcDir = projectDir.newFolder("b", "src", "test", "java", "com", "foo")
+        File bTestClass = new File(bSrcDir, "BTestClass.java")
+        bTestClass.text = """\
+                package com.foo;
+    
+                import org.junit.Test;
+                
+                public class BTestClass {
+                
+                    @Test
+                    public void passes() { }
+                }
+            """.stripIndent()
+        when:
+        def result = gradleRunner(gradleVersion, "rewriteFix").build()
+        def aRewriteFixResult = result.task(":a:rewriteFixTest")
+        def bRewriteFixResult = result.task(":b:rewriteFixTest")
         String aTestClassExpected = """\
                 package com.foo;
     
                 import org.junit.jupiter.api.Test;
                 
                 public class ATestClass {
+                
+                    @Test
+                    void passes() { }
+                }
+        """.stripIndent()
+        String bTestClassExpected = """\
+                package com.foo;
+    
+                import org.junit.jupiter.api.Test;
+                
+                public class BTestClass {
                 
                     @Test
                     void passes() { }
