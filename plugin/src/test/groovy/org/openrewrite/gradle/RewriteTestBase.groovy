@@ -52,7 +52,7 @@ class RewriteTestBase extends Specification {
                 .withPluginClasspath()
                 .forwardOutput()
                 .tap {
-                    if(gradleVersion != null) {
+                    if (gradleVersion != null) {
                         withGradleVersion(gradleVersion)
                     }
                 }

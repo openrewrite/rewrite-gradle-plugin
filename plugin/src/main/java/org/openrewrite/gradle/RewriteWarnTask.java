@@ -23,7 +23,7 @@ import org.openrewrite.Result;
 
 import javax.inject.Inject;
 
-public class RewriteWarnTask extends AbstractRewriteTask{
+public class RewriteWarnTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteWarnTask.class);
 
     @Inject
@@ -43,21 +43,21 @@ public class RewriteWarnTask extends AbstractRewriteTask{
         ResultsContainer results = listResults();
 
         if (results.isNotEmpty()) {
-            for(Result result : results.generated) {
+            for (Result result : results.generated) {
                 assert result.getAfter() != null;
                 getLog().warn("Applying fixes would generate new file " +
                         result.getAfter().getSourcePath() +
                         " by:");
                 logRecipesThatMadeChanges(result);
             }
-            for(Result result : results.deleted) {
+            for (Result result : results.deleted) {
                 assert result.getBefore() != null;
                 getLog().warn("Applying fixes would delete file " +
                         result.getBefore().getSourcePath() +
                         " by:");
                 logRecipesThatMadeChanges(result);
             }
-            for(Result result : results.moved) {
+            for (Result result : results.moved) {
                 assert result.getBefore() != null;
                 assert result.getAfter() != null;
                 getLog().warn("Applying fixes would move file from " +
@@ -65,7 +65,7 @@ public class RewriteWarnTask extends AbstractRewriteTask{
                         result.getAfter().getSourcePath() + " by:");
                 logRecipesThatMadeChanges(result);
             }
-            for(Result result : results.refactoredInPlace) {
+            for (Result result : results.refactoredInPlace) {
                 assert result.getBefore() != null;
                 getLog().warn("Applying fixes would make results to " +
                         result.getBefore().getSourcePath() +

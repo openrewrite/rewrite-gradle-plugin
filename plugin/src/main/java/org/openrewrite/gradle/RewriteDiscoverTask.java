@@ -19,8 +19,8 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.config.Environment;
 import org.openrewrite.Recipe;
+import org.openrewrite.config.Environment;
 
 import javax.inject.Inject;
 import java.util.Collection;
@@ -28,6 +28,7 @@ import java.util.Set;
 
 public class RewriteDiscoverTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteDiscoverTask.class);
+
     @Override
     protected Logger getLog() {
         return log;
@@ -49,12 +50,12 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
         log.quiet("Found " + activeRecipes.size() + " active recipes and " + recipesByName.size() + " total recipes.\n");
 
         log.quiet("Active Recipe Names:");
-        for(String activeRecipe : activeRecipes) {
+        for (String activeRecipe : activeRecipes) {
             log.quiet("\t" + activeRecipe);
         }
 
         log.quiet("Recipes:");
-        for(Recipe recipe : recipesByName) {
+        for (Recipe recipe : recipesByName) {
             log.quiet("\tname: " + recipe.getName());
         }
     }

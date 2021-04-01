@@ -43,7 +43,7 @@ public class RewritePlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
         RewriteExtension maybeExtension = project.getExtensions().findByType(RewriteExtension.class);
-        if(maybeExtension == null) {
+        if (maybeExtension == null) {
             maybeExtension = project.getExtensions().create("rewrite", RewriteExtension.class, project);
             maybeExtension.setToolVersion("2.x");
         }
@@ -53,7 +53,7 @@ public class RewritePlugin implements Plugin<Project> {
         // If it hasn't already been applied, apply it now
         // This allows the rewrite plugin to be applied before or after the Java plugin is applied
         JavaBasePlugin javaPlugin = project.getPlugins().findPlugin(JavaBasePlugin.class);
-        if(javaPlugin == null) {
+        if (javaPlugin == null) {
             project.getPlugins().apply(JavaBasePlugin.class);
         }
         JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);

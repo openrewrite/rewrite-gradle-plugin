@@ -48,21 +48,21 @@ public class RewriteFixTask extends AbstractRewriteTask {
         ResultsContainer results = listResults();
 
         if (results.isNotEmpty()) {
-            for(Result result : results.generated) {
+            for (Result result : results.generated) {
                 assert result.getAfter() != null;
                 getLog().warn("Generated new file " +
                         result.getAfter().getSourcePath() +
                         " by:");
                 logRecipesThatMadeChanges(result);
             }
-            for(Result result : results.deleted) {
+            for (Result result : results.deleted) {
                 assert result.getBefore() != null;
                 getLog().warn("Deleted file " +
                         result.getBefore().getSourcePath() +
                         " by:");
                 logRecipesThatMadeChanges(result);
             }
-            for(Result result : results.moved) {
+            for (Result result : results.moved) {
                 assert result.getAfter() != null;
                 assert result.getBefore() != null;
                 getLog().warn("File has been moved from " +
@@ -70,7 +70,7 @@ public class RewriteFixTask extends AbstractRewriteTask {
                         result.getAfter().getSourcePath() + " by:");
                 logRecipesThatMadeChanges(result);
             }
-            for(Result result : results.refactoredInPlace) {
+            for (Result result : results.refactoredInPlace) {
                 assert result.getBefore() != null;
                 getLog().warn("Changes have been made to " +
                         result.getBefore().getSourcePath() +
@@ -88,11 +88,11 @@ public class RewriteFixTask extends AbstractRewriteTask {
                         sourceFileWriter.write(result.getAfter().print());
                     }
                 }
-                for (Result result: results.deleted) {
+                for (Result result : results.deleted) {
                     assert result.getBefore() != null;
                     Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
                     boolean deleteSucceeded = originalLocation.toFile().delete();
-                    if(!deleteSucceeded) {
+                    if (!deleteSucceeded) {
                         throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
                     }
                 }
@@ -101,7 +101,7 @@ public class RewriteFixTask extends AbstractRewriteTask {
                     assert result.getBefore() != null;
                     Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
                     boolean deleteSucceeded = originalLocation.toFile().delete();
-                    if(!deleteSucceeded) {
+                    if (!deleteSucceeded) {
                         throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
                     }
                     assert result.getAfter() != null;

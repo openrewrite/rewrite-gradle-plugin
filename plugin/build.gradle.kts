@@ -7,7 +7,7 @@ plugins {
     java
     groovy
     `java-gradle-plugin`
-    id("com.gradle.plugin-publish") version("0.13.0")
+    id("com.gradle.plugin-publish") version ("0.13.0")
     id("com.github.hierynomus.license") version "0.15.0" apply false
     `maven-publish`
 }
@@ -72,7 +72,7 @@ val nettyVersion = "1.1.0"
 
 configurations.all {
     resolutionStrategy.eachDependency {
-        if(requested.group == "org.openrewrite") {
+        if (requested.group == "org.openrewrite") {
             useVersion(rewriteVersion)
         }
     }
@@ -106,8 +106,8 @@ project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getBy
 
 tasks.named<Test>("test") {
     systemProperty(
-            GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME,
-            project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
+        GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME,
+        project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
     )
 }
 
