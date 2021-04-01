@@ -188,7 +188,7 @@ class RewritePluginTest extends RewriteTestBase {
             """.stripIndent()
         when:
         def result = gradleRunner(gradleVersion, "rewriteFix").build()
-        def aRewriteFixnResult = result.task(":a:rewriteFixTest")
+        def aRewriteFixResult = result.task(":a:rewriteFixTest")
         def bRewriteFixResult = result.task(":b:rewriteFixTest")
         String bTestClassExpected = """\
                 package com.foo;
@@ -213,7 +213,7 @@ class RewritePluginTest extends RewriteTestBase {
                 }
         """.stripIndent()
         then:
-        aRewriteFixnResult.outcome == TaskOutcome.SUCCESS
+        aRewriteFixResult.outcome == TaskOutcome.SUCCESS
         bRewriteFixResult.outcome == TaskOutcome.SUCCESS
         aTestClass.text == aTestClassExpected
         bTestClass.text == bTestClassExpected
@@ -222,7 +222,6 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    @Ignore("Not yet updated for rewrite 7.0.0")
     def "rewriteDiscover will print some stuff"() {
         given:
         projectDir.newFile("settings.gradle")
@@ -231,7 +230,6 @@ class RewritePluginTest extends RewriteTestBase {
 
         File buildGradleFile = projectDir.newFile("build.gradle")
         buildGradleFile.text = buildGradleFileText
-        File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
 
         when:
         def result = gradleRunner(gradleVersion, "rewriteDiscoverMain").build()
