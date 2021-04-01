@@ -67,12 +67,15 @@ public class RewriteExtension extends CodeQualityExtension {
     public void enableRouteMetricsToLog() {
         metricsUri = magicalMetricsLogString;
     }
+
     public boolean isRouteMetricsToLog() {
         return metricsUri.equals(magicalMetricsLogString);
     }
+
     public String getMetricsUri() {
         return metricsUri;
     }
+
     public void setMetricsUri(String value) {
         metricsUri = value;
     }
@@ -90,7 +93,10 @@ public class RewriteExtension extends CodeQualityExtension {
         this.activeRecipes.addAll(activeRecipes);
     }
 
-    public void activeStyle(String... styles) { activeStyles.addAll(asList(styles)); }
+    public void activeStyle(String... styles) {
+        activeStyles.addAll(asList(styles));
+    }
+
     public void clearActiveStyles() {
         activeStyles.clear();
     }
@@ -99,7 +105,10 @@ public class RewriteExtension extends CodeQualityExtension {
         this.activeRecipes.clear();
         this.activeRecipes.addAll(activeStyles);
     }
-    public List<String> getActiveStyles() { return activeStyles; }
+
+    public List<String> getActiveStyles() {
+        return activeStyles;
+    }
 
     public List<String> getActiveRecipes() {
         return activeRecipes;

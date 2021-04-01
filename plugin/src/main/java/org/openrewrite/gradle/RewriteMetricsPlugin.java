@@ -151,7 +151,7 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
      * Returns the port of a URI. If the port is unset (i.e. {@code -1}) then returns the {@code
      * defaultPort}.
      *
-     * @param uri the URI to extract the port from
+     * @param uri         the URI to extract the port from
      * @param defaultPort the default to use if the port is unset
      * @return the port of a URI or {@code defaultPort} if unset
      * @throws NullPointerException if {@code uri} is {@code null}

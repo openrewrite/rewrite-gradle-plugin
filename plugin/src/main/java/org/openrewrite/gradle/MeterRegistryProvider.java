@@ -53,14 +53,14 @@ public class MeterRegistryProvider implements AutoCloseable {
     }
 
     public MeterRegistry registry() {
-       this.registry = buildRegistry();
-       return this.registry;
+        this.registry = buildRegistry();
+        return this.registry;
     }
 
     private MeterRegistry buildRegistry() {
-        if(uriString == null) {
+        if (uriString == null) {
             return new CompositeMeterRegistry();
-        } else if(uriString.equals("LOG")) {
+        } else if (uriString.equals("LOG")) {
             return new GradleLoggingMeterRegistry(log);
         } else {
             try {
@@ -124,7 +124,7 @@ public class MeterRegistryProvider implements AutoCloseable {
             }
         }
 
-        if(registry != null) {
+        if (registry != null) {
             registry.close();
         }
     }
