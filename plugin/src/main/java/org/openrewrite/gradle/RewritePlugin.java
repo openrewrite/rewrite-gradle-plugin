@@ -59,7 +59,6 @@ public class RewritePlugin implements Plugin<Project> {
         JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
         SourceSetContainer sourceSets = javaConvention.getSourceSets();
 
-        // Fix is meant to be invoked manually and so is not made a dependency of any existing task
         Task rewriteFixAll = tasks.create("rewriteFix",
                 taskClosure(task -> {
                     task.setGroup("rewrite");
@@ -67,9 +66,16 @@ public class RewritePlugin implements Plugin<Project> {
                 })
         );
 
-        Task rewriteWarnAll = tasks.create("rewriteWarn", taskClosure(task -> {
+        Task rewriteDryRunAll = tasks.create("rewriteDryRun", taskClosure(task -> {
                     task.setGroup("rewrite");
                     task.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
+                })
+        );
+        // aliasing deprecated "rewriteWarn" to new "rewriteDryRun" task equivalent
+        Task rewriteWarnAll = tasks.create("rewriteWarn", taskClosure(task -> {
+                    task.setGroup("rewrite");
+                    task.setDescription("DEPRECATED: alias for rewriteDryRun.");
+                    task.dependsOn(rewriteDryRunAll);
                 })
         );
 
@@ -94,9 +100,14 @@ public class RewritePlugin implements Plugin<Project> {
             Task compileTask = tasks.getByName(compileTaskName);
             compileTask.configure(taskClosure(it -> it.mustRunAfter(rewriteFix)));
 
+            String rewriteDryRunTaskName = "rewriteDryRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+            RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, sourceSet, extension);
+            rewriteDryRunAll.configure(taskClosure(it -> it.dependsOn(rewriteDryRun)));
+
+            // aliasing deprecated "rewriteWarn" to new "rewriteDryRun" task equivalent
             String rewriteWarnTaskName = "rewriteWarn" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            RewriteWarnTask rewriteWarn = tasks.create(rewriteWarnTaskName, RewriteWarnTask.class, sourceSet, extension);
-            rewriteWarnAll.configure(taskClosure(it -> it.dependsOn(rewriteWarn)));
+            Task rewriteWarnTask = tasks.create(rewriteWarnTaskName, taskClosure(it -> it.dependsOn(rewriteDryRun)));
+            rewriteWarnAll.configure(taskClosure(it -> it.dependsOn(rewriteWarnTask)));
         });
     }
 

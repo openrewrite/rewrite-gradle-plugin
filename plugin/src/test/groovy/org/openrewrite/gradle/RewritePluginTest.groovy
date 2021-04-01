@@ -75,7 +75,7 @@ class RewritePluginTest extends RewriteTestBase {
             }
             """.stripIndent()
 
-    def "rewriteWarn task runs successfully as a standalone command without modifying source files"() {
+    def "rewriteDryRun task runs successfully as a standalone command without modifying source files"() {
         given:
         projectDir.newFile("settings.gradle")
         File rewriteYaml = projectDir.newFile("rewrite-config.yml")
@@ -86,18 +86,39 @@ class RewritePluginTest extends RewriteTestBase {
         File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
 
         when:
-        def result = gradleRunner(gradleVersion, "rewriteWarn").build()
+        def result = gradleRunner(gradleVersion, "rewriteDryRun").build()
 
-        def rewriteWarnMainResult = result.task(":rewriteWarnMain")
-        def rewriteWarnTestResult = result.task(":rewriteWarnTest")
+        def rewriteDryRunMainResult = result.task(":rewriteDryRunMain")
+        def rewriteDryRunTestResult = result.task(":rewriteDryRunTest")
 
         then:
-        rewriteWarnMainResult.outcome == TaskOutcome.SUCCESS
-        // The "warn" task should not have touched the source file and the "fix" task shouldn't have run
+        rewriteDryRunMainResult.outcome == TaskOutcome.SUCCESS
+        // The "rewriteDryRun" task should not have touched the source file and the "rewriteFix" task shouldn't have run
         sourceFile.text == HelloWorldJavaBeforeRefactor
         // With no test source in this project any of these are potentially reasonable results
         // Ultimately NO_SOURCE is probably the most appropriate, but in this early stage of development SUCCESS is acceptable
-        rewriteWarnTestResult.outcome == TaskOutcome.SUCCESS || rewriteWarnTestResult.outcome == TaskOutcome.NO_SOURCE || rewriteWarnTestResult.outcome == TaskOutcome.SKIPPED
+        rewriteDryRunTestResult.outcome == TaskOutcome.SUCCESS || rewriteDryRunTestResult.outcome == TaskOutcome.NO_SOURCE || rewriteDryRunTestResult.outcome == TaskOutcome.SKIPPED
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
+    def "rewriteWarn task (deprecated) is an alias to rewriteDryRun"() {
+        given:
+        projectDir.newFile("settings.gradle")
+        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
+        rewriteYaml.text = rewriteYamlText
+
+        File buildGradleFile = projectDir.newFile("build.gradle")
+        buildGradleFile.text = buildGradleFileText
+
+        when:
+        def result = gradleRunner(gradleVersion, "rewriteWarn").build()
+
+        def rewriteWarnResult = result.task(":rewriteDryRun")
+
+        then:
+        rewriteWarnResult.outcome == TaskOutcome.SUCCESS
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
