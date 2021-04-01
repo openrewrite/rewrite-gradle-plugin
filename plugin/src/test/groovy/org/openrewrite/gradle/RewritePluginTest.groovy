@@ -31,7 +31,7 @@ import spock.lang.Unroll
 @Unroll
 class RewritePluginTest extends RewriteTestBase {
 
-    String rewriteYamlText =  """\
+    String rewriteYamlText = """\
             ---
             type: specs.openrewrite.org/v1beta/recipe
             name: org.openrewrite.gradle.SayHello
@@ -75,8 +75,7 @@ class RewritePluginTest extends RewriteTestBase {
             }
             """.stripIndent()
 
-    @Ignore
-    def "rewriteWarn task will run as part of a normal Java Build"() {
+    def "rewriteWarn task runs successfully as a standalone command without modifying source files"() {
         given:
         projectDir.newFile("settings.gradle")
         File rewriteYaml = projectDir.newFile("rewrite-config.yml")
@@ -87,11 +86,10 @@ class RewritePluginTest extends RewriteTestBase {
         File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
 
         when:
-        def result = gradleRunner(gradleVersion, "build").build()
+        def result = gradleRunner(gradleVersion, "rewriteWarn").build()
 
         def rewriteWarnMainResult = result.task(":rewriteWarnMain")
         def rewriteWarnTestResult = result.task(":rewriteWarnTest")
-
 
         then:
         rewriteWarnMainResult.outcome == TaskOutcome.SUCCESS
