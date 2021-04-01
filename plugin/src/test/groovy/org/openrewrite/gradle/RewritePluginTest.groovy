@@ -31,7 +31,7 @@ import spock.lang.Unroll
 @Unroll
 class RewritePluginTest extends RewriteTestBase {
 
-    String rewriteYamlText =  """\
+    String rewriteYamlText = """\
             ---
             type: specs.openrewrite.org/v1beta/recipe
             name: org.openrewrite.gradle.SayHello
