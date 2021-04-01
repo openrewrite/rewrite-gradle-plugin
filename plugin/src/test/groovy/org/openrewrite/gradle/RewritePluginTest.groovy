@@ -75,30 +75,6 @@ class RewritePluginTest extends RewriteTestBase {
             }
             """.stripIndent()
 
-    def "rewriteWarn task does not have dependsOn link to check task"() {
-        given:
-        projectDir.newFile("settings.gradle")
-        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
-        rewriteYaml.text = rewriteYamlText
-
-        File buildGradleFile = projectDir.newFile("build.gradle")
-        buildGradleFile.text = buildGradleFileText
-
-        when:
-        def result = gradleRunner(gradleVersion, "check").build()
-
-        def rewriteWarnResult = result.task(":rewriteWarn")
-        def checkResult = result.task(":check")
-
-        then:
-        checkResult.outcome == TaskOutcome.UP_TO_DATE
-        // "rewriteWarn" task should not have been called
-        rewriteWarnResult == null
-
-        where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
-    }
-
     def "rewriteWarn task runs successfully as a standalone command without modifying source files"() {
         given:
         projectDir.newFile("settings.gradle")
