@@ -67,15 +67,11 @@ public class RewritePlugin implements Plugin<Project> {
                 })
         );
 
-        // Warn hooks into the regular Java build by becoming a dependency of "check", the same way that checkstyle or unit tests do
         Task rewriteWarnAll = tasks.create("rewriteWarn", taskClosure(task -> {
                     task.setGroup("rewrite");
                     task.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
                 })
         );
-
-        Task checkTask = tasks.getByName("check");
-        checkTask.dependsOn(rewriteWarnAll);
 
         Task rewriteDiscoverAll = tasks.create("rewriteDiscover", taskClosure(task -> {
             task.setGroup("rewrite");
