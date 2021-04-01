@@ -68,7 +68,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     protected abstract Logger getLog();
 
     /**
-     * The Java source files that will be subject to rewriting
+     * @return The Java source files that will be subject to rewriting
      */
     @InputFiles
     public FileCollection getJavaSources() {
