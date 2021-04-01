@@ -28,11 +28,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class RewriteFixTask extends AbstractRewriteTask {
-    private static final Logger log = Logging.getLogger(RewriteFixTask.class);
+public class RewriteRunTask extends AbstractRewriteTask {
+    private static final Logger log = Logging.getLogger(RewriteRunTask.class);
 
     @Inject
-    public RewriteFixTask(SourceSet sourceSet, RewriteExtension extension) {
+    public RewriteRunTask(SourceSet sourceSet, RewriteExtension extension) {
         super(sourceSet, extension);
         setGroup("rewrite");
         setDescription("Apply the active refactoring recipes to sources within the " + sourceSet.getName() + " SourceSet");

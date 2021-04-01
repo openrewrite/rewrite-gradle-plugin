@@ -93,7 +93,7 @@ class RewritePluginTest extends RewriteTestBase {
 
         then:
         rewriteDryRunMainResult.outcome == TaskOutcome.SUCCESS
-        // The "rewriteDryRun" task should not have touched the source file and the "rewriteFix" task shouldn't have run
+        // The "rewriteDryRun" task should not have touched the source file and the "rewriteRun" task shouldn't have run
         sourceFile.text == HelloWorldJavaBeforeRefactor
         // With no test source in this project any of these are potentially reasonable results
         // Ultimately NO_SOURCE is probably the most appropriate, but in this early stage of development SUCCESS is acceptable
@@ -124,7 +124,7 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    def "rewriteFix will alter the source file according to the provided active recipe"() {
+    def "rewriteRun will alter the source file according to the provided active recipe"() {
         given:
         projectDir.newFile("settings.gradle")
         File rewriteYaml = projectDir.newFile("rewrite-config.yml")
@@ -136,11 +136,11 @@ class RewritePluginTest extends RewriteTestBase {
         File sourceFileAfter = new File(projectDir.root, "src/main/java/org/openrewrite/after/HelloWorld.java")
 
         when:
-        def result = gradleRunner(gradleVersion, "rewriteFixMain").build()
-        def rewriteFixMainResult = result.task(":rewriteFixMain")
+        def result = gradleRunner(gradleVersion, "rewriteRunMain").build()
+        def rewriteRunMainResult = result.task(":rewriteRunMain")
 
         then:
-        rewriteFixMainResult.outcome == TaskOutcome.SUCCESS
+        rewriteRunMainResult.outcome == TaskOutcome.SUCCESS
         !sourceFileBefore.exists()
         sourceFileAfter.exists()
         sourceFileAfter.text == HelloWorldJavaAfterRefactor
@@ -149,7 +149,28 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    def "rewriteFix applies pre-shipped AutoFormat on multi-project builds"() {
+    def "rewriteFix task (deprecated) is an alias to rewriteRun"() {
+        given:
+        projectDir.newFile("settings.gradle")
+        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
+        rewriteYaml.text = rewriteYamlText
+
+        File buildGradleFile = projectDir.newFile("build.gradle")
+        buildGradleFile.text = buildGradleFileText
+
+        when:
+        def result = gradleRunner(gradleVersion, "rewriteFix").build()
+
+        def rewriteFixResult = result.task(":rewriteRun")
+
+        then:
+        rewriteFixResult.outcome == TaskOutcome.SUCCESS
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
+    def "rewriteRun applies pre-shipped AutoFormat on multi-project builds"() {
         // note, the "output" result of this test is at least somewhat contingent
         // on the current state of what the recipe will perform depending on the version
         // of upstream rewrite used at the time of running this test--
@@ -211,9 +232,9 @@ class RewritePluginTest extends RewriteTestBase {
                 }
             """.stripIndent()
         when:
-        def result = gradleRunner(gradleVersion, "rewriteFix").build()
-        def aRewriteFixResult = result.task(":a:rewriteFixTest")
-        def bRewriteFixResult = result.task(":b:rewriteFixTest")
+        def result = gradleRunner(gradleVersion, "rewriteRun").build()
+        def aRewriteRunResult = result.task(":a:rewriteRunTest")
+        def bRewriteRunResult = result.task(":b:rewriteRunTest")
         String aTestClassExpected = """\
                 package com.foo;
     
@@ -239,8 +260,8 @@ class RewritePluginTest extends RewriteTestBase {
                 }
         """.stripIndent()
         then:
-        aRewriteFixResult.outcome == TaskOutcome.SUCCESS
-        bRewriteFixResult.outcome == TaskOutcome.SUCCESS
+        aRewriteRunResult.outcome == TaskOutcome.SUCCESS
+        bRewriteRunResult.outcome == TaskOutcome.SUCCESS
         aTestClass.text == aTestClassExpected
         bTestClass.text == bTestClassExpected
 
@@ -249,7 +270,7 @@ class RewritePluginTest extends RewriteTestBase {
     }
 
     @Ignore("Not yet updated for rewrite 7.0.0")
-    def "rewriteFix applies recipes provided from external dependencies on multi-project builds"() {
+    def "rewriteRun applies recipes provided from external dependencies on multi-project builds"() {
         given:
         File settings = projectDir.newFile("settings.gradle")
         settings.text = """\
@@ -307,9 +328,9 @@ class RewritePluginTest extends RewriteTestBase {
                 }
             """.stripIndent()
         when:
-        def result = gradleRunner(gradleVersion, "rewriteFix").build()
-        def aRewriteFixResult = result.task(":a:rewriteFixTest")
-        def bRewriteFixResult = result.task(":b:rewriteFixTest")
+        def result = gradleRunner(gradleVersion, "rewriteRun").build()
+        def aRewriteRunResult = result.task(":a:rewriteRunTest")
+        def bRewriteRunResult = result.task(":b:rewriteRunTest")
         String aTestClassExpected = """\
                 package com.foo;
     
@@ -333,8 +354,8 @@ class RewritePluginTest extends RewriteTestBase {
                 }
         """.stripIndent()
         then:
-        aRewriteFixResult.outcome == TaskOutcome.SUCCESS
-        bRewriteFixResult.outcome == TaskOutcome.SUCCESS
+        aRewriteRunResult.outcome == TaskOutcome.SUCCESS
+        bRewriteRunResult.outcome == TaskOutcome.SUCCESS
         aTestClass.text == aTestClassExpected
         bTestClass.text == bTestClassExpected
 

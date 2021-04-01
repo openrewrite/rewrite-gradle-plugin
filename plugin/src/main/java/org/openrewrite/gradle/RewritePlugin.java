@@ -26,8 +26,8 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
 
 /**
- * Adds the RewriteExtension to the current project and registers tasks per-sourceSet that implement rewrite fixing and
- * warning. Only needs to be applied to projects with java sources. No point in applying this to any project that does
+ * Adds the RewriteExtension to the current project and registers tasks per-sourceSet.
+ * Only needs to be applied to projects with java sources. No point in applying this to any project that does
  * not have java sources of its own, such as the root project in a multi-project builds.
  */
 public class RewritePlugin implements Plugin<Project> {
@@ -59,10 +59,17 @@ public class RewritePlugin implements Plugin<Project> {
         JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
         SourceSetContainer sourceSets = javaConvention.getSourceSets();
 
-        Task rewriteFixAll = tasks.create("rewriteFix",
+        Task rewriteRunAll = tasks.create("rewriteRun",
                 taskClosure(task -> {
                     task.setGroup("rewrite");
                     task.setDescription("Apply the active refactoring recipes to all sources");
+                })
+        );
+        // aliasing deprecated "rewriteFix" to new "rewriteRun" task equivalent
+        Task rewriteFixAll = tasks.create("rewriteFix", taskClosure(task -> {
+                    task.setGroup("rewrite");
+                    task.setDescription("DEPRECATED: alias for rewriteRun.");
+                    task.dependsOn(rewriteRunAll);
                 })
         );
 
@@ -87,10 +94,14 @@ public class RewritePlugin implements Plugin<Project> {
         // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
         // Do not replace all() with any form of collection iteration which does not share this important property
         sourceSets.all(sourceSet -> {
-            String rewriteFixTaskName = "rewriteFix" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+            String rewriteRunTaskName = "rewriteRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+            RewriteRunTask rewriteRun = tasks.create(rewriteRunTaskName, RewriteRunTask.class, sourceSet, extension);
+            rewriteRunAll.configure(taskClosure(it -> it.dependsOn(rewriteRun)));
 
-            RewriteFixTask rewriteFix = tasks.create(rewriteFixTaskName, RewriteFixTask.class, sourceSet, extension);
-            rewriteFixAll.configure(taskClosure(it -> it.dependsOn(rewriteFix)));
+            // aliasing deprecated "rewriteFix" to new "rewriteRun" task equivalent
+            String rewriteFixTaskName = "rewriteFix" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+            Task rewriteFixTask = tasks.create(rewriteFixTaskName, taskClosure(it -> it.dependsOn(rewriteRun)));
+            rewriteFixAll.configure(taskClosure(it -> it.dependsOn(rewriteFixTask)));
 
             String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
             RewriteDiscoverTask discoverTask = tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, sourceSet, extension);
@@ -98,7 +109,7 @@ public class RewritePlugin implements Plugin<Project> {
 
             String compileTaskName = sourceSet.getCompileTaskName("java");
             Task compileTask = tasks.getByName(compileTaskName);
-            compileTask.configure(taskClosure(it -> it.mustRunAfter(rewriteFix)));
+            compileTask.configure(taskClosure(it -> it.mustRunAfter(rewriteRun)));
 
             String rewriteDryRunTaskName = "rewriteDryRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
             RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, sourceSet, extension);

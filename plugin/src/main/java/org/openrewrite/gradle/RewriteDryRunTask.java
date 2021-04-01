@@ -72,7 +72,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
                         " by:");
                 logRecipesThatMadeChanges(result);
             }
-            getLog().warn("Run 'gradle rewriteFix' to apply the fixes. Afterwards, review and commit the results.");
+            getLog().warn("Run 'gradle rewriteRun' to apply the fixes. Afterwards, review and commit the results.");
         }
     }
 }
