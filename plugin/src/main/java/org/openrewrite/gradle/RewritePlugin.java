@@ -65,24 +65,10 @@ public class RewritePlugin implements Plugin<Project> {
                     task.setDescription("Apply the active refactoring recipes to all sources");
                 })
         );
-        // aliasing deprecated "rewriteFix" to new "rewriteRun" task equivalent
-        Task rewriteFixAll = tasks.create("rewriteFix", taskClosure(task -> {
-                    task.setGroup("rewrite");
-                    task.setDescription("DEPRECATED: alias for rewriteRun.");
-                    task.dependsOn(rewriteRunAll);
-                })
-        );
 
         Task rewriteDryRunAll = tasks.create("rewriteDryRun", taskClosure(task -> {
                     task.setGroup("rewrite");
                     task.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
-                })
-        );
-        // aliasing deprecated "rewriteWarn" to new "rewriteDryRun" task equivalent
-        Task rewriteWarnAll = tasks.create("rewriteWarn", taskClosure(task -> {
-                    task.setGroup("rewrite");
-                    task.setDescription("DEPRECATED: alias for rewriteDryRun.");
-                    task.dependsOn(rewriteDryRunAll);
                 })
         );
 
@@ -98,11 +84,6 @@ public class RewritePlugin implements Plugin<Project> {
             RewriteRunTask rewriteRun = tasks.create(rewriteRunTaskName, RewriteRunTask.class, sourceSet, extension);
             rewriteRunAll.configure(taskClosure(it -> it.dependsOn(rewriteRun)));
 
-            // aliasing deprecated "rewriteFix" to new "rewriteRun" task equivalent
-            String rewriteFixTaskName = "rewriteFix" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            Task rewriteFixTask = tasks.create(rewriteFixTaskName, taskClosure(it -> it.dependsOn(rewriteRun)));
-            rewriteFixAll.configure(taskClosure(it -> it.dependsOn(rewriteFixTask)));
-
             String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
             RewriteDiscoverTask discoverTask = tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, sourceSet, extension);
             rewriteDiscoverAll.dependsOn(discoverTask);
@@ -114,11 +95,6 @@ public class RewritePlugin implements Plugin<Project> {
             String rewriteDryRunTaskName = "rewriteDryRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
             RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, sourceSet, extension);
             rewriteDryRunAll.configure(taskClosure(it -> it.dependsOn(rewriteDryRun)));
-
-            // aliasing deprecated "rewriteWarn" to new "rewriteDryRun" task equivalent
-            String rewriteWarnTaskName = "rewriteWarn" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            Task rewriteWarnTask = tasks.create(rewriteWarnTaskName, taskClosure(it -> it.dependsOn(rewriteDryRun)));
-            rewriteWarnAll.configure(taskClosure(it -> it.dependsOn(rewriteWarnTask)));
         });
     }
 

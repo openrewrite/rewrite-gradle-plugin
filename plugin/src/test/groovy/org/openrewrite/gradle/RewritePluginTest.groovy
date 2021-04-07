@@ -103,27 +103,6 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    def "rewriteWarn task (deprecated) is an alias to rewriteDryRun"() {
-        given:
-        projectDir.newFile("settings.gradle")
-        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
-        rewriteYaml.text = rewriteYamlText
-
-        File buildGradleFile = projectDir.newFile("build.gradle")
-        buildGradleFile.text = buildGradleFileText
-
-        when:
-        def result = gradleRunner(gradleVersion, "rewriteWarn").build()
-
-        def rewriteWarnResult = result.task(":rewriteDryRun")
-
-        then:
-        rewriteWarnResult.outcome == TaskOutcome.SUCCESS
-
-        where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
-    }
-
     def "rewriteRun will alter the source file according to the provided active recipe"() {
         given:
         projectDir.newFile("settings.gradle")
@@ -144,27 +123,6 @@ class RewritePluginTest extends RewriteTestBase {
         !sourceFileBefore.exists()
         sourceFileAfter.exists()
         sourceFileAfter.text == HelloWorldJavaAfterRefactor
-
-        where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
-    }
-
-    def "rewriteFix task (deprecated) is an alias to rewriteRun"() {
-        given:
-        projectDir.newFile("settings.gradle")
-        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
-        rewriteYaml.text = rewriteYamlText
-
-        File buildGradleFile = projectDir.newFile("build.gradle")
-        buildGradleFile.text = buildGradleFileText
-
-        when:
-        def result = gradleRunner(gradleVersion, "rewriteFix").build()
-
-        def rewriteFixResult = result.task(":rewriteRun")
-
-        then:
-        rewriteFixResult.outcome == TaskOutcome.SUCCESS
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
