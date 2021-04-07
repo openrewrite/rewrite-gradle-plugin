@@ -23,11 +23,11 @@ import org.openrewrite.Result;
 
 import javax.inject.Inject;
 
-public class RewriteWarnTask extends AbstractRewriteTask {
-    private static final Logger log = Logging.getLogger(RewriteWarnTask.class);
+public class RewriteDryRunTask extends AbstractRewriteTask {
+    private static final Logger log = Logging.getLogger(RewriteDryRunTask.class);
 
     @Inject
-    public RewriteWarnTask(SourceSet sourceSet, RewriteExtension extension) {
+    public RewriteDryRunTask(SourceSet sourceSet, RewriteExtension extension) {
         super(sourceSet, extension);
         setGroup("rewrite");
         setDescription("Dry run the active refactoring recipes to sources within the " + sourceSet.getName() + " SourceSet. No results will be made.");
@@ -72,7 +72,7 @@ public class RewriteWarnTask extends AbstractRewriteTask {
                         " by:");
                 logRecipesThatMadeChanges(result);
             }
-            getLog().warn("Run 'gradle rewriteFix' to apply the fixes. Afterwards, review and commit the results.");
+            getLog().warn("Run 'gradle rewriteRun' to apply the fixes. Afterwards, review and commit the results.");
         }
     }
 }

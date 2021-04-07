@@ -26,8 +26,8 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
 
 /**
- * Adds the RewriteExtension to the current project and registers tasks per-sourceSet that implement rewrite fixing and
- * warning. Only needs to be applied to projects with java sources. No point in applying this to any project that does
+ * Adds the RewriteExtension to the current project and registers tasks per-sourceSet.
+ * Only needs to be applied to projects with java sources. No point in applying this to any project that does
  * not have java sources of its own, such as the root project in a multi-project builds.
  */
 public class RewritePlugin implements Plugin<Project> {
@@ -59,15 +59,14 @@ public class RewritePlugin implements Plugin<Project> {
         JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
         SourceSetContainer sourceSets = javaConvention.getSourceSets();
 
-        // Fix is meant to be invoked manually and so is not made a dependency of any existing task
-        Task rewriteFixAll = tasks.create("rewriteFix",
+        Task rewriteRunAll = tasks.create("rewriteRun",
                 taskClosure(task -> {
                     task.setGroup("rewrite");
                     task.setDescription("Apply the active refactoring recipes to all sources");
                 })
         );
 
-        Task rewriteWarnAll = tasks.create("rewriteWarn", taskClosure(task -> {
+        Task rewriteDryRunAll = tasks.create("rewriteDryRun", taskClosure(task -> {
                     task.setGroup("rewrite");
                     task.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
                 })
@@ -81,10 +80,9 @@ public class RewritePlugin implements Plugin<Project> {
         // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
         // Do not replace all() with any form of collection iteration which does not share this important property
         sourceSets.all(sourceSet -> {
-            String rewriteFixTaskName = "rewriteFix" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-
-            RewriteFixTask rewriteFix = tasks.create(rewriteFixTaskName, RewriteFixTask.class, sourceSet, extension);
-            rewriteFixAll.configure(taskClosure(it -> it.dependsOn(rewriteFix)));
+            String rewriteRunTaskName = "rewriteRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+            RewriteRunTask rewriteRun = tasks.create(rewriteRunTaskName, RewriteRunTask.class, sourceSet, extension);
+            rewriteRunAll.configure(taskClosure(it -> it.dependsOn(rewriteRun)));
 
             String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
             RewriteDiscoverTask discoverTask = tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, sourceSet, extension);
@@ -92,11 +90,11 @@ public class RewritePlugin implements Plugin<Project> {
 
             String compileTaskName = sourceSet.getCompileTaskName("java");
             Task compileTask = tasks.getByName(compileTaskName);
-            compileTask.configure(taskClosure(it -> it.mustRunAfter(rewriteFix)));
+            compileTask.configure(taskClosure(it -> it.mustRunAfter(rewriteRun)));
 
-            String rewriteWarnTaskName = "rewriteWarn" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            RewriteWarnTask rewriteWarn = tasks.create(rewriteWarnTaskName, RewriteWarnTask.class, sourceSet, extension);
-            rewriteWarnAll.configure(taskClosure(it -> it.dependsOn(rewriteWarn)));
+            String rewriteDryRunTaskName = "rewriteDryRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+            RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, sourceSet, extension);
+            rewriteDryRunAll.configure(taskClosure(it -> it.dependsOn(rewriteDryRun)));
         });
     }
 
