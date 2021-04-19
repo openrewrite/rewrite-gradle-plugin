@@ -340,4 +340,41 @@ class RewritePluginTest extends RewriteTestBase {
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
+
+    @Ignore("java.lang.IllegalArgumentException: Could not resolve type id 'org.openrewrite.java.testing.junit5.RunnerToExtension' as a subtype of `org.openrewrite.Recipe`: no such class found")
+    def "rewriteDiscover handles third-party dependencies"() {
+        given:
+        projectDir.newFile("settings.gradle")
+
+        File buildGradleFile = projectDir.newFile("build.gradle")
+        buildGradleFile.text = """\
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                }
+
+                dependencies {
+                    compileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:1.1.0")
+                }
+                
+                rewrite {
+                     activeRecipe("org.openrewrite.java.testing.junit5.JUnit4to5Migration")
+                }            
+            """.stripIndent()
+
+        when:
+        def result = gradleRunner(gradleVersion, "rewriteDiscover").build()
+        def rewriteDiscoverResult = result.task(":rewriteDiscover")
+
+        then:
+        rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
 }
