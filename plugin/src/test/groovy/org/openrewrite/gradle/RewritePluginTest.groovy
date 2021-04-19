@@ -341,7 +341,7 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    @Ignore("java.lang.IllegalArgumentException: Could not resolve type id 'org.openrewrite.java.testing.junit5.RunnerToExtension' as a subtype of `org.openrewrite.Recipe`: no such class found")
+    @Ignore("https://github.com/openrewrite/rewrite-gradle-plugin/issues/33")
     def "rewriteDiscover handles third-party dependencies"() {
         given:
         projectDir.newFile("settings.gradle")
