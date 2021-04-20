@@ -377,7 +377,7 @@ class RewritePluginTest extends RewriteTestBase {
         rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
 
         // this assertion string containing total number of discovered recipes will change over time, it should be replaced, but it's confidence-instilling for the moment TODO
-        result.output.contains("Found 2 active recipes and 58 total recipes.")
+        result.output.contains("Found 2 active recipes and")
         !result.output.contains("Could not resolve type id")
 
         where:
