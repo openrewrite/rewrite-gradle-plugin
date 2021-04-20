@@ -17,6 +17,7 @@ package org.openrewrite.gradle
 
 import org.gradle.testkit.runner.TaskOutcome
 import spock.lang.Ignore
+import spock.lang.Issue
 import spock.lang.Unroll
 
 /**
@@ -341,8 +342,8 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    @Ignore("https://github.com/openrewrite/rewrite-gradle-plugin/issues/33")
-    def "rewriteDiscover handles third-party dependencies"() {
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/33")
+    def "rewriteDiscover handles deserializing third-party dependencies"() {
         given:
         projectDir.newFile("settings.gradle")
 
@@ -363,16 +364,21 @@ class RewritePluginTest extends RewriteTestBase {
                 }
                 
                 rewrite {
-                     activeRecipe("org.openrewrite.java.testing.junit5.JUnit4to5Migration")
+                     activeRecipe("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
+                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                 }            
             """.stripIndent()
 
         when:
         def result = gradleRunner(gradleVersion, "rewriteDiscover").build()
-        def rewriteDiscoverResult = result.task(":rewriteDiscover")
+        def rewriteDiscoverResult = result.task(":rewriteDiscoverMain")
 
         then:
         rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
+
+        // this assertion string containing total number of discovered recipes will change over time, it should be replaced, but it's confidence-instilling for the moment TODO
+        result.output.contains("Found 2 active recipes and 58 total recipes.")
+        !result.output.contains("Could not resolve type id")
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST

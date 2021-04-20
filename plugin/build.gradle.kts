@@ -40,7 +40,9 @@ gradlePlugin {
 
 repositories {
     mavenCentral()
-    mavenLocal()
+    maven {
+        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+    }
 }
 
 configurations.all {
@@ -66,7 +68,8 @@ val plugin: Configuration by configurations.creating
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
 // Fixed version numbers because com.gradle.plugin-publish will publish poms with requested rather than resolved versions
-val rewriteVersion = "7.1.0"
+// TODO REPLACE BEFORE RELEASE (please :) )
+val rewriteVersion = "7.2.0-SNAPSHOT"
 val prometheusVersion = "1.3.0"
 val nettyVersion = "1.1.0"
 
