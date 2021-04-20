@@ -111,6 +111,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         properties.putAll(gradleProps);
 
         Environment.Builder env = Environment.builder(properties)
+                .scanRuntimeClasspath()
                 .scanClasspath(
                         Stream.concat(
                                 getDependencies().getFiles().stream(),
