@@ -20,89 +20,8 @@ import spock.lang.Ignore
 import spock.lang.Issue
 import spock.lang.Unroll
 
-/**
- * Because of how the Gradle Test Kit manages the classpath of the project under test, these may fail when run from an IDE.
- * To run & debug these tests from IntelliJ ensure you're delegating test execution to Gradle:
- *  Settings > Build, Execution, Deployment > Build Tools > Gradle > Run tests using Gradle
- *
- * That should be all you have to do.
- * If breakpoints within your plugin aren't being hit try adding -Dorg.gradle.testkit.debug=true to the arguments and
- * connecting a remote debugger on port 5005.
- */
 @Unroll
-class RewritePluginTest extends RewriteTestBase {
-
-    String rewriteYamlText = """\
-            ---
-            type: specs.openrewrite.org/v1beta/recipe
-            name: org.openrewrite.gradle.SayHello
-            recipeList:
-              - org.openrewrite.java.ChangeMethodName:
-                  methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
-                  newMethodName: sayHello
-              - org.openrewrite.java.ChangePackage:
-                  oldFullyQualifiedPackageName: org.openrewrite.before
-                  newFullyQualifiedPackageName: org.openrewrite.after
-            """.stripIndent()
-    String buildGradleFileText = """\
-            plugins {
-                id("java")
-                id("org.openrewrite.rewrite")
-            }
-            
-            rewrite {
-                configFile = "rewrite-config.yml"
-                activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
-            }
-            """.stripIndent()
-    String HelloWorldJavaBeforeRefactor = """\
-            package org.openrewrite.before;
-            
-            public class HelloWorld { public static void sayGoodbye() {System.out.println("Hello world");
-                }public static void main(String[] args) {   sayGoodbye(); }
-            }
-            """.stripIndent()
-    String HelloWorldJavaAfterRefactor = """\
-            package org.openrewrite.after;
-            
-            public class HelloWorld {
-                public static void sayHello() {
-                    System.out.println("Hello world");
-                }
-            
-                public static void main(String[] args) {
-                    sayHello();
-                }
-            }
-            """.stripIndent()
-
-    def "rewriteDryRun task runs successfully as a standalone command without modifying source files"() {
-        given:
-        projectDir.newFile("settings.gradle")
-        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
-        rewriteYaml.text = rewriteYamlText
-
-        File buildGradleFile = projectDir.newFile("build.gradle")
-        buildGradleFile.text = buildGradleFileText
-        File sourceFile = writeSource(HelloWorldJavaBeforeRefactor)
-
-        when:
-        def result = gradleRunner(gradleVersion, "rewriteDryRun").build()
-
-        def rewriteDryRunMainResult = result.task(":rewriteDryRunMain")
-        def rewriteDryRunTestResult = result.task(":rewriteDryRunTest")
-
-        then:
-        rewriteDryRunMainResult.outcome == TaskOutcome.SUCCESS
-        // The "rewriteDryRun" task should not have touched the source file and the "rewriteRun" task shouldn't have run
-        sourceFile.text == HelloWorldJavaBeforeRefactor
-        // With no test source in this project any of these are potentially reasonable results
-        // Ultimately NO_SOURCE is probably the most appropriate, but in this early stage of development SUCCESS is acceptable
-        rewriteDryRunTestResult.outcome == TaskOutcome.SUCCESS || rewriteDryRunTestResult.outcome == TaskOutcome.NO_SOURCE || rewriteDryRunTestResult.outcome == TaskOutcome.SKIPPED
-
-        where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
-    }
+class RewriteRunTest extends RewriteTestBase {
 
     def "rewriteRun will alter the source file according to the provided active recipe"() {
         given:
@@ -112,7 +31,7 @@ class RewritePluginTest extends RewriteTestBase {
 
         File buildGradleFile = projectDir.newFile("build.gradle")
         buildGradleFile.text = buildGradleFileText
-        File sourceFileBefore = writeSource(HelloWorldJavaBeforeRefactor)
+        File sourceFileBefore = writeSource(helloWorldJavaBeforeRefactor)
         File sourceFileAfter = new File(projectDir.root, "src/main/java/org/openrewrite/after/HelloWorld.java")
 
         when:
@@ -123,7 +42,7 @@ class RewritePluginTest extends RewriteTestBase {
         rewriteRunMainResult.outcome == TaskOutcome.SUCCESS
         !sourceFileBefore.exists()
         sourceFileAfter.exists()
-        sourceFileAfter.text == HelloWorldJavaAfterRefactor
+        sourceFileAfter.text == helloWorldJavaAfterRefactor
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
@@ -228,7 +147,8 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    @Ignore("Not yet updated for rewrite 7.0.0")
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/33")
+    @Ignore
     def "rewriteRun applies recipes provided from external dependencies on multi-project builds"() {
         given:
         File settings = projectDir.newFile("settings.gradle")
@@ -247,16 +167,17 @@ class RewritePluginTest extends RewriteTestBase {
                     apply plugin: "org.openrewrite.rewrite"
                 
                     repositories {
+                        mavenLocal()
                         mavenCentral()
                     }
                 
                     dependencies {
                         testImplementation("junit:junit:4.12")
-                        testCompileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:+")
+                        compileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:1.1.0")
                     }
                     
                     rewrite {
-                         activeRecipe("org.openrewrite.java.testing.junit5.JUnit4to5Migration")
+                         activeRecipe("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
                     }
                 }
             """.stripIndent()
@@ -322,65 +243,4 @@ class RewritePluginTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    def "rewriteDiscover will print some stuff"() {
-        given:
-        projectDir.newFile("settings.gradle")
-        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
-        rewriteYaml.text = rewriteYamlText
-
-        File buildGradleFile = projectDir.newFile("build.gradle")
-        buildGradleFile.text = buildGradleFileText
-
-        when:
-        def result = gradleRunner(gradleVersion, "rewriteDiscoverMain").build()
-        def rewriteDiscoverResult = result.task(":rewriteDiscoverMain")
-
-        then:
-        rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
-
-        where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
-    }
-
-    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/33")
-    def "rewriteDiscover handles deserializing third-party dependencies"() {
-        given:
-        projectDir.newFile("settings.gradle")
-
-        File buildGradleFile = projectDir.newFile("build.gradle")
-        buildGradleFile.text = """\
-                plugins {
-                    id("java")
-                    id("org.openrewrite.rewrite")
-                }
-                
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                }
-
-                dependencies {
-                    compileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:1.1.0")
-                }
-                
-                rewrite {
-                     activeRecipe("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
-                     activeRecipe("org.openrewrite.java.format.AutoFormat")
-                }            
-            """.stripIndent()
-
-        when:
-        def result = gradleRunner(gradleVersion, "rewriteDiscover").build()
-        def rewriteDiscoverResult = result.task(":rewriteDiscoverMain")
-
-        then:
-        rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
-
-        // this assertion string containing total number of discovered recipes will change over time, it should be replaced, but it's confidence-instilling for the moment TODO
-        result.output.contains("Found 2 active recipes and")
-        !result.output.contains("Could not resolve type id")
-
-        where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
-    }
 }

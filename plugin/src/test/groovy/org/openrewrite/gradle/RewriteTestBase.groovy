@@ -23,6 +23,15 @@ import spock.lang.Specification
 
 import java.lang.management.ManagementFactory
 
+/**
+ * Because of how the Gradle Test Kit manages the classpath of the project under test, these may fail when run from an IDE.
+ * To run & debug these tests from IntelliJ ensure you're delegating test execution to Gradle:
+ *      Settings > Build, Execution, Deployment > Build Tools > Gradle > Run tests using Gradle
+ *
+ * That should be all you have to do.
+ * If breakpoints within your plugin aren't being hit try adding -Dorg.gradle.testkit.debug=true to the arguments and
+ * connecting a remote debugger on port 5005.
+ */
 class RewriteTestBase extends Specification {
     static final List<String> GRADLE_VERSIONS_UNDER_TEST = gradleVersionsUnderTest()
 
@@ -66,4 +75,52 @@ class RewriteTestBase extends Specification {
             [GradleVersion.current().version]
         }
     }
+
+    String rewriteYamlText = """\
+            ---
+            type: specs.openrewrite.org/v1beta/recipe
+            name: org.openrewrite.gradle.SayHello
+            recipeList:
+              - org.openrewrite.java.ChangeMethodName:
+                  methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
+                  newMethodName: sayHello
+              - org.openrewrite.java.ChangePackage:
+                  oldFullyQualifiedPackageName: org.openrewrite.before
+                  newFullyQualifiedPackageName: org.openrewrite.after
+            """.stripIndent()
+
+    String buildGradleFileText = """\
+            plugins {
+                id("java")
+                id("org.openrewrite.rewrite")
+            }
+            
+            rewrite {
+                configFile = "rewrite-config.yml"
+                activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
+            }
+            """.stripIndent()
+
+    String helloWorldJavaBeforeRefactor = """\
+            package org.openrewrite.before;
+            
+            public class HelloWorld { public static void sayGoodbye() {System.out.println("Hello world");
+                }public static void main(String[] args) {   sayGoodbye(); }
+            }
+            """.stripIndent()
+
+    String helloWorldJavaAfterRefactor = """\
+            package org.openrewrite.after;
+            
+            public class HelloWorld {
+                public static void sayHello() {
+                    System.out.println("Hello world");
+                }
+            
+                public static void main(String[] args) {
+                    sayHello();
+                }
+            }
+            """.stripIndent()
+
 }
