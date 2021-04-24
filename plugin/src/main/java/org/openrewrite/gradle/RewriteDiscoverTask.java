@@ -15,6 +15,7 @@
  */
 package org.openrewrite.gradle;
 
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.SourceSet;
@@ -35,8 +36,8 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     }
 
     @Inject
-    public RewriteDiscoverTask(SourceSet sourceSet, RewriteExtension extension) {
-        super(sourceSet, extension);
+    public RewriteDiscoverTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
+        super(configuration, sourceSet, extension);
         setGroup("rewrite");
         setDescription("Lists all available recipes and their visitors within the " + sourceSet.getName() + " SourceSet");
     }

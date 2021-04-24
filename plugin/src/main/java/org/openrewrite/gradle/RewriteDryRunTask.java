@@ -15,6 +15,7 @@
  */
 package org.openrewrite.gradle;
 
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.SourceSet;
@@ -27,8 +28,8 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteDryRunTask.class);
 
     @Inject
-    public RewriteDryRunTask(SourceSet sourceSet, RewriteExtension extension) {
-        super(sourceSet, extension);
+    public RewriteDryRunTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
+        super(configuration, sourceSet, extension);
         setGroup("rewrite");
         setDescription("Dry run the active refactoring recipes to sources within the " + sourceSet.getName() + " SourceSet. No results will be made.");
     }

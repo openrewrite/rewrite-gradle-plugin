@@ -148,7 +148,6 @@ class RewriteRunTest extends RewriteTestBase {
     }
 
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/33")
-    @Ignore
     def "rewriteRun applies recipes provided from external dependencies on multi-project builds"() {
         given:
         File settings = projectDir.newFile("settings.gradle")
@@ -173,7 +172,7 @@ class RewriteRunTest extends RewriteTestBase {
                 
                     dependencies {
                         testImplementation("junit:junit:4.12")
-                        compileOnly("org.openrewrite.recipe:rewrite-testing-frameworks:1.1.0")
+                        rewrite("org.openrewrite.recipe:rewrite-testing-frameworks:+")
                     }
                     
                     rewrite {
@@ -191,7 +190,8 @@ class RewriteRunTest extends RewriteTestBase {
                 public class ATestClass {
                 
                     @Test
-                    public void passes() { }
+                    public void passes() {
+                    }
                 }
             """.stripIndent()
         File bSrcDir = projectDir.newFolder("b", "src", "test", "java", "com", "foo")
@@ -204,7 +204,8 @@ class RewriteRunTest extends RewriteTestBase {
                 public class BTestClass {
                 
                     @Test
-                    public void passes() { }
+                    public void passes() {
+                    }
                 }
             """.stripIndent()
         when:
@@ -219,7 +220,8 @@ class RewriteRunTest extends RewriteTestBase {
                 public class ATestClass {
                 
                     @Test
-                    void passes() { }
+                    void passes() {
+                    }
                 }
         """.stripIndent()
         String bTestClassExpected = """\
@@ -230,7 +232,8 @@ class RewriteRunTest extends RewriteTestBase {
                 public class BTestClass {
                 
                     @Test
-                    void passes() { }
+                    void passes() {
+                    }
                 }
         """.stripIndent()
         then:

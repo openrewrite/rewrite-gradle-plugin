@@ -17,6 +17,7 @@ package org.openrewrite.gradle;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.tasks.Input;
@@ -56,10 +57,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     @SuppressWarnings("FieldCanBeLocal")
     private MeterRegistry registry;
 
+    private final Configuration configuration;
     private final SourceSet sourceSet;
     private final RewriteExtension extension;
 
-    public AbstractRewriteTask(SourceSet sourceSet, RewriteExtension extension) {
+    public AbstractRewriteTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
+        this.configuration = configuration;
         this.sourceSet = sourceSet;
         this.extension = extension;
     }
@@ -114,7 +117,9 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 .scanRuntimeClasspath()
                 .scanClasspath(
                         Stream.concat(
-                                getDependencies().getFiles().stream(),
+                                Stream.concat(
+                                        getDependencies().getFiles().stream(),
+                                        configuration.getFiles().stream()),
                                 getJavaSources().getFiles().stream()
                         )
                                 .map(File::toPath)

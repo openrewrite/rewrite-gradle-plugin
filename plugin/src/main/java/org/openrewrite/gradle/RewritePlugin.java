@@ -20,6 +20,7 @@ import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -59,6 +60,9 @@ public class RewritePlugin implements Plugin<Project> {
         JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
         SourceSetContainer sourceSets = javaConvention.getSourceSets();
 
+        // Rewrite module dependencies put here will be available to all rewrite tasks
+        Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
+
         Task rewriteRunAll = tasks.create("rewriteRun",
                 taskClosure(task -> {
                     task.setGroup("rewrite");
@@ -81,11 +85,11 @@ public class RewritePlugin implements Plugin<Project> {
         // Do not replace all() with any form of collection iteration which does not share this important property
         sourceSets.all(sourceSet -> {
             String rewriteRunTaskName = "rewriteRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            RewriteRunTask rewriteRun = tasks.create(rewriteRunTaskName, RewriteRunTask.class, sourceSet, extension);
+            RewriteRunTask rewriteRun = tasks.create(rewriteRunTaskName, RewriteRunTask.class, rewriteConf, sourceSet, extension);
             rewriteRunAll.configure(taskClosure(it -> it.dependsOn(rewriteRun)));
 
             String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            RewriteDiscoverTask discoverTask = tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, sourceSet, extension);
+            RewriteDiscoverTask discoverTask = tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, rewriteConf, sourceSet, extension);
             rewriteDiscoverAll.dependsOn(discoverTask);
 
             String compileTaskName = sourceSet.getCompileTaskName("java");
@@ -93,7 +97,7 @@ public class RewritePlugin implements Plugin<Project> {
             compileTask.configure(taskClosure(it -> it.mustRunAfter(rewriteRun)));
 
             String rewriteDryRunTaskName = "rewriteDryRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, sourceSet, extension);
+            RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, rewriteConf, sourceSet, extension);
             rewriteDryRunAll.configure(taskClosure(it -> it.dependsOn(rewriteDryRun)));
         });
     }
