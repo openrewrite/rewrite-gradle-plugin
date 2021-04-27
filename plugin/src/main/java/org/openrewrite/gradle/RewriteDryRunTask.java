@@ -18,14 +18,25 @@ package org.openrewrite.gradle;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
 import org.openrewrite.Result;
 
 import javax.inject.Inject;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.stream.Stream;
 
 public class RewriteDryRunTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteDryRunTask.class);
+
+    @OutputFile
+    Path getReportPath() {
+        return getProject().getBuildDir().toPath().resolve("reports").resolve("rewrite").resolve(getSourceSet().getName() + ".patch");
+    }
 
     @Inject
     public RewriteDryRunTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
@@ -73,6 +84,29 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
                         " by:");
                 logRecipesThatMadeChanges(result);
             }
+
+            Path patchFile = getReportPath();
+            //noinspection ResultOfMethodCallIgnored
+            patchFile.getParent().toFile().mkdirs();
+            try (BufferedWriter writer = Files.newBufferedWriter(patchFile)) {
+                Stream.concat(
+                        Stream.concat(results.generated.stream(), results.deleted.stream()),
+                        Stream.concat(results.moved.stream(), results.refactoredInPlace.stream())
+                )
+                        .map(Result::diff)
+                        .forEach(diff -> {
+                            try {
+                                writer.write(diff + "\n");
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        });
+
+            } catch (Exception e) {
+                throw new RuntimeException("Unable to generate rewrite result file.", e);
+            }
+            getLog().warn("Report available:");
+            getLog().warn("    " + patchFile.normalize().toString());
             getLog().warn("Run 'gradle rewriteRun' to apply the fixes. Afterwards, review and commit the results.");
         }
     }

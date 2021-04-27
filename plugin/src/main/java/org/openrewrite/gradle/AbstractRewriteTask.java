@@ -103,6 +103,11 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return sourceSet.getCompileClasspath();
     }
 
+    @Internal
+    public SourceSet getSourceSet() {
+        return sourceSet;
+    }
+
     protected Environment environment() {
         Map<Object, Object> gradleProps = getProject().getProperties().entrySet().stream()
                 .filter(entry -> entry.getKey() != null && entry.getValue() != null)
