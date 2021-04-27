@@ -20,8 +20,9 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.Recipe;
 import org.openrewrite.config.Environment;
+import org.openrewrite.config.RecipeDescriptor;
+import org.openrewrite.style.NamedStyles;
 
 import javax.inject.Inject;
 import java.util.Collection;
@@ -45,19 +46,33 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     @TaskAction
     public void run() {
         Environment env = environment();
+        Collection<RecipeDescriptor> availableRecipeDescriptors = env.listRecipeDescriptors();
         Set<String> activeRecipes = getActiveRecipes();
+        Collection<NamedStyles> availableStyles = env.listStyles();
+        Set<String> activeStyles = getActiveStyles();
 
-        Collection<Recipe> recipesByName = env.listRecipes();
-        log.quiet("Found " + activeRecipes.size() + " active recipes and " + recipesByName.size() + " total recipes.\n");
-
-        log.quiet("Active Recipe Names:");
-        for (String activeRecipe : activeRecipes) {
-            log.quiet("\t" + activeRecipe);
-        }
-
-        log.quiet("Recipes:");
-        for (Recipe recipe : recipesByName) {
+        log.quiet("Available Recipes:");
+        for (RecipeDescriptor recipe : availableRecipeDescriptors) {
             log.quiet("\tname: " + recipe.getName());
         }
+
+        log.quiet("Available Styles:");
+        for (NamedStyles style : availableStyles) {
+            log.quiet("\tname: " + style.getName());
+        }
+
+        log.quiet("Active Styles:");
+        for (String style : activeStyles) {
+            log.quiet("\tname: " + style);
+        }
+
+        log.quiet("Active Recipes:");
+        for (String activeRecipe : activeRecipes) {
+            log.quiet("\tname: " + activeRecipe);
+        }
+
+        log.quiet("Found " + availableRecipeDescriptors.size() + " available recipes and " + availableStyles.size() + " available styles.");
+        log.quiet("Configured with " + activeRecipes.size() + " active recipes and " + activeStyles.size() + " active styles.");
+
     }
 }

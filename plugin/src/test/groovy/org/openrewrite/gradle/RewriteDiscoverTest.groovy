@@ -66,7 +66,8 @@ class RewriteDiscoverTest extends RewriteTestBase {
                 rewrite {
                      activeRecipe("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
                      activeRecipe("org.openrewrite.java.format.AutoFormat")
-                }            
+                     activeStyle("org.openrewrite.java.SpringFormat")
+                }
             """.stripIndent()
 
         when:
@@ -77,7 +78,7 @@ class RewriteDiscoverTest extends RewriteTestBase {
         rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
 
         // this assertion string containing total number of discovered recipes will change over time, it should be replaced, but it's confidence-instilling for the moment TODO
-        result.output.contains("Found 2 active recipes and")
+        result.output.contains("Configured with 2 active recipes and 1 active styles.")
         !result.output.contains("Could not resolve type id")
 
         where:
