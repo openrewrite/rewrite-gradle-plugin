@@ -107,7 +107,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
             }
             getLog().warn("Report available:");
             getLog().warn(indent(1, patchFile.normalize().toString()).toString());
-            getLog().warn("Run 'mvn rewrite:run' to the recipes.");
+            getLog().warn("Run 'mvn rewrite:run' to apply the recipes.");
         }
     }
 }
