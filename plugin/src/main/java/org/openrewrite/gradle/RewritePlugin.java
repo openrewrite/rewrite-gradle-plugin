@@ -21,6 +21,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -62,6 +63,12 @@ public class RewritePlugin implements Plugin<Project> {
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
+        DependencyHandler dependencies = project.getDependencies();
+        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-java-11:7.2.2");
+        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-java-8:7.2.2");
+        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-xml:7.2.2");
+        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-yaml:7.2.2");
+        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-properties:7.2.2");
 
         Task rewriteRunAll = tasks.create("rewriteRun",
                 taskClosure(task -> {

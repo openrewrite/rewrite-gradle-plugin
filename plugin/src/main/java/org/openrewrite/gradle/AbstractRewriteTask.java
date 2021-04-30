@@ -24,23 +24,19 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.SourceSet;
-import org.openrewrite.ExecutionContext;
-import org.openrewrite.InMemoryExecutionContext;
-import org.openrewrite.Parser;
-import org.openrewrite.Recipe;
+import org.openrewrite.gradle.DynamicRewriteLoader.*;
+import org.openrewrite.java.JavaParser;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.xml.XmlParser;
 import org.openrewrite.yaml.YamlParser;
-import org.openrewrite.Result;
-import org.openrewrite.config.Environment;
-import org.openrewrite.SourceFile;
-import org.openrewrite.config.YamlResourceLoader;
-import org.openrewrite.java.JavaParser;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Stream;
@@ -51,20 +47,16 @@ import static java.util.stream.Collectors.toMap;
 
 public abstract class AbstractRewriteTask extends DefaultTask implements RewriteTask {
 
-    private String metricsUri;
-    private String metricsUsername;
-    private String metricsPassword;
-    @SuppressWarnings("FieldCanBeLocal")
-    private MeterRegistry registry;
-
     private final Configuration configuration;
     private final SourceSet sourceSet;
     private final RewriteExtension extension;
+    private final DynamicRewriteLoader loader;
 
     public AbstractRewriteTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
         this.configuration = configuration;
         this.sourceSet = sourceSet;
         this.extension = extension;
+        this.loader = new DynamicRewriteLoader(configuration);
     }
 
     @Internal
@@ -76,11 +68,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     @InputFiles
     public FileCollection getJavaSources() {
         return sourceSet.getAllJava();
-    }
-
-    @Override
-    public void setMeterRegistry(MeterRegistry registry) {
-        this.registry = registry;
     }
 
     @InputFiles
@@ -123,7 +110,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         Properties properties = new Properties();
         properties.putAll(gradleProps);
 
-        Environment.Builder env = Environment.builder(properties)
+        EnvironmentBuilder env = loader.environmentBuilder(properties)
                 .scanRuntimeClasspath()
                 .scanClasspath(
                         Stream.concat(
@@ -140,7 +127,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         File rewriteConfig = extension.getConfigFile();
         if (rewriteConfig.exists()) {
             try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties);
+                YamlResourceLoader resourceLoader = loader.yamlResourceLoader(is, rewriteConfig.toURI(), properties);
                 env.load(resourceLoader);
             } catch (IOException e) {
                 throw new RuntimeException("Unable to load rewrite configuration", e);
@@ -153,14 +140,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return env.build();
     }
 
-    protected ExecutionContext executionContext() {
-        return new InMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
+    protected InMemoryExecutionContext executionContext() {
+        return loader.inMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
     }
 
     protected ResultsContainer listResults() {
-        try (MeterRegistryProvider meterRegistryProvider = new MeterRegistryProvider(getLog(), metricsUri, metricsUsername, metricsPassword)) {
-            MeterRegistry meterRegistry = meterRegistryProvider.registry();
-
+        try {
             Path baseDir = getProject().getRootProject().getRootDir().toPath();
 
             Environment env = environment();
@@ -168,7 +153,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if (activeRecipes.isEmpty()) {
                 return new ResultsContainer(baseDir, emptyList());
             }
-            List<NamedStyles> styles = env.activateStyles(getActiveStyles());
+            List<Object> styles = env.activateStyles(getActiveStyles());
             Recipe recipe = env.activateRecipes(activeRecipes);
 
             List<SourceFile> sourceFiles = new ArrayList<>();
@@ -184,7 +169,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             ExecutionContext ctx = executionContext();
 
             sourceFiles.addAll(
-                    JavaParser.fromJavaVersion()
+                    loader.javaParserFromJavaVersion()
                             .styles(styles)
                             .classpath(dependencyPaths)
                             .logCompilationWarningsAndErrors(false)
@@ -193,7 +178,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             );
 
             sourceFiles.addAll(
-                    new YamlParser()
+                    loader.yamlParser()
                             .parse(getResources().getFiles().stream()
                                             .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
                                             .map(File::toPath)
@@ -203,7 +188,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             ));
 
             sourceFiles.addAll(
-                    new PropertiesParser()
+                    loader.propertiesParser()
                             .parse(
                                     getResources().getFiles().stream()
                                             .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
@@ -214,7 +199,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             ));
 
             sourceFiles.addAll(
-                    new XmlParser().parse(
+                    loader.xmlParser().parse(
                             getResources().getFiles().stream()
                                     .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
                                     .map(File::toPath)
