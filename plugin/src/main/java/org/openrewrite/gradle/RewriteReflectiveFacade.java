@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Provides access to Rewrite classes resolved & loaded from the supplied dependency configuration.
+ * Provides access to Rewrite classes resolved and loaded from the supplied dependency configuration.
  */
 @SuppressWarnings({"unchecked", "UnusedReturnValue", "InnerClassMayBeStatic"})
 public class RewriteReflectiveFacade {
@@ -86,7 +86,7 @@ public class RewriteReflectiveFacade {
 
         public EnvironmentBuilder scanRuntimeClasspath(String... acceptPackages) {
             try {
-                real.getClass().getDeclaredMethod("scanRuntimeClasspath", String[].class).invoke(real, new Object[]{ acceptPackages});
+                real.getClass().getMethod("scanRuntimeClasspath", String[].class).invoke(real, new Object[]{ acceptPackages});
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -95,7 +95,7 @@ public class RewriteReflectiveFacade {
 
         public EnvironmentBuilder scanClasspath(Iterable<Path> compileClasspath, String ... acceptPackages) {
             try {
-                real.getClass().getDeclaredMethod("scanClasspath", Iterable.class, String[].class)
+                real.getClass().getMethod("scanClasspath", Iterable.class, String[].class)
                         .invoke(real, compileClasspath, acceptPackages);
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -105,7 +105,7 @@ public class RewriteReflectiveFacade {
 
         public EnvironmentBuilder scanUserHome() {
             try {
-                real.getClass().getDeclaredMethod("scanUserHome").invoke(real);
+                real.getClass().getMethod("scanUserHome").invoke(real);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -115,7 +115,7 @@ public class RewriteReflectiveFacade {
         public EnvironmentBuilder load(YamlResourceLoader yamlResourceLoader) {
             try {
                 Class<?> resourceLoaderClass = getClassLoader().loadClass("org.openrewrite.config.ResourceLoader");
-                real.getClass().getDeclaredMethod("load", resourceLoaderClass).invoke(real, yamlResourceLoader.real);
+                real.getClass().getMethod("load", resourceLoaderClass).invoke(real, yamlResourceLoader.real);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -124,7 +124,7 @@ public class RewriteReflectiveFacade {
 
         public Environment build() {
             try {
-                return new Environment(real.getClass().getDeclaredMethod("build").invoke(real));
+                return new Environment(real.getClass().getMethod("build").invoke(real));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -140,7 +140,7 @@ public class RewriteReflectiveFacade {
 
         public Path getSourcePath() {
             try {
-                return (Path) real.getClass().getDeclaredMethod("getSourcePath").invoke(real);
+                return (Path) real.getClass().getMethod("getSourcePath").invoke(real);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -148,7 +148,7 @@ public class RewriteReflectiveFacade {
 
         public String print() {
             try {
-                return (String) real.getClass().getDeclaredMethod("print").invoke(real);
+                return (String) real.getClass().getMethod("print").invoke(real);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -164,7 +164,7 @@ public class RewriteReflectiveFacade {
 
         @Nullable public SourceFile getBefore() {
             try {
-                return new SourceFile(real.getClass().getDeclaredMethod("getBefore").invoke(real));
+                return new SourceFile(real.getClass().getMethod("getBefore").invoke(real));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -172,7 +172,7 @@ public class RewriteReflectiveFacade {
 
         @Nullable public SourceFile getAfter() {
             try {
-                return new SourceFile(real.getClass().getDeclaredMethod("getAfter").invoke(real));
+                return new SourceFile(real.getClass().getMethod("getAfter").invoke(real));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -180,7 +180,7 @@ public class RewriteReflectiveFacade {
 
         public List<Recipe> getRecipesThatMadeChanges() {
             try {
-                Set<Object> result = (Set<Object>) real.getClass().getDeclaredMethod("getRecipesThatMadeChanges").invoke(real);
+                Set<Object> result = (Set<Object>) real.getClass().getMethod("getRecipesThatMadeChanges").invoke(real);
                 return result.stream()
                         .map(Recipe::new)
                         .collect(Collectors.toList());
@@ -191,7 +191,7 @@ public class RewriteReflectiveFacade {
 
         public String diff(){
             try {
-                return (String) real.getClass().getDeclaredMethod("diff").invoke(real);
+                return (String) real.getClass().getMethod("diff").invoke(real);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -254,7 +254,7 @@ public class RewriteReflectiveFacade {
             try {
                 //noinspection unchecked
                 List<Object> raw = (List<Object>) real.getClass()
-                        .getDeclaredMethod("activateStyles", Iterable.class)
+                        .getMethod("activateStyles", Iterable.class)
                         .invoke(real, activeStyles);
                 return raw.stream()
                         .map(NamedStyles::new)
@@ -267,7 +267,7 @@ public class RewriteReflectiveFacade {
         public Recipe activateRecipes(Iterable<String> activeRecipes) {
             try {
                 return new Recipe(real.getClass()
-                        .getDeclaredMethod("activateRecipes", Iterable.class)
+                        .getMethod("activateRecipes", Iterable.class)
                         .invoke(real, activeRecipes));
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -276,7 +276,7 @@ public class RewriteReflectiveFacade {
 
         public Collection<RecipeDescriptor> listRecipeDescriptors() {
             try {
-                Collection<Object> result = (Collection<Object>) real.getClass().getDeclaredMethod("listRecipeDescriptors").invoke(real);
+                Collection<Object> result = (Collection<Object>) real.getClass().getMethod("listRecipeDescriptors").invoke(real);
                 return result.stream()
                         .map(RecipeDescriptor::new)
                         .collect(toList());
@@ -287,7 +287,7 @@ public class RewriteReflectiveFacade {
 
         public Collection<NamedStyles> listStyles() {
             try {
-                List<Object> raw = (List<Object>) real.getClass().getDeclaredMethod("listStyles").invoke(real);
+                List<Object> raw = (List<Object>) real.getClass().getMethod("listStyles").invoke(real);
                 return raw.stream()
                         .map(NamedStyles::new)
                         .collect(toList());
@@ -307,7 +307,7 @@ public class RewriteReflectiveFacade {
 
         public String getName() {
             try {
-                return (String) real.getClass().getDeclaredMethod("getName").invoke(real);
+                return (String) real.getClass().getMethod("getName").invoke(real);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -318,7 +318,7 @@ public class RewriteReflectiveFacade {
         try {
             return new EnvironmentBuilder(getClassLoader()
                     .loadClass("org.openrewrite.config.Environment")
-                    .getDeclaredMethod("builder", Properties.class)
+                    .getMethod("builder", Properties.class)
                     .invoke(null, properties)
             );
         } catch (Exception e) {
@@ -428,12 +428,12 @@ public class RewriteReflectiveFacade {
             if (System.getProperty("java.version").startsWith("1.8")) {
                 return new JavaParserBuilder( getClassLoader()
                         .loadClass("org.openrewrite.java.Java8Parser")
-                        .getDeclaredMethod("builder")
+                        .getMethod("builder")
                         .invoke(null));
             }
             return new JavaParserBuilder(getClassLoader()
                     .loadClass("org.openrewrite.java.Java11Parser")
-                    .getDeclaredMethod("builder")
+                    .getMethod("builder")
                     .invoke(null));
         } catch (Exception e) {
             throw new RuntimeException(e);
