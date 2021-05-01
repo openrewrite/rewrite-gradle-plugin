@@ -41,13 +41,13 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     private final Configuration configuration;
     private final SourceSet sourceSet;
     private final RewriteExtension extension;
-    private final RewriteReflectiveFacade loader;
+    private final RewriteReflectiveFacade rewrite;
 
     public AbstractRewriteTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
         this.configuration = configuration;
         this.sourceSet = sourceSet;
         this.extension = extension;
-        this.loader = new RewriteReflectiveFacade(configuration);
+        this.rewrite = new RewriteReflectiveFacade(configuration);
     }
 
     @Internal
@@ -101,7 +101,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         Properties properties = new Properties();
         properties.putAll(gradleProps);
 
-        EnvironmentBuilder env = loader.environmentBuilder(properties)
+        EnvironmentBuilder env = rewrite.environmentBuilder(properties)
                 .scanRuntimeClasspath()
                 .scanClasspath(
                         Stream.concat(
@@ -118,7 +118,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         File rewriteConfig = extension.getConfigFile();
         if (rewriteConfig.exists()) {
             try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                YamlResourceLoader resourceLoader = loader.yamlResourceLoader(is, rewriteConfig.toURI(), properties);
+                YamlResourceLoader resourceLoader = rewrite.yamlResourceLoader(is, rewriteConfig.toURI(), properties);
                 env.load(resourceLoader);
             } catch (IOException e) {
                 throw new RuntimeException("Unable to load rewrite configuration", e);
@@ -132,7 +132,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     }
 
     protected InMemoryExecutionContext executionContext() {
-        return loader.inMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
+        return rewrite.inMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
     }
 
     protected ResultsContainer listResults() {
@@ -160,7 +160,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             InMemoryExecutionContext ctx = executionContext();
 
             sourceFiles.addAll(
-                    loader.javaParserFromJavaVersion()
+                    rewrite.javaParserFromJavaVersion()
                             .styles(styles)
                             .classpath(dependencyPaths)
                             .logCompilationWarningsAndErrors(false)
@@ -169,7 +169,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             );
 
             sourceFiles.addAll(
-                    loader.yamlParser()
+                    rewrite.yamlParser()
                             .parse(getResources().getFiles().stream()
                                             .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
                                             .map(File::toPath)
@@ -179,7 +179,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             ));
 
             sourceFiles.addAll(
-                    loader.propertiesParser()
+                    rewrite.propertiesParser()
                             .parse(
                                     getResources().getFiles().stream()
                                             .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
@@ -190,7 +190,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             ));
 
             sourceFiles.addAll(
-                    loader.xmlParser().parse(
+                    rewrite.xmlParser().parse(
                             getResources().getFiles().stream()
                                     .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
                                     .map(File::toPath)
