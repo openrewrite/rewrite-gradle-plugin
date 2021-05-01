@@ -16,4 +16,4 @@
 @NonNullApi
 package org.openrewrite.gradle;
 
-import org.openrewrite.internal.lang.NonNullApi;
+import org.gradle.api.NonNullApi;

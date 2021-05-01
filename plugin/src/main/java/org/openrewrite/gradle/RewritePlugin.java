@@ -69,6 +69,7 @@ public class RewritePlugin implements Plugin<Project> {
         dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-xml:7.2.2");
         dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-yaml:7.2.2");
         dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-properties:7.2.2");
+        dependencies.add(rewriteConf.getName(), "org.slf4j:slf4j-simple:1.7.30");
 
         Task rewriteRunAll = tasks.create("rewriteRun",
                 taskClosure(task -> {

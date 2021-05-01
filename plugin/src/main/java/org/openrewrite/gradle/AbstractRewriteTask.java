@@ -15,7 +15,6 @@
  */
 package org.openrewrite.gradle;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.FileCollection;
@@ -24,19 +23,11 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.SourceSet;
-import org.openrewrite.gradle.DynamicRewriteLoader.*;
-import org.openrewrite.java.JavaParser;
-import org.openrewrite.properties.PropertiesParser;
-import org.openrewrite.style.NamedStyles;
-import org.openrewrite.xml.XmlParser;
-import org.openrewrite.yaml.YamlParser;
+import org.openrewrite.gradle.RewriteReflectiveFacade.*;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Stream;
@@ -50,13 +41,13 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     private final Configuration configuration;
     private final SourceSet sourceSet;
     private final RewriteExtension extension;
-    private final DynamicRewriteLoader loader;
+    private final RewriteReflectiveFacade loader;
 
     public AbstractRewriteTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
         this.configuration = configuration;
         this.sourceSet = sourceSet;
         this.extension = extension;
-        this.loader = new DynamicRewriteLoader(configuration);
+        this.loader = new RewriteReflectiveFacade(configuration);
     }
 
     @Internal
@@ -153,7 +144,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if (activeRecipes.isEmpty()) {
                 return new ResultsContainer(baseDir, emptyList());
             }
-            List<Object> styles = env.activateStyles(getActiveStyles());
+            List<NamedStyles> styles = env.activateStyles(getActiveStyles());
             Recipe recipe = env.activateRecipes(activeRecipes);
 
             List<SourceFile> sourceFiles = new ArrayList<>();
@@ -166,7 +157,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .map(File::toPath)
                     .map(AbstractRewriteTask::toRealPath)
                     .collect(toList());
-            ExecutionContext ctx = executionContext();
+            InMemoryExecutionContext ctx = executionContext();
 
             sourceFiles.addAll(
                     loader.javaParserFromJavaVersion()

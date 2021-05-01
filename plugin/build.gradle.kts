@@ -81,16 +81,9 @@ configurations.all {
 }
 
 dependencies {
-    plugin("org.openrewrite:rewrite-java:$rewriteVersion")
     plugin("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
     plugin("io.rsocket:rsocket-transport-netty:$nettyVersion")
 
-    compileOnly("org.openrewrite:rewrite-java-11:$rewriteVersion")
-    compileOnly("org.openrewrite:rewrite-java-8:$rewriteVersion")
-    compileOnly("org.openrewrite:rewrite-xml:$rewriteVersion")
-    compileOnly("org.openrewrite:rewrite-properties:$rewriteVersion")
-    compileOnly("org.openrewrite:rewrite-yaml:$rewriteVersion")
-    api("org.openrewrite:rewrite-java:$rewriteVersion")
     api("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
     api("io.rsocket:rsocket-transport-netty:$nettyVersion")
 

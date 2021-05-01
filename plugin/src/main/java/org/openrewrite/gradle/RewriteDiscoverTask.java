@@ -20,9 +20,7 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.config.Environment;
-import org.openrewrite.config.RecipeDescriptor;
-import org.openrewrite.style.NamedStyles;
+import org.openrewrite.gradle.RewriteReflectiveFacade.*;
 
 import javax.inject.Inject;
 import java.util.Collection;
