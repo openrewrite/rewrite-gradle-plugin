@@ -136,7 +136,7 @@ public class RewriteReflectiveFacade {
     public class SourceFile {
         private final Object real;
 
-        public SourceFile(Object real) {
+        private SourceFile(Object real) {
             this.real = real;
         }
 
@@ -160,7 +160,7 @@ public class RewriteReflectiveFacade {
     public class Result {
         private final Object real;
 
-        public Result(Object real) {
+        private Result(Object real) {
             this.real = real;
         }
 
@@ -203,7 +203,7 @@ public class RewriteReflectiveFacade {
     public class Recipe {
         private final Object real;
 
-        public Recipe(Object real) {
+        private Recipe(Object real) {
             this.real = real;
         }
 
@@ -303,7 +303,7 @@ public class RewriteReflectiveFacade {
     public class RecipeDescriptor {
         private final Object real;
 
-        public RecipeDescriptor(Object real) {
+        private RecipeDescriptor(Object real) {
             this.real = real;
         }
 
@@ -331,7 +331,7 @@ public class RewriteReflectiveFacade {
     public class YamlResourceLoader {
         private final Object real;
 
-        public YamlResourceLoader(Object real) {
+        private YamlResourceLoader(Object real) {
             this.real = real;
         }
     }
@@ -351,7 +351,7 @@ public class RewriteReflectiveFacade {
     public class InMemoryExecutionContext {
         private final Object real;
 
-        public InMemoryExecutionContext(Object real) {
+        private InMemoryExecutionContext(Object real) {
             this.real = real;
         }
     }
