@@ -95,6 +95,10 @@ class RewriteTestBase extends Specification {
                 id("org.openrewrite.rewrite")
             }
             
+            repositories {
+                mavenCentral()
+            }
+            
             rewrite {
                 configFile = "rewrite-config.yml"
                 activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")

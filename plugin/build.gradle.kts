@@ -68,30 +68,13 @@ val plugin: Configuration by configurations.creating
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
 // Fixed version numbers because com.gradle.plugin-publish will publish poms with requested rather than resolved versions
-val rewriteVersion = "7.2.2"
 val prometheusVersion = "1.3.0"
 val nettyVersion = "1.1.0"
 
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "org.openrewrite") {
-            useVersion(rewriteVersion)
-        }
-    }
-}
-
 dependencies {
-    plugin("org.openrewrite:rewrite-java:$rewriteVersion")
     plugin("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
     plugin("io.rsocket:rsocket-transport-netty:$nettyVersion")
 
-    implementation("org.openrewrite:rewrite-java-11:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-java-8:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-xml:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-maven:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-properties:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-yaml:$rewriteVersion")
-    api("org.openrewrite:rewrite-java:$rewriteVersion")
     api("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
     api("io.rsocket:rsocket-transport-netty:$nettyVersion")
 

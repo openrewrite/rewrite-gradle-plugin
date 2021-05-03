@@ -21,7 +21,7 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.Result;
+import org.openrewrite.gradle.RewriteReflectiveFacade.Result;
 
 import javax.inject.Inject;
 import java.io.BufferedWriter;
