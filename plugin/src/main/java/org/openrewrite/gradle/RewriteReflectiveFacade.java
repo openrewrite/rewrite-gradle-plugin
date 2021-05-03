@@ -15,7 +15,6 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 
@@ -27,10 +26,7 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -250,6 +246,92 @@ public class RewriteReflectiveFacade {
                 return (String) real.getClass().getMethod("getName").invoke(real);
             } catch (Exception e) {
                 throw new RuntimeException(e);
+            }
+        }
+
+        public Collection<Validated> validateAll() {
+            try {
+                List<Object> results = (List<Object>) real.getClass().getMethod("validateAll").invoke(real);
+                return results.stream().map(r -> {
+                    String canonicalName = r.getClass().getCanonicalName();
+                    if (canonicalName.equals("org.openrewrite.Validated.Invalid")) {
+                        return new Validated.Invalid(r);
+                    } else if (canonicalName.equals("org.openrewrite.Validated.Both")) {
+                        return new Validated.Both(r);
+                    } else {
+                        return null;
+                    }
+                }).filter(Objects::nonNull).collect(toList());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+    }
+
+    public interface Validated {
+
+        Object getReal();
+
+        default List<Invalid> failures() {
+            try {
+                Object real = getReal();
+                List<Object> results = (List<Object>) real.getClass().getMethod("failures").invoke(real);
+                return results.stream().map(Invalid::new).collect(toList());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        class Invalid implements Validated {
+
+            private final Object real;
+
+            public Invalid(Object real) {
+                this.real = real;
+            }
+
+            @Override
+            public Object getReal() {
+                return real;
+            }
+
+            public String getProperty() {
+                try {
+                    return (String) real.getClass().getMethod("getProperty").invoke(real);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            public String getMessage() {
+                try {
+                    return (String) real.getClass().getMethod("getMessage").invoke(real);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            public Throwable getException() {
+                try {
+                    return (Throwable) real.getClass().getMethod("getException").invoke(real);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+
+        class Both implements Validated {
+
+            private final Object real;
+
+            public Both(Object real) {
+                this.real = real;
+            }
+
+            @Override
+            public Object getReal() {
+                return real;
             }
         }
     }
