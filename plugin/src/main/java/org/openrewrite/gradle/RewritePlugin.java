@@ -63,18 +63,6 @@ public class RewritePlugin implements Plugin<Project> {
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
-        DependencyHandler dependencies = project.getDependencies();
-        String rewriteVersion = "7.2.2";
-        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-java-11:" + rewriteVersion);
-        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-java-8:" + rewriteVersion);
-        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-xml:" + rewriteVersion);
-        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-yaml:" + rewriteVersion);
-        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-properties:" + rewriteVersion);
-        dependencies.add(rewriteConf.getName(), "org.openrewrite:rewrite-maven:" + rewriteVersion);
-        // Some rewrite classes use slf4j loggers (even though they probably shouldn't)
-        // Ideally this would be the same implementation used by Gradle at runtime
-        // But there are reflection and classpath shenanigans that make that one hard to get at
-        dependencies.add(rewriteConf.getName(), "org.slf4j:slf4j-simple:1.7.30");
 
         Task rewriteRunAll = tasks.create("rewriteRun",
                 taskClosure(task -> {

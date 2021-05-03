@@ -15,7 +15,9 @@
  */
 package org.openrewrite.gradle;
 
+import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -43,16 +45,39 @@ import static java.util.stream.Collectors.toList;
 public class RewriteReflectiveFacade {
 
     private final Configuration configuration;
+    private final RewriteExtension extension;
+    private final AbstractRewriteTask task;
     private URLClassLoader classLoader;
 
-    public RewriteReflectiveFacade(Configuration configuration) {
+    public RewriteReflectiveFacade(Configuration configuration, RewriteExtension extension, AbstractRewriteTask task) {
         this.configuration = configuration;
+        this.extension = extension;
+        this.task = task;
     }
 
     private URLClassLoader getClassLoader() {
-        // Lazily populate classLoader so that the configuration isn't resolved prematurely
+        // Lazily populate classLoader so that the configuration and extension have a chance to be altered by the rest of the build.gradle
         if (classLoader == null) {
-            URL[] jars = configuration.getFiles().stream()
+            // Once resolved no new dependencies may be added to a configuration
+            // If there are multiple rewrite tasks in the same project, as there usually are, the first will resolve the configuration
+            Configuration confWithRewrite = task.getProject().getConfigurations().maybeCreate("rewrite" + task.getName());
+            confWithRewrite.extendsFrom(configuration);
+
+            DependencyHandler dependencies = task.getProject().getDependencies();
+            String configurationName = confWithRewrite.getName();
+            String rewriteVersion = extension.getRewriteVersion();
+            dependencies.add(configurationName, "org.openrewrite:rewrite-java-11:" + rewriteVersion);
+            dependencies.add(configurationName, "org.openrewrite:rewrite-java-8:" + rewriteVersion);
+            dependencies.add(configurationName, "org.openrewrite:rewrite-xml:" + rewriteVersion);
+            dependencies.add(configurationName, "org.openrewrite:rewrite-yaml:" + rewriteVersion);
+            dependencies.add(configurationName, "org.openrewrite:rewrite-properties:" + rewriteVersion);
+            dependencies.add(configurationName, "org.openrewrite:rewrite-maven:" + rewriteVersion);
+            // Some rewrite classes use slf4j loggers (even though they probably shouldn't)
+            // Ideally this would be the same implementation used by Gradle at runtime
+            // But there are reflection and classpath shenanigans that make that one hard to get at
+            dependencies.add(configurationName, "org.slf4j:slf4j-simple:1.7.30");
+
+            URL[] jars = confWithRewrite.getFiles().stream()
                     .map(File::toURI)
                     .map(uri -> {
                         try {

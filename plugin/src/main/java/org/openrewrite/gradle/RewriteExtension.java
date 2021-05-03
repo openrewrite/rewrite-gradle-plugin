@@ -33,6 +33,7 @@ public class RewriteExtension extends CodeQualityExtension {
     private final Project project;
     private File configFile;
     private String metricsUri = magicalMetricsLogString;
+    private String rewriteVersion = "7.2.2";
 
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
@@ -112,5 +113,13 @@ public class RewriteExtension extends CodeQualityExtension {
 
     public List<String> getActiveRecipes() {
         return activeRecipes;
+    }
+
+    public String getRewriteVersion() {
+        return rewriteVersion;
+    }
+
+    public void setRewriteVersion(String value) {
+        rewriteVersion = value;
     }
 }

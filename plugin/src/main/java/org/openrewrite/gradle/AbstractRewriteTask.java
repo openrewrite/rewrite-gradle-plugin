@@ -47,7 +47,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         this.configuration = configuration;
         this.sourceSet = sourceSet;
         this.extension = extension;
-        this.rewrite = new RewriteReflectiveFacade(configuration);
+        this.rewrite = new RewriteReflectiveFacade(configuration, extension, this);
     }
 
     @Internal
