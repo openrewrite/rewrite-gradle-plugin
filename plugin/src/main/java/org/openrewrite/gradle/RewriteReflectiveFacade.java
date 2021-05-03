@@ -103,20 +103,21 @@ public class RewriteReflectiveFacade {
 
     public class EnvironmentBuilder {
         private final Object real;
+
         private EnvironmentBuilder(Object real) {
             this.real = real;
         }
 
         public EnvironmentBuilder scanRuntimeClasspath(String... acceptPackages) {
             try {
-                real.getClass().getMethod("scanRuntimeClasspath", String[].class).invoke(real, new Object[]{ acceptPackages});
+                real.getClass().getMethod("scanRuntimeClasspath", String[].class).invoke(real, new Object[]{acceptPackages});
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
             return this;
         }
 
-        public EnvironmentBuilder scanClasspath(Iterable<Path> compileClasspath, String ... acceptPackages) {
+        public EnvironmentBuilder scanClasspath(Iterable<Path> compileClasspath, String... acceptPackages) {
             try {
                 real.getClass().getMethod("scanClasspath", Iterable.class, String[].class)
                         .invoke(real, compileClasspath, acceptPackages);
@@ -185,7 +186,8 @@ public class RewriteReflectiveFacade {
             this.real = real;
         }
 
-        @Nullable public SourceFile getBefore() {
+        @Nullable
+        public SourceFile getBefore() {
             try {
                 return new SourceFile(real.getClass().getMethod("getBefore").invoke(real));
             } catch (Exception e) {
@@ -193,7 +195,8 @@ public class RewriteReflectiveFacade {
             }
         }
 
-        @Nullable public SourceFile getAfter() {
+        @Nullable
+        public SourceFile getAfter() {
             try {
                 return new SourceFile(real.getClass().getMethod("getAfter").invoke(real));
             } catch (Exception e) {
@@ -212,7 +215,7 @@ public class RewriteReflectiveFacade {
             }
         }
 
-        public String diff(){
+        public String diff() {
             try {
                 return (String) real.getClass().getMethod("diff").invoke(real);
             } catch (Exception e) {
@@ -421,6 +424,88 @@ public class RewriteReflectiveFacade {
                 throw new RuntimeException(e);
             }
         }
+
+        public String getDisplayName() {
+            try {
+                return (String) real.getClass().getMethod("getDisplayName").invoke(real);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public String getDescription() {
+            try {
+                return (String) real.getClass().getMethod("getDescription").invoke(real);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public List<OptionDescriptor> getOptions() {
+            try {
+                List<Object> results = (List<Object>) real.getClass().getMethod("getOptions").invoke(real);
+                return results.stream().map(OptionDescriptor::new).collect(toList());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public class OptionDescriptor {
+        private final Object real;
+
+        private OptionDescriptor(Object real) {
+            this.real = real;
+        }
+
+        public String getName() {
+            try {
+                return (String) real.getClass().getMethod("getName").invoke(real);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public String getDisplayName() {
+            try {
+                return (String) real.getClass().getMethod("getDisplayName").invoke(real);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public String getDescription() {
+            try {
+                return (String) real.getClass().getMethod("getDescription").invoke(real);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public String getType() {
+            try {
+                return (String) real.getClass().getMethod("getType").invoke(real);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public String getExample() {
+            try {
+                return (String) real.getClass().getMethod("getExample").invoke(real);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public boolean isRequired() {
+            try {
+                return (boolean) real.getClass().getMethod("isRequired").invoke(real);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
     }
 
     public EnvironmentBuilder environmentBuilder(Properties properties) {
@@ -450,7 +535,7 @@ public class RewriteReflectiveFacade {
                     .getConstructor(InputStream.class, URI.class, Properties.class)
                     .newInstance(yamlInput, source, properties)
             );
-        } catch(Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -469,7 +554,7 @@ public class RewriteReflectiveFacade {
                     .loadClass("org.openrewrite.InMemoryExecutionContext")
                     .getConstructor(Consumer.class)
                     .newInstance(onError));
-        } catch(Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -535,7 +620,7 @@ public class RewriteReflectiveFacade {
     public JavaParserBuilder javaParserFromJavaVersion() {
         try {
             if (System.getProperty("java.version").startsWith("1.8")) {
-                return new JavaParserBuilder( getClassLoader()
+                return new JavaParserBuilder(getClassLoader()
                         .loadClass("org.openrewrite.java.Java8Parser")
                         .getMethod("builder")
                         .invoke(null));
@@ -566,7 +651,7 @@ public class RewriteReflectiveFacade {
             return new YamlParser(getClassLoader().loadClass("org.openrewrite.yaml.YamlParser")
                     .getDeclaredConstructor()
                     .newInstance());
-        } catch(Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -588,7 +673,7 @@ public class RewriteReflectiveFacade {
             return new PropertiesParser(getClassLoader().loadClass("org.openrewrite.properties.PropertiesParser")
                     .getDeclaredConstructor()
                     .newInstance());
-        } catch(Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
@@ -610,7 +695,7 @@ public class RewriteReflectiveFacade {
             return new XmlParser(getClassLoader().loadClass("org.openrewrite.xml.XmlParser")
                     .getDeclaredConstructor()
                     .newInstance());
-        } catch(Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
