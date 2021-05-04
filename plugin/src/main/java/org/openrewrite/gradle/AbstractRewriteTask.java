@@ -141,11 +141,16 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             Environment env = environment();
             Set<String> activeRecipes = getActiveRecipes();
+            Set<String> activeStyles = getActiveStyles();
+            getLog().quiet(String.format("Using active recipe(s) %s", activeRecipes));
+            getLog().quiet(String.format("Using active styles(s) %s", activeStyles));
             if (activeRecipes.isEmpty()) {
                 return new ResultsContainer(baseDir, emptyList());
             }
-            List<NamedStyles> styles = env.activateStyles(getActiveStyles());
+            List<NamedStyles> styles = env.activateStyles(activeStyles);
             Recipe recipe = env.activateRecipes(activeRecipes);
+
+            getLog().quiet("Validating recipes...");
             Collection<Validated> validated = recipe.validateAll();
             List<Validated.Invalid> failedValidations = validated.stream().map(Validated::failures)
                     .flatMap(Collection::stream).collect(toList());
@@ -168,6 +173,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .collect(toList());
             InMemoryExecutionContext ctx = executionContext();
 
+            getLog().quiet("Parsing Java files...");
             sourceFiles.addAll(
                     rewrite.javaParserFromJavaVersion()
                             .styles(styles)
@@ -177,6 +183,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             .parse(sourcePaths, baseDir, ctx)
             );
 
+            getLog().quiet("Parsing YAML files...");
             sourceFiles.addAll(
                     rewrite.yamlParser()
                             .parse(getResources().getFiles().stream()
@@ -187,6 +194,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                                     ctx
                             ));
 
+            getLog().quiet("Parsing properties files...");
             sourceFiles.addAll(
                     rewrite.propertiesParser()
                             .parse(
@@ -198,6 +206,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                                     ctx
                             ));
 
+            getLog().quiet("Parsing XML files...");
             sourceFiles.addAll(
                     rewrite.xmlParser().parse(
                             getResources().getFiles().stream()
@@ -208,6 +217,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             ctx
                     ));
 
+            getLog().quiet("Running recipe(s)...");
             List<Result> results = recipe.run(sourceFiles);
 
             return new ResultsContainer(baseDir, results);
