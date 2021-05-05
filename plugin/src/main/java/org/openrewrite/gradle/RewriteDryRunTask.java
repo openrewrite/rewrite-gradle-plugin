@@ -106,7 +106,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
                 throw new RuntimeException("Unable to generate rewrite result file.", e);
             }
             getLog().warn("Report available:");
-            getLog().warn(indent(1, patchFile.normalize().toString()).toString());
+            getLog().warn(indent(1, patchFile.normalize().toString()));
             getLog().warn("Run 'mvn rewrite:run' to apply the recipes.");
         }
     }

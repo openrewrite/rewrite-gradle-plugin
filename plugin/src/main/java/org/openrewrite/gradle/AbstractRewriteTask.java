@@ -268,7 +268,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
     protected void logRecipesThatMadeChanges(Result result) {
         for (Recipe recipe : result.getRecipesThatMadeChanges()) {
-            getLog().warn("  " + recipe.getName());
+            getLog().warn(indent(1, recipe.getName()));
         }
     }
 
@@ -280,9 +280,9 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         }
     }
 
-    protected static StringBuilder indent(int indent, CharSequence content) {
+    protected static String indent(int indent, CharSequence content) {
         StringBuilder prefix = repeat(indent, LOG_INDENT_INCREMENT);
-        return prefix.append(content);
+        return prefix.append(content).toString();
     }
 
     private static StringBuilder repeat(int repeat, String str) {
