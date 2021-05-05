@@ -33,7 +33,7 @@ public class RewriteExtension extends CodeQualityExtension {
     private final Project project;
     private File configFile;
     private String metricsUri = magicalMetricsLogString;
-    private String rewriteVersion = "7.2.2";
+    private String rewriteVersion = "7.3.0";
 
     /**
      * Whether to throw an exception if an activeRecipe fails configuration validation.
