@@ -35,6 +35,15 @@ public class RewriteExtension extends CodeQualityExtension {
     private String metricsUri = magicalMetricsLogString;
     private String rewriteVersion = "7.2.2";
 
+    /**
+     * Whether to throw an exception if an activeRecipe fails configuration validation.
+     * This may happen if the activeRecipe is improperly configured, or any downstream recipes are improperly configured.
+     * <p>
+     * For the time, this default is "false" to prevent one improperly recipe from failing the build.
+     * In the future, this default may be changed to "true" to be more restrictive.
+     */
+    private boolean failOnInvalidActiveRecipes = false;
+
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
         this.project = project;
@@ -121,5 +130,13 @@ public class RewriteExtension extends CodeQualityExtension {
 
     public void setRewriteVersion(String value) {
         rewriteVersion = value;
+    }
+
+    public boolean getFailOnInvalidActiveRecipes() {
+        return failOnInvalidActiveRecipes;
+    }
+
+    public void setFailOnInvalidActiveRecipes(boolean failOnInvalidActiveRecipes) {
+        this.failOnInvalidActiveRecipes = failOnInvalidActiveRecipes;
     }
 }
