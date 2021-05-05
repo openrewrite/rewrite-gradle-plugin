@@ -16,7 +16,6 @@
 package org.openrewrite.gradle
 
 import org.gradle.testkit.runner.TaskOutcome
-import spock.lang.Ignore
 import spock.lang.Issue
 import spock.lang.Unroll
 
