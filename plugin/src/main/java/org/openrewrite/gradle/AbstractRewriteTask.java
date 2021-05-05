@@ -16,6 +16,7 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
@@ -150,7 +151,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             List<NamedStyles> styles = env.activateStyles(activeStyles);
             Recipe recipe = env.activateRecipes(activeRecipes);
 
-            getLog().quiet("Validating recipes...");
+            getLog().quiet("Validating active recipes...");
             Collection<Validated> validated = recipe.validateAll();
             List<Validated.Invalid> failedValidations = validated.stream().map(Validated::failures)
                     .flatMap(Collection::stream).collect(toList());
@@ -158,7 +159,11 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 failedValidations.forEach(failedValidation -> getLog().error(
                         "Recipe validation error in " + failedValidation.getProperty() + ": " +
                                 failedValidation.getMessage(), failedValidation.getException()));
-                return new ResultsContainer(baseDir, Collections.emptyList());
+                if (this.extension.getFailOnInvalidActiveRecipes()) {
+                    throw new GradleException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
+                } else {
+                    getLog().error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
+                }
             }
 
             List<SourceFile> sourceFiles = new ArrayList<>();
