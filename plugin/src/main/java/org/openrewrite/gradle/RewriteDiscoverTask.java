@@ -77,24 +77,28 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
 
             log.quiet("Available Recipes:");
             for (RecipeDescriptor recipe : availableRecipeDescriptors) {
-                log.quiet("\tname: " + recipe.getName());
+                log.quiet(indent(1, recipe.getName()));
             }
 
+            log.quiet(indent(0, ""));
             log.quiet("Available Styles:");
             for (NamedStyles style : availableStyles) {
-                log.quiet("\tname: " + style.getName());
+                log.quiet(indent(1, style.getName()));
             }
 
+            log.quiet(indent(0, ""));
             log.quiet("Active Styles:");
             for (String style : activeStyles) {
-                log.quiet("\tname: " + style);
+                log.quiet(indent(1, style));
             }
 
+            log.quiet(indent(0, ""));
             log.quiet("Active Recipes:");
             for (String activeRecipe : activeRecipes) {
-                log.quiet("\tname: " + activeRecipe);
+                log.quiet(indent(1, activeRecipe));
             }
 
+            log.quiet(indent(0, ""));
             log.quiet("Found " + availableRecipeDescriptors.size() + " available recipes and " + availableStyles.size() + " available styles.");
             log.quiet("Configured with " + activeRecipes.size() + " active recipes and " + activeStyles.size() + " active styles.");
         }
@@ -102,18 +106,24 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     }
 
     private void writeRecipeDescriptor(RecipeDescriptor rd, boolean verbose, int indentLevel) {
-        log.quiet(indent(indentLevel, "name: " + rd.getName()));
         if (verbose) {
-            log.quiet(indent(indentLevel, "displayName: " + rd.getDisplayName()));
-            log.quiet(indent(indentLevel, "description: " + rd.getDescription()));
-
-            log.quiet(indent(indentLevel, "options: " + (rd.getOptions().isEmpty() ? "[]" : "")));
-            for (OptionDescriptor od : rd.getOptions()) {
-                log.quiet(indent(indentLevel + 1, od.getName() + ": " + od.getType() + (od.isRequired() ? "!" : "")));
-                log.quiet(indent(indentLevel + 2, "displayName: " + od.getDisplayName()));
-                log.quiet(indent(indentLevel + 2, "description: " + od.getDescription()));
-                log.quiet(indent(indentLevel + 2, (od.getExample() == null ? "" : "example: " + od.getExample())));
+            log.quiet(indent(indentLevel, rd.getDisplayName()));
+            log.quiet(indent(indentLevel + 1, rd.getName()));
+            if (rd.getDescription() != null && !rd.getDescription().isEmpty()) {
+                log.quiet(indent(indentLevel + 1, rd.getDescription()));
             }
+
+            if (!rd.getOptions().isEmpty()) {
+                log.quiet(indent(indentLevel, "options: "));
+                for (OptionDescriptor od : rd.getOptions()) {
+                    log.quiet(indent(indentLevel + 1, od.getName() + ": " + od.getType() + (od.isRequired() ? "!" : "")));
+                    if (od.getDescription() != null && !od.getDescription().isEmpty()) {
+                        log.quiet(indent(indentLevel + 2, od.getDescription()));
+                    }
+                }
+            }
+        } else {
+            log.quiet(indent(indentLevel, rd.getName()));
         }
 
         if (verbose) {
