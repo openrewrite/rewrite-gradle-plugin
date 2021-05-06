@@ -44,6 +44,8 @@ public class RewriteExtension extends CodeQualityExtension {
      */
     private boolean failOnInvalidActiveRecipes = false;
 
+    private boolean failOnDryRunResults = false;
+
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
         this.project = project;
@@ -139,4 +141,13 @@ public class RewriteExtension extends CodeQualityExtension {
     public void setFailOnInvalidActiveRecipes(boolean failOnInvalidActiveRecipes) {
         this.failOnInvalidActiveRecipes = failOnInvalidActiveRecipes;
     }
+
+    public boolean getFailOnDryRunResults() {
+        return this.failOnDryRunResults;
+    }
+
+    public void setFailOnDryRunResults(boolean failOnDryRunResults) {
+        this.failOnDryRunResults = failOnDryRunResults;
+    }
+
 }

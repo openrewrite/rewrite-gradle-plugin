@@ -41,7 +41,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
     private final Configuration configuration;
     private final SourceSet sourceSet;
-    private final RewriteExtension extension;
+    protected final RewriteExtension extension;
     private final RewriteReflectiveFacade rewrite;
 
     public AbstractRewriteTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
