@@ -46,6 +46,14 @@ public class RewriteExtension extends CodeQualityExtension {
 
     private boolean failOnDryRunResults = false;
 
+    /**
+     * Whether "rewriteDryRun" should run as part of Gradle's "check" task.
+     * <p>
+     * For the time, this default is "false" to be backwards-compatible and prevent "rewriteDryRun" from being too intrusive.
+     * In the future, this default may be changed to "true".
+     */
+    private boolean doDryRunOnCheck = false;
+
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
         this.project = project;
@@ -150,4 +158,11 @@ public class RewriteExtension extends CodeQualityExtension {
         this.failOnDryRunResults = failOnDryRunResults;
     }
 
+    public boolean getDoDryRunOnCheck() {
+        return this.doDryRunOnCheck;
+    }
+
+    public void setDoDryRunOnCheck(boolean doDryRunOnCheck) {
+        this.doDryRunOnCheck = doDryRunOnCheck;
+    }
 }

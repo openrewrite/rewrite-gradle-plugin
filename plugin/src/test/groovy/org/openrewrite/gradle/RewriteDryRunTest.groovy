@@ -49,4 +49,42 @@ class RewriteDryRunTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
+    def "doDryRunOnCheck can bind rewriteDryRun to the check task"() {
+        given:
+        projectDir.newFile("settings.gradle")
+
+        File buildGradleFile = projectDir.newFile("build.gradle")
+        String buildGradleFileText = """\
+            plugins {
+                id("java")
+                id("org.openrewrite.rewrite")
+            }
+            
+            repositories {
+                mavenCentral()
+            }
+            
+            rewrite {
+                activeRecipe("org.openrewrite.java.format.AutoFormat")
+                doDryRunOnCheck = true
+            }
+            """.stripIndent()
+        buildGradleFile.text = buildGradleFileText
+
+        when:
+        def result = gradleRunner(gradleVersion, "check").build()
+
+        def rewriteDryRunMainResult = result.task(":rewriteDryRunMain")
+        def rewriteDryRunTestResult = result.task(":rewriteDryRunTest")
+
+        then:
+        rewriteDryRunMainResult.outcome == TaskOutcome.SUCCESS
+        rewriteDryRunTestResult.outcome == TaskOutcome.SUCCESS || rewriteDryRunTestResult.outcome == TaskOutcome.NO_SOURCE || rewriteDryRunTestResult.outcome == TaskOutcome.SKIPPED
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
 }
+
+

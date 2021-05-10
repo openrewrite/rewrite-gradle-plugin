@@ -21,7 +21,6 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -76,6 +75,13 @@ public class RewritePlugin implements Plugin<Project> {
                     task.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
                 })
         );
+        project.afterEvaluate(unused -> {
+            if (extension.getDoDryRunOnCheck()) {
+                // rewriteDryRun hooks into the regular Java build by becoming a dependency of "check" the same way linters and unit tests do
+                Task checkTask = tasks.getByName(JavaBasePlugin.CHECK_TASK_NAME);
+                checkTask.dependsOn(rewriteDryRunAll);
+            }
+        });
 
         Task rewriteDiscoverAll = tasks.create("rewriteDiscover", taskClosure(task -> {
             task.setGroup("rewrite");
