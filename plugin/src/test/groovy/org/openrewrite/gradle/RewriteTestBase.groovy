@@ -85,8 +85,8 @@ class RewriteTestBase extends Specification {
                   methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
                   newMethodName: sayHello
               - org.openrewrite.java.ChangePackage:
-                  oldFullyQualifiedPackageName: org.openrewrite.before
-                  newFullyQualifiedPackageName: org.openrewrite.after
+                  oldPackageName: org.openrewrite.before
+                  newPackageName: org.openrewrite.after
             """.stripIndent()
 
     String buildGradleFileText = """\
