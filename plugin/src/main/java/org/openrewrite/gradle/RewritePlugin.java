@@ -93,10 +93,6 @@ public class RewritePlugin implements Plugin<Project> {
             RewriteDiscoverTask discoverTask = tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, rewriteConf, sourceSet, extension);
             rewriteDiscoverAll.dependsOn(discoverTask);
 
-            String compileTaskName = sourceSet.getCompileTaskName("java");
-            Task compileTask = tasks.getByName(compileTaskName);
-            compileTask.configure(taskClosure(it -> it.mustRunAfter(rewriteRun)));
-
             String rewriteDryRunTaskName = "rewriteDryRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
             RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, rewriteConf, sourceSet, extension);
             rewriteDryRunAll.configure(taskClosure(it -> it.dependsOn(rewriteDryRun)));
