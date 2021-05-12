@@ -8,7 +8,7 @@ plugins {
     groovy
     `java-gradle-plugin`
     id("com.gradle.plugin-publish") version ("0.13.0")
-    id("com.github.hierynomus.license") version "0.16.1" apply false
+    id("com.github.hierynomus.license") version "0.15.0" apply false
     `maven-publish`
 }
 
