@@ -21,7 +21,6 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -96,6 +95,11 @@ public class RewritePlugin implements Plugin<Project> {
             String rewriteDryRunTaskName = "rewriteDryRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
             RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, rewriteConf, sourceSet, extension);
             rewriteDryRunAll.configure(taskClosure(it -> it.dependsOn(rewriteDryRun)));
+
+            String compileTaskName = sourceSet.getCompileTaskName("java");
+            Task compileTask = tasks.getByName(compileTaskName);
+            rewriteRun.configure(taskClosure(it -> it.dependsOn(compileTask)));
+            rewriteDryRun.configure(taskClosure(it -> it.dependsOn(compileTask)));
         });
     }
 
