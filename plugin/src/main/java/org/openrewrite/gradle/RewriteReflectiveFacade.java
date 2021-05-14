@@ -596,6 +596,15 @@ public class RewriteReflectiveFacade {
             }
         }
 
+        public JavaParserBuilder relaxedClassTypeMatching(boolean relaxedClassTypeMatching) {
+            try {
+                real.getClass().getMethod("relaxedClassTypeMatching", boolean.class).invoke(real, relaxedClassTypeMatching);
+                return this;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         public JavaParser build() {
             try {
                 return new JavaParser(real.getClass().getMethod("build").invoke(real));

@@ -166,7 +166,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 }
             }
 
-            List<SourceFile> sourceFiles = new ArrayList<>();
             List<Path> sourcePaths = getJavaSources().getFiles().stream()
                     .filter(it -> it.isFile() && it.getName().endsWith(".java"))
                     .map(File::toPath)
@@ -179,14 +178,13 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             InMemoryExecutionContext ctx = executionContext();
 
             getLog().quiet("Parsing Java files...");
-            sourceFiles.addAll(
-                    rewrite.javaParserFromJavaVersion()
-                            .styles(styles)
-                            .classpath(dependencyPaths)
-                            .logCompilationWarningsAndErrors(false)
-                            .build()
-                            .parse(sourcePaths, baseDir, ctx)
-            );
+            List<SourceFile> sourceFiles = new ArrayList<>(rewrite.javaParserFromJavaVersion()
+                    .relaxedClassTypeMatching(true)
+                    .styles(styles)
+                    .classpath(dependencyPaths)
+                    .logCompilationWarningsAndErrors(false)
+                    .build()
+                    .parse(sourcePaths, baseDir, ctx));
 
             getLog().quiet("Parsing YAML files...");
             sourceFiles.addAll(

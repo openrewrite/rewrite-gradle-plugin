@@ -171,7 +171,7 @@ class RewriteRunTest extends RewriteTestBase {
                 
                     dependencies {
                         testImplementation("junit:junit:4.12")
-                        rewrite("org.openrewrite.recipe:rewrite-testing-frameworks:+")
+                        rewrite("org.openrewrite.recipe:rewrite-spring:+")
                     }
                     
                     rewrite {
