@@ -32,8 +32,8 @@ class RewriteDiscoverTest extends RewriteTestBase {
         buildGradleFile.text = buildGradleFileText
 
         when:
-        def result = gradleRunner(gradleVersion, "rewriteDiscoverMain").build()
-        def rewriteDiscoverResult = result.task(":rewriteDiscoverMain")
+        def result = gradleRunner(gradleVersion, "rewriteDiscover").build()
+        def rewriteDiscoverResult = result.task(":rewriteDiscover")
 
         then:
         rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS
@@ -72,7 +72,7 @@ class RewriteDiscoverTest extends RewriteTestBase {
 
         when:
         def result = gradleRunner(gradleVersion, "rewriteDiscover").build()
-        def rewriteDiscoverResult = result.task(":rewriteDiscoverMain")
+        def rewriteDiscoverResult = result.task(":rewriteDiscover")
 
         then:
         rewriteDiscoverResult.outcome == TaskOutcome.SUCCESS

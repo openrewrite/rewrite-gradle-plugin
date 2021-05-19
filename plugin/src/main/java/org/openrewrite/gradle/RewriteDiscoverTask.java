@@ -53,10 +53,10 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     }
 
     @Inject
-    public RewriteDiscoverTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
-        super(configuration, sourceSet, extension);
+    public RewriteDiscoverTask(Configuration configuration, Collection<SourceSet> sourceSets, RewriteExtension extension) {
+        super(configuration, sourceSets, extension);
         setGroup("rewrite");
-        setDescription("Lists all available recipes and their visitors within the " + sourceSet.getName() + " SourceSet");
+        setDescription("Lists all available recipes and their visitors");
     }
 
     @TaskAction

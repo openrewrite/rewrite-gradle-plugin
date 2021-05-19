@@ -34,6 +34,7 @@ public class RewriteExtension extends CodeQualityExtension {
     private File configFile;
     private String metricsUri = magicalMetricsLogString;
     private String rewriteVersion = "7.4.0";
+    private boolean logCompilationWarningsAndErrors;
 
     /**
      * Whether to throw an exception if an activeRecipe fails configuration validation.
@@ -150,4 +151,11 @@ public class RewriteExtension extends CodeQualityExtension {
         this.failOnDryRunResults = failOnDryRunResults;
     }
 
+    public boolean getLogCompilationWarningsAndErrors() {
+        return logCompilationWarningsAndErrors;
+    }
+
+    public void setLogCompilationWarningsAndErrors(boolean logCompilationWarningsAndErrors) {
+        this.logCompilationWarningsAndErrors = logCompilationWarningsAndErrors;
+    }
 }

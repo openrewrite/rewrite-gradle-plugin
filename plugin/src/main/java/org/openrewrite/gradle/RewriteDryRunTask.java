@@ -30,6 +30,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.stream.Stream;
 
 public class RewriteDryRunTask extends AbstractRewriteTask {
@@ -37,14 +38,14 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
 
     @OutputFile
     Path getReportPath() {
-        return getProject().getBuildDir().toPath().resolve("reports").resolve("rewrite").resolve(getSourceSet().getName() + ".patch");
+        return getProject().getBuildDir().toPath().resolve("reports").resolve("rewrite").resolve("rewrite.patch");
     }
 
     @Inject
-    public RewriteDryRunTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
-        super(configuration, sourceSet, extension);
+    public RewriteDryRunTask(Configuration configuration, Collection<SourceSet> sourceSets, RewriteExtension extension) {
+        super(configuration, sourceSets, extension);
         setGroup("rewrite");
-        setDescription("Dry run the active refactoring recipes to sources within the " + sourceSet.getName() + " SourceSet. No results will be made.");
+        setDescription("Dry run the active refactoring recipes. No source files will be changed.");
         getOutputs().upToDateWhen(Specs.SATISFIES_NONE);
     }
 

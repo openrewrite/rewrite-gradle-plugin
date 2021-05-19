@@ -34,8 +34,8 @@ class RewriteRunTest extends RewriteTestBase {
         File sourceFileAfter = new File(projectDir.root, "src/main/java/org/openrewrite/after/HelloWorld.java")
 
         when:
-        def result = gradleRunner(gradleVersion, "rewriteRunMain").build()
-        def rewriteRunMainResult = result.task(":rewriteRunMain")
+        def result = gradleRunner(gradleVersion, "rewriteRun").build()
+        def rewriteRunMainResult = result.task(":rewriteRun")
 
         then:
         rewriteRunMainResult.outcome == TaskOutcome.SUCCESS
@@ -62,12 +62,19 @@ class RewriteRunTest extends RewriteTestBase {
         File rootBuildGradle = projectDir.newFile("build.gradle")
         rootBuildGradle.text = """\
                 plugins {
-                    id("org.openrewrite.rewrite").apply(false)
+                    id("org.openrewrite.rewrite")
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.java.format.AutoFormat")
+                }
+                
+                repositories {
+                    mavenCentral()
                 }
                 
                 subprojects {
                     apply plugin: "java"
-                    apply plugin: "org.openrewrite.rewrite"
                 
                     repositories {
                         mavenCentral()
@@ -75,10 +82,6 @@ class RewriteRunTest extends RewriteTestBase {
                 
                     dependencies {
                         testImplementation("junit:junit:4.12")
-                    }
-                    
-                    rewrite {
-                        activeRecipe("org.openrewrite.java.format.AutoFormat")
                     }
                 }
             """.stripIndent()
@@ -110,8 +113,7 @@ class RewriteRunTest extends RewriteTestBase {
             """.stripIndent()
         when:
         def result = gradleRunner(gradleVersion, "rewriteRun").build()
-        def aRewriteRunResult = result.task(":a:rewriteRunTest")
-        def bRewriteRunResult = result.task(":b:rewriteRunTest")
+        def rewriteRunResult = result.task(":rewriteRun")
         String aTestClassExpected = """\
                 package com.foo;
     
@@ -137,8 +139,7 @@ class RewriteRunTest extends RewriteTestBase {
                 }
         """.stripIndent()
         then:
-        aRewriteRunResult.outcome == TaskOutcome.SUCCESS
-        bRewriteRunResult.outcome == TaskOutcome.SUCCESS
+        rewriteRunResult.outcome == TaskOutcome.SUCCESS
         aTestClass.text == aTestClassExpected
         bTestClass.text == bTestClassExpected
 
@@ -157,25 +158,30 @@ class RewriteRunTest extends RewriteTestBase {
         File rootBuildGradle = projectDir.newFile("build.gradle")
         rootBuildGradle.text = """\
                 plugins {
-                    id("org.openrewrite.rewrite").apply(false)
+                    id("org.openrewrite.rewrite")
+                }
+                
+                rewrite {
+                     activeRecipe("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
+                }
+                
+                repositories {
+                    mavenCentral()
+                }
+                
+                dependencies {
+                    rewrite("org.openrewrite.recipe:rewrite-spring:+")
                 }
                 
                 subprojects {
                     apply plugin: "java"
-                    apply plugin: "org.openrewrite.rewrite"
                 
                     repositories {
-                        mavenLocal()
                         mavenCentral()
                     }
                 
                     dependencies {
                         testImplementation("junit:junit:4.12")
-                        rewrite("org.openrewrite.recipe:rewrite-spring:+")
-                    }
-                    
-                    rewrite {
-                         activeRecipe("org.openrewrite.java.testing.junit5.JUnit5BestPractices")
                     }
                 }
             """.stripIndent()
@@ -209,8 +215,7 @@ class RewriteRunTest extends RewriteTestBase {
             """.stripIndent()
         when:
         def result = gradleRunner(gradleVersion, "rewriteRun").build()
-        def aRewriteRunResult = result.task(":a:rewriteRunTest")
-        def bRewriteRunResult = result.task(":b:rewriteRunTest")
+        def rewriteRunResult = result.task(":rewriteRun")
         String aTestClassExpected = """\
                 package com.foo;
     
@@ -236,13 +241,11 @@ class RewriteRunTest extends RewriteTestBase {
                 }
         """.stripIndent()
         then:
-        aRewriteRunResult.outcome == TaskOutcome.SUCCESS
-        bRewriteRunResult.outcome == TaskOutcome.SUCCESS
+        rewriteRunResult.outcome == TaskOutcome.SUCCESS
         aTestClass.text == aTestClassExpected
         bTestClass.text == bTestClassExpected
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
-
 }

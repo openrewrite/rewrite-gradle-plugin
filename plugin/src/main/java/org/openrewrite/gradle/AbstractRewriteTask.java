@@ -16,12 +16,9 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.DefaultTask;
-import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.SourceSet;
 import org.openrewrite.gradle.RewriteReflectiveFacade.*;
@@ -30,8 +27,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
-import java.util.stream.Stream;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
@@ -40,32 +38,19 @@ import static java.util.stream.Collectors.toMap;
 public abstract class AbstractRewriteTask extends DefaultTask implements RewriteTask {
 
     private final Configuration configuration;
-    private final SourceSet sourceSet;
+    private final Collection<SourceSet> sourceSets;
     protected final RewriteExtension extension;
     private final RewriteReflectiveFacade rewrite;
 
-    public AbstractRewriteTask(Configuration configuration, SourceSet sourceSet, RewriteExtension extension) {
+    public AbstractRewriteTask(Configuration configuration, Collection<SourceSet> sourceSets, RewriteExtension extension) {
         this.configuration = configuration;
-        this.sourceSet = sourceSet;
         this.extension = extension;
+        this.sourceSets = sourceSets;
         this.rewrite = new RewriteReflectiveFacade(configuration, extension, this);
     }
 
     @Internal
     protected abstract Logger getLog();
-
-    /**
-     * @return The Java source files that will be subject to rewriting
-     */
-    @InputFiles
-    public FileCollection getJavaSources() {
-        return sourceSet.getAllJava();
-    }
-
-    @InputFiles
-    public FileCollection getResources() {
-        return sourceSet.getResources().getSourceDirectories();
-    }
 
     @Input
     public SortedSet<String> getActiveRecipes() {
@@ -77,20 +62,15 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return new TreeSet<>(extension.getActiveStyles());
     }
 
-    @InputFiles
-    public FileCollection getDependencies() {
-        return sourceSet.getCompileClasspath();
-    }
-
-    @Internal
-    public SourceSet getSourceSet() {
-        return sourceSet;
-    }
-
     /**
      * The prefix used to left-pad log messages, multiplied per "level" of log message.
      */
     private static final String LOG_INDENT_INCREMENT = "    ";
+    private static final int HOURS_PER_DAY = 24;
+    private static final int MINUTES_PER_HOUR = 60;
+    private static final int SECONDS_PER_MINUTE = 60;
+    private static final int SECONDS_PER_HOUR = SECONDS_PER_MINUTE * MINUTES_PER_HOUR;
+    private static final int SECONDS_PER_DAY = SECONDS_PER_HOUR * HOURS_PER_DAY;
 
     protected Environment environment() {
         Map<Object, Object> gradleProps = getProject().getProperties().entrySet().stream()
@@ -105,12 +85,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         EnvironmentBuilder env = rewrite.environmentBuilder(properties)
                 .scanRuntimeClasspath()
                 .scanClasspath(
-                        Stream.concat(
-                                Stream.concat(
-                                        getDependencies().getFiles().stream(),
-                                        configuration.getFiles().stream()),
-                                getJavaSources().getFiles().stream()
-                        )
+                        configuration.getFiles().stream()
                                 .map(File::toPath)
                                 .collect(toList())
                 )
@@ -125,8 +100,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 throw new RuntimeException("Unable to load rewrite configuration", e);
             }
         } else if (extension.getConfigFileSetDeliberately()) {
-            getLog().warn("Rewrite configuration file " + rewriteConfig + " does not exist." +
-                    "Supplied path: " + rewriteConfig + " configured for project " + getProject().getPath() + " does not exist");
+            getLog().warn("Rewrite configuration file " + rewriteConfig + " does not exist.");
         }
 
         return env.build();
@@ -137,93 +111,123 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     }
 
     protected ResultsContainer listResults() {
+        Path baseDir = getProject().getRootProject().getRootDir().toPath();
+        Environment env = environment();
+        Set<String> activeRecipes = getActiveRecipes();
+        Set<String> activeStyles = getActiveStyles();
+        getLog().lifecycle(String.format("Using active recipe(s) %s", activeRecipes));
+        getLog().lifecycle(String.format("Using active styles(s) %s", activeStyles));
+        if (activeRecipes.isEmpty()) {
+            return new ResultsContainer(baseDir, emptyList());
+        }
+        List<NamedStyles> styles = env.activateStyles(activeStyles);
+        Recipe recipe = env.activateRecipes(activeRecipes);
+
+        getLog().lifecycle("Validating active recipes");
+        Collection<Validated> validated = recipe.validateAll();
+        List<Validated.Invalid> failedValidations = validated.stream().map(Validated::failures)
+                .flatMap(Collection::stream).collect(toList());
+        if (!failedValidations.isEmpty()) {
+            failedValidations.forEach(failedValidation -> getLog().error(
+                    "Recipe validation error in " + failedValidation.getProperty() + ": " +
+                            failedValidation.getMessage(), failedValidation.getException()));
+            if (this.extension.getFailOnInvalidActiveRecipes()) {
+                throw new RuntimeException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
+            } else {
+                getLog().error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
+            }
+        }
+
+        InMemoryExecutionContext ctx = executionContext();
+        List<SourceFile> sourceFiles = sourceSets.stream()
+                .flatMap(sourceSet -> parse(sourceSet, styles, ctx).stream())
+                .collect(toList());
+
+        getLog().quiet("Running recipe(s)...");
+        List<Result> results = recipe.run(sourceFiles);
+
+        return new ResultsContainer(baseDir, results);
+    }
+
+    protected List<SourceFile> parse(SourceSet sourceSet, List<NamedStyles> styles, InMemoryExecutionContext ctx) {
         try {
             Path baseDir = getProject().getRootProject().getRootDir().toPath();
 
-            Environment env = environment();
-            Set<String> activeRecipes = getActiveRecipes();
-            Set<String> activeStyles = getActiveStyles();
-            getLog().quiet(String.format("Using active recipe(s) %s", activeRecipes));
-            getLog().quiet(String.format("Using active styles(s) %s", activeStyles));
-            if (activeRecipes.isEmpty()) {
-                return new ResultsContainer(baseDir, emptyList());
-            }
-            List<NamedStyles> styles = env.activateStyles(activeStyles);
-            Recipe recipe = env.activateRecipes(activeRecipes);
-
-            getLog().quiet("Validating active recipes...");
-            Collection<Validated> validated = recipe.validateAll();
-            List<Validated.Invalid> failedValidations = validated.stream().map(Validated::failures)
-                    .flatMap(Collection::stream).collect(toList());
-            if (!failedValidations.isEmpty()) {
-                failedValidations.forEach(failedValidation -> getLog().error(
-                        "Recipe validation error in " + failedValidation.getProperty() + ": " +
-                                failedValidation.getMessage(), failedValidation.getException()));
-                if (this.extension.getFailOnInvalidActiveRecipes()) {
-                    throw new GradleException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
-                } else {
-                    getLog().error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
-                }
-            }
-
-            List<Path> sourcePaths = getJavaSources().getFiles().stream()
+            List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                     .filter(it -> it.isFile() && it.getName().endsWith(".java"))
                     .map(File::toPath)
                     .map(AbstractRewriteTask::toRealPath)
                     .collect(toList());
-            List<Path> dependencyPaths = getDependencies().getFiles().stream()
+            List<Path> dependencyPaths = sourceSet.getCompileClasspath().getFiles().stream()
                     .map(File::toPath)
                     .map(AbstractRewriteTask::toRealPath)
                     .collect(toList());
-            InMemoryExecutionContext ctx = executionContext();
 
-            getLog().quiet("Parsing Java files...");
-            List<SourceFile> sourceFiles = new ArrayList<>(rewrite.javaParserFromJavaVersion()
-                    .relaxedClassTypeMatching(true)
-                    .styles(styles)
-                    .classpath(dependencyPaths)
-                    .logCompilationWarningsAndErrors(false)
-                    .build()
-                    .parse(sourcePaths, baseDir, ctx));
+            List<SourceFile> sourceFiles = new ArrayList<>();
+            if(javaPaths.size() > 0) {
+                getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllJava().getSourceDirectories().getAsPath());
+                Instant start = Instant.now();
+                sourceFiles.addAll(rewrite.javaParserFromJavaVersion()
+                        .relaxedClassTypeMatching(true)
+                        .styles(styles)
+                        .classpath(dependencyPaths)
+                        .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                        .build()
+                        .parse(javaPaths, baseDir, ctx));
+                Instant end = Instant.now();
+                Duration duration = Duration.between(start, end);
+                getLog().lifecycle("Parsed " + javaPaths.size() + " Java files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+            }
 
-            getLog().quiet("Parsing YAML files...");
-            sourceFiles.addAll(
-                    rewrite.yamlParser()
-                            .parse(getResources().getFiles().stream()
-                                            .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
-                                            .map(File::toPath)
-                                            .collect(toList()),
-                                    baseDir,
-                                    ctx
-                            ));
+            String resourcesPath = sourceSet.getResources().getSourceDirectories().getAsPath();
 
-            getLog().quiet("Parsing properties files...");
-            sourceFiles.addAll(
-                    rewrite.propertiesParser()
-                            .parse(
-                                    getResources().getFiles().stream()
-                                            .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
-                                            .map(File::toPath)
-                                            .collect(toList()),
-                                    baseDir,
-                                    ctx
-                            ));
+            List<Path> yamlPaths = sourceSet.getResources().getSourceDirectories().getFiles().stream()
+                    .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
+                    .map(File::toPath)
+                    .collect(toList());
 
-            getLog().quiet("Parsing XML files...");
-            sourceFiles.addAll(
-                    rewrite.xmlParser().parse(
-                            getResources().getFiles().stream()
-                                    .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
-                                    .map(File::toPath)
-                                    .collect(toList()),
-                            baseDir,
-                            ctx
-                    ));
+            if (yamlPaths.size() > 0) {
+                getLog().lifecycle("Parsing " + yamlPaths.size() + " YAML files from " + resourcesPath);
+                Instant start = Instant.now();
+                sourceFiles.addAll(
+                        rewrite.yamlParser()
+                                .parse(yamlPaths, baseDir, ctx));
+                Instant end = Instant.now();
+                Duration duration = Duration.between(start, end);
+                getLog().lifecycle("Parsed " + yamlPaths.size() + " Yaml files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+            }
 
-            getLog().quiet("Running recipe(s)...");
-            List<Result> results = recipe.run(sourceFiles);
+            List<Path> propertiesPaths = sourceSet.getResources().getSourceDirectories().getFiles().stream()
+                    .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
+                    .map(File::toPath)
+                    .collect(toList());
+            if(propertiesPaths.size() > 0) {
+                getLog().lifecycle("Parsing " + propertiesPaths.size() + " properties files from " + resourcesPath);
+                Instant start = Instant.now();
+                sourceFiles.addAll(
+                        rewrite.propertiesParser()
+                                .parse(propertiesPaths, baseDir, ctx));
+                Instant end = Instant.now();
+                Duration duration = Duration.between(start, end);
+                getLog().lifecycle("Parsed " + propertiesPaths.size() + " properties files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+            }
 
-            return new ResultsContainer(baseDir, results);
+            List<Path> xmlPaths = sourceSet.getResources().getSourceDirectories().getFiles().stream()
+                    .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
+                    .map(File::toPath)
+                    .collect(toList());
+            if (xmlPaths.size() > 0) {
+                getLog().lifecycle("Parsing " + xmlPaths.size() + " XML files from " + resourcesPath);
+                Instant start = Instant.now();
+                sourceFiles.addAll(
+                        rewrite.yamlParser()
+                                .parse(yamlPaths, baseDir, ctx));
+                Instant end = Instant.now();
+                Duration duration = Duration.between(start, end);
+                getLog().lifecycle("Parsed " + xmlPaths.size() + " XML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+            }
+
+            return sourceFiles;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -290,4 +294,60 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         }
         return buffer;
     }
+
+    private static String prettyPrint(Duration duration) {
+        StringBuilder result = new StringBuilder();
+        long days = duration.getSeconds() / SECONDS_PER_DAY;
+        boolean startedPrinting = false;
+        if(days > 0) {
+            startedPrinting = true;
+            result.append(days);
+            result.append(" day");
+            if(days != 1) {
+                result.append("s");
+            }
+            result.append(" ");
+        }
+
+        long hours =  duration.toHours() % 24;
+        if(startedPrinting || hours > 0) {
+            startedPrinting = true;
+            result.append(hours);
+            result.append(" hour");
+            if(hours != 1) {
+                result.append("s");
+            }
+            result.append(" ");
+        }
+
+        long minutes = (duration.getSeconds() / SECONDS_PER_MINUTE) % MINUTES_PER_HOUR;
+        if(startedPrinting || minutes > 0) {
+            result.append(minutes);
+            result.append(" minute");
+            if(minutes != 1) {
+                result.append("s");
+            }
+            result.append(" ");
+        }
+
+        long seconds = duration.getSeconds() % SECONDS_PER_MINUTE;
+        if(startedPrinting || seconds > 0) {
+            result.append(seconds);
+            result.append(" second");
+            if (seconds != 1) {
+                result.append("s");
+            }
+            result.append(" ");
+        }
+
+        long millis = duration.getNano() / 1000_000;
+        result.append(millis);
+        result.append(" millisecond");
+        if(millis != 1) {
+            result.append("s");
+        }
+
+        return result.toString();
+    }
+
 }

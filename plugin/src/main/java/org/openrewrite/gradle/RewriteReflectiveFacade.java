@@ -15,6 +15,7 @@
  */
 package org.openrewrite.gradle;
 
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 
@@ -42,10 +43,10 @@ public class RewriteReflectiveFacade {
 
     private final Configuration configuration;
     private final RewriteExtension extension;
-    private final AbstractRewriteTask task;
+    private final Task task;
     private URLClassLoader classLoader;
 
-    public RewriteReflectiveFacade(Configuration configuration, RewriteExtension extension, AbstractRewriteTask task) {
+    public RewriteReflectiveFacade(Configuration configuration, RewriteExtension extension, Task task) {
         this.configuration = configuration;
         this.extension = extension;
         this.task = task;
@@ -56,7 +57,7 @@ public class RewriteReflectiveFacade {
         if (classLoader == null) {
             // Once resolved no new dependencies may be added to a configuration
             // If there are multiple rewrite tasks in the same project, as there usually are, the first will resolve the configuration
-            Configuration confWithRewrite = task.getProject().getConfigurations().maybeCreate("rewrite" + task.getName());
+            Configuration confWithRewrite = task.getProject().getConfigurations().maybeCreate(task.getName());
             confWithRewrite.extendsFrom(configuration);
 
             DependencyHandler dependencies = task.getProject().getDependencies();
@@ -236,6 +237,20 @@ public class RewriteReflectiveFacade {
                 List<Object> unwrappedSources = sources.stream().map(it -> it.real).collect(toList());
                 List<Object> result = (List<Object>) real.getClass().getMethod("run", List.class)
                         .invoke(real, unwrappedSources);
+                return result.stream()
+                        .map(Result::new)
+                        .collect(toList());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public List<Result> run(List<SourceFile> sources, InMemoryExecutionContext ctx) {
+            try {
+                Class<?> executionContextClass = getClassLoader().loadClass("org.openrewrite.ExecutionContext");
+                List<Object> unwrappedSources = sources.stream().map(it -> it.real).collect(toList());
+                List<Object> result = (List<Object>) real.getClass().getMethod("run", List.class, executionContextClass)
+                        .invoke(real, unwrappedSources, ctx.real);
                 return result.stream()
                         .map(Result::new)
                         .collect(toList());

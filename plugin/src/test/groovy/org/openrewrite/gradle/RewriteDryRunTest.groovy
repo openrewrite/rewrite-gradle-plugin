@@ -33,17 +33,12 @@ class RewriteDryRunTest extends RewriteTestBase {
 
         when:
         def result = gradleRunner(gradleVersion, "rewriteDryRun").build()
-
-        def rewriteDryRunMainResult = result.task(":rewriteDryRunMain")
-        def rewriteDryRunTestResult = result.task(":rewriteDryRunTest")
+        def rewriteDryRunResult = result.task(":rewriteDryRun")
 
         then:
-        rewriteDryRunMainResult.outcome == TaskOutcome.SUCCESS
+        rewriteDryRunResult.outcome == TaskOutcome.SUCCESS
         // The "rewriteDryRun" task should not have touched the source file and the "rewriteRun" task shouldn't have run
         sourceFile.text == helloWorldJavaBeforeRefactor
-        // With no test source in this project any of these are potentially reasonable results
-        // Ultimately NO_SOURCE is probably the most appropriate, but in this early stage of development SUCCESS is acceptable
-        rewriteDryRunTestResult.outcome == TaskOutcome.SUCCESS || rewriteDryRunTestResult.outcome == TaskOutcome.NO_SOURCE || rewriteDryRunTestResult.outcome == TaskOutcome.SKIPPED
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST

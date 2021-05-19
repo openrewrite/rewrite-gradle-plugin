@@ -23,8 +23,14 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Adds the RewriteExtension to the current project and registers tasks per-sourceSet.
@@ -42,65 +48,88 @@ public class RewritePlugin implements Plugin<Project> {
      */
 
     @Override
-    public void apply(Project project) {
-        RewriteExtension maybeExtension = project.getExtensions().findByType(RewriteExtension.class);
+    public void apply(Project rootProject) {
+        // Only apply to the root project
+        if(!rootProject.getPath().equals(":")) {
+            return;
+        }
+        RewriteExtension maybeExtension = rootProject.getExtensions().findByType(RewriteExtension.class);
         if (maybeExtension == null) {
-            maybeExtension = project.getExtensions().create("rewrite", RewriteExtension.class, project);
+            maybeExtension = rootProject.getExtensions().create("rewrite", RewriteExtension.class, rootProject);
             maybeExtension.setToolVersion("2.x");
         }
         final RewriteExtension extension = maybeExtension;
-        TaskContainer tasks = project.getTasks();
-        // The concept of SourceSets comes from the JavaBasePlugin
-        // If it hasn't already been applied, apply it now
-        // This allows the rewrite plugin to be applied before or after the Java plugin is applied
-        JavaBasePlugin javaPlugin = project.getPlugins().findPlugin(JavaBasePlugin.class);
-        if (javaPlugin == null) {
-            project.getPlugins().apply(JavaBasePlugin.class);
-        }
-        JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
-        SourceSetContainer sourceSets = javaConvention.getSourceSets();
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
-        Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
+        Configuration rewriteConf = rootProject.getConfigurations().maybeCreate("rewrite");
 
-        Task rewriteRunAll = tasks.create("rewriteRun",
-                taskClosure(task -> {
-                    task.setGroup("rewrite");
-                    task.setDescription("Apply the active refactoring recipes to all sources");
-                })
-        );
+        Set<SourceSet> sourceSets = new HashSet<>();
+        Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class, rewriteConf, sourceSets, extension);
+        Task rewriteDryRun = rootProject.getTasks().create("rewriteDryRun", RewriteDryRunTask.class, rewriteConf, sourceSets, extension);
+        Task rewriteDiscover = rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class, rewriteConf, sourceSets, extension);
 
-        Task rewriteDryRunAll = tasks.create("rewriteDryRun", taskClosure(task -> {
-                    task.setGroup("rewrite");
-                    task.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
-                })
-        );
-
-        Task rewriteDiscoverAll = tasks.create("rewriteDiscover", taskClosure(task -> {
-            task.setGroup("rewrite");
-            task.setDescription("Lists all available recipes and their visitors available to each SourceSet");
-        }));
-
-        // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
-        // Do not replace all() with any form of collection iteration which does not share this important property
-        sourceSets.all(sourceSet -> {
-            String rewriteRunTaskName = "rewriteRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            RewriteRunTask rewriteRun = tasks.create(rewriteRunTaskName, RewriteRunTask.class, rewriteConf, sourceSet, extension);
-            rewriteRunAll.configure(taskClosure(it -> it.dependsOn(rewriteRun)));
-
-            String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            RewriteDiscoverTask discoverTask = tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, rewriteConf, sourceSet, extension);
-            rewriteDiscoverAll.dependsOn(discoverTask);
-
-            String rewriteDryRunTaskName = "rewriteDryRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
-            RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, rewriteConf, sourceSet, extension);
-            rewriteDryRunAll.configure(taskClosure(it -> it.dependsOn(rewriteDryRun)));
-
-            String compileTaskName = sourceSet.getCompileTaskName("java");
-            Task compileTask = tasks.getByName(compileTaskName);
-            rewriteRun.configure(taskClosure(it -> it.dependsOn(compileTask)));
-            rewriteDryRun.configure(taskClosure(it -> it.dependsOn(compileTask)));
+        rootProject.allprojects(project -> {
+            // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
+            // Do not replace all() with any form of collection iteration which does not share this important property
+            project.getPlugins().all(plugin -> {
+                if(!(plugin instanceof JavaBasePlugin)) {
+                    return;
+                }
+                JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+                javaConvention.getSourceSets().all(sourceSets::add);
+            });
         });
+//        // The concept of SourceSets comes from the JavaBasePlugin
+//        // If it hasn't already been applied, apply it now
+//        // This allows the rewrite plugin to be applied before or after the Java plugin is applied
+//        JavaBasePlugin javaPlugin = project.getPlugins().findPlugin(JavaBasePlugin.class);
+//        if (javaPlugin == null) {
+//            project.getPlugins().apply(JavaBasePlugin.class);
+//        }
+//        JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+//        SourceSetContainer sourceSets = javaConvention.getSourceSets();
+//
+//        // Rewrite module dependencies put here will be available to all rewrite tasks
+//        Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
+//
+//        Task rewriteRunAll = tasks.create("rewriteRun",
+//                taskClosure(task -> {
+//                    task.setGroup("rewrite");
+//                    task.setDescription("Apply the active refactoring recipes to all sources");
+//                })
+//        );
+//
+//        Task rewriteDryRunAll = tasks.create("rewriteDryRun", taskClosure(task -> {
+//                    task.setGroup("rewrite");
+//                    task.setDescription("Dry run the active refactoring recipes to all sources. No changes will be made.");
+//                })
+//        );
+//
+//        Task rewriteDiscoverAll = tasks.create("rewriteDiscover", taskClosure(task -> {
+//            task.setGroup("rewrite");
+//            task.setDescription("Lists all available recipes and their visitors available to each SourceSet");
+//        }));
+//
+//        // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
+//        // Do not replace all() with any form of collection iteration which does not share this important property
+//        sourceSets.all(sourceSet -> {
+//            String rewriteRunTaskName = "rewriteRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+//            RewriteRunTask rewriteRun = tasks.create(rewriteRunTaskName, RewriteRunTask.class, rewriteConf, sourceSet, extension);
+//            rewriteRunAll.configure(taskClosure(it -> it.dependsOn(rewriteRun)));
+//
+//            String rewriteDiscoverTaskName = "rewriteDiscover" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+//            RewriteDiscoverTask discoverTask = tasks.create(rewriteDiscoverTaskName, RewriteDiscoverTask.class, rewriteConf, sourceSet, extension);
+//            rewriteDiscoverAll.dependsOn(discoverTask);
+//
+//            String rewriteDryRunTaskName = "rewriteDryRun" + sourceSet.getName().substring(0, 1).toUpperCase() + sourceSet.getName().substring(1);
+//            RewriteDryRunTask rewriteDryRun = tasks.create(rewriteDryRunTaskName, RewriteDryRunTask.class, rewriteConf, sourceSet, extension);
+//            rewriteDryRunAll.configure(taskClosure(it -> it.dependsOn(rewriteDryRun)));
+//
+//            String compileTaskName = sourceSet.getCompileTaskName("java");
+//            Task compileTask = tasks.getByName(compileTaskName);
+//            rewriteRun.configure(taskClosure(it -> it.dependsOn(compileTask)));
+//            rewriteDryRun.configure(taskClosure(it -> it.dependsOn(compileTask)));
+//        });
     }
 
     private Closure<Task> taskClosure(Action<Task> configFun) {
