@@ -47,7 +47,7 @@ class RewriteRunTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
-    def "rewriteRun applies pre-shipped AutoFormat on multi-project builds"() {
+    def "rewriteRun applies built-in AutoFormat to a multi-project build"() {
         // note, the "output" result of this test is at least somewhat contingent
         // on the current state of what the recipe will perform depending on the version
         // of upstream rewrite used at the time of running this test--
