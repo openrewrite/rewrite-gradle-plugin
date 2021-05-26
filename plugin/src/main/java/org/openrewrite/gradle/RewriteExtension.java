@@ -33,7 +33,7 @@ public class RewriteExtension extends CodeQualityExtension {
     private final Project project;
     private File configFile;
     private String metricsUri = magicalMetricsLogString;
-    private String rewriteVersion = "7.4.0";
+    private String rewriteVersion = "7.6.0";
     private boolean logCompilationWarningsAndErrors;
 
     /**

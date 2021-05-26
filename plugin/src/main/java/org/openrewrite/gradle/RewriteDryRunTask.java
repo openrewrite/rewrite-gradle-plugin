@@ -15,7 +15,6 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -114,7 +113,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
             getLog().warn("Run 'mvn rewrite:run' to apply the recipes.");
 
             if (extension.getFailOnDryRunResults()) {
-                throw new GradleException("Applying recipes would make changes. See logs for more details.");
+                throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
             }
         }
     }

@@ -143,7 +143,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 .flatMap(sourceSet -> parse(sourceSet, styles, ctx).stream())
                 .collect(toList());
 
-        getLog().quiet("Running recipe(s)...");
+        getLog().lifecycle("Running recipe(s)...");
         List<Result> results = recipe.run(sourceFiles);
 
         return new ResultsContainer(baseDir, results);

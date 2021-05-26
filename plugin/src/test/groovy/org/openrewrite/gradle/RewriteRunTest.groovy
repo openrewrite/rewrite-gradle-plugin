@@ -70,6 +70,7 @@ class RewriteRunTest extends RewriteTestBase {
                 }
                 
                 repositories {
+                    mavenLocal()
                     mavenCentral()
                 }
                 
@@ -166,11 +167,12 @@ class RewriteRunTest extends RewriteTestBase {
                 }
                 
                 repositories {
+                    mavenLocal()
                     mavenCentral()
                 }
                 
                 dependencies {
-                    rewrite("org.openrewrite.recipe:rewrite-spring:+")
+                    rewrite("org.openrewrite.recipe:rewrite-spring:latest.integration")
                 }
                 
                 subprojects {
@@ -224,7 +226,7 @@ class RewriteRunTest extends RewriteTestBase {
                 public class ATestClass {
                 
                     @Test
-                    void passes() {
+                    public void passes() {
                     }
                 }
         """.stripIndent()
@@ -236,7 +238,7 @@ class RewriteRunTest extends RewriteTestBase {
                 public class BTestClass {
                 
                     @Test
-                    void passes() {
+                    public void passes() {
                     }
                 }
         """.stripIndent()

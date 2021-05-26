@@ -96,6 +96,7 @@ class RewriteTestBase extends Specification {
             }
             
             repositories {
+                mavenLocal()
                 mavenCentral()
             }
             

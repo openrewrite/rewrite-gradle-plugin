@@ -52,14 +52,14 @@ public class RewriteRunTask extends AbstractRewriteTask {
         if (results.isNotEmpty()) {
             for (Result result : results.generated) {
                 assert result.getAfter() != null;
-                getLog().warn("Generated new file " +
+                getLog().lifecycle("Generated new file " +
                         result.getAfter().getSourcePath() +
                         " by:");
                 logRecipesThatMadeChanges(result);
             }
             for (Result result : results.deleted) {
                 assert result.getBefore() != null;
-                getLog().warn("Deleted file " +
+                getLog().lifecycle("Deleted file " +
                         result.getBefore().getSourcePath() +
                         " by:");
                 logRecipesThatMadeChanges(result);
@@ -67,20 +67,20 @@ public class RewriteRunTask extends AbstractRewriteTask {
             for (Result result : results.moved) {
                 assert result.getAfter() != null;
                 assert result.getBefore() != null;
-                getLog().warn("File has been moved from " +
+                getLog().lifecycle("File has been moved from " +
                         result.getBefore().getSourcePath() + " to " +
                         result.getAfter().getSourcePath() + " by:");
                 logRecipesThatMadeChanges(result);
             }
             for (Result result : results.refactoredInPlace) {
                 assert result.getBefore() != null;
-                getLog().warn("Changes have been made to " +
+                getLog().lifecycle("Changes have been made to " +
                         result.getBefore().getSourcePath() +
                         " by:");
                 logRecipesThatMadeChanges(result);
             }
 
-            getLog().warn("Please review and commit the results.");
+            getLog().lifecycle("Please review and commit the results.");
 
             try {
                 for (Result result : results.generated) {
