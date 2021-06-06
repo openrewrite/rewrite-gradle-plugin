@@ -110,7 +110,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
             }
             getLog().warn("Report available:");
             getLog().warn(indent(1, patchFile.normalize().toString()));
-            getLog().warn("Run 'mvn rewrite:run' to apply the recipes.");
+            getLog().warn("Run 'gradle rewriteRun' to apply the recipes.");
 
             if (extension.getFailOnDryRunResults()) {
                 throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
