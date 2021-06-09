@@ -54,7 +54,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
     @Input
     public SortedSet<String> getActiveRecipes() {
-        return new TreeSet<>(extension.getActiveRecipes());
+        String activeRecipeProp = System.getProperty("activeRecipe");
+        if(activeRecipeProp == null) {
+            return new TreeSet<>(extension.getActiveRecipes());
+        } else {
+            return new TreeSet<>(Collections.singleton(activeRecipeProp));
+        }
     }
 
     @Input
