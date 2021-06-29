@@ -24,14 +24,14 @@ class RewriteRunTest extends RewriteTestBase {
 
     def "rewriteRun will alter the source file according to the provided active recipe"() {
         given:
-        projectDir.newFile("settings.gradle")
-        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
+        new File(projectDir, "settings.gradle").createNewFile()
+        File rewriteYaml = new File(projectDir, "rewrite-config.yml")
         rewriteYaml.text = rewriteYamlText
 
-        File buildGradleFile = projectDir.newFile("build.gradle")
+        File buildGradleFile = new File(projectDir, "build.gradle")
         buildGradleFile.text = buildGradleFileText
         File sourceFileBefore = writeSource(helloWorldJavaBeforeRefactor)
-        File sourceFileAfter = new File(projectDir.root, "src/main/java/org/openrewrite/after/HelloWorld.java")
+        File sourceFileAfter = new File(projectDir, "src/main/java/org/openrewrite/after/HelloWorld.java")
 
         when:
         def result = gradleRunner(gradleVersion, "rewriteRun").build()
@@ -54,12 +54,12 @@ class RewriteRunTest extends RewriteTestBase {
         // the goal of this test is to determine whether changes are applied to subprojects
         // on a multi-project build, not so much about the actual output of the tests.
         given:
-        File settings = projectDir.newFile("settings.gradle")
+        File settings = new File(projectDir, "settings.gradle")
         settings.text = """\
                 include("a")
                 include("b")
             """.stripIndent()
-        File rootBuildGradle = projectDir.newFile("build.gradle")
+        File rootBuildGradle = new File(projectDir, "build.gradle")
         rootBuildGradle.text = """\
                 plugins {
                     id("org.openrewrite.rewrite")
@@ -86,7 +86,8 @@ class RewriteRunTest extends RewriteTestBase {
                     }
                 }
             """.stripIndent()
-        File aSrcDir = projectDir.newFolder("a", "src", "test", "java", "com", "foo")
+        File aSrcDir = new File(projectDir, "a/src/test/java/com/foo")
+        aSrcDir.mkdirs()
         File aTestClass = new File(aSrcDir, "ATestClass.java")
         aTestClass.text = """\
                 package com.foo;
@@ -99,7 +100,8 @@ class RewriteRunTest extends RewriteTestBase {
                     public void passes() { }
                 }
             """.stripIndent()
-        File bSrcDir = projectDir.newFolder("b", "src", "test", "java", "com", "foo")
+        File bSrcDir = new File(projectDir, "b/src/test/java/com/foo")
+        bSrcDir.mkdirs()
         File bTestClass = new File(bSrcDir, "BTestClass.java")
         bTestClass.text = """\
                 package com.foo;
@@ -151,12 +153,12 @@ class RewriteRunTest extends RewriteTestBase {
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/33")
     def "rewriteRun applies recipes provided from external dependencies on multi-project builds"() {
         given:
-        File settings = projectDir.newFile("settings.gradle")
+        File settings = new File(projectDir, "settings.gradle")
         settings.text = """\
                 include("a")
                 include("b")
             """.stripIndent()
-        File rootBuildGradle = projectDir.newFile("build.gradle")
+        File rootBuildGradle = new File(projectDir, "build.gradle")
         rootBuildGradle.text = """\
                 plugins {
                     id("org.openrewrite.rewrite")
@@ -169,6 +171,9 @@ class RewriteRunTest extends RewriteTestBase {
                 repositories {
                     mavenLocal()
                     mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
                 }
                 
                 dependencies {
@@ -187,7 +192,8 @@ class RewriteRunTest extends RewriteTestBase {
                     }
                 }
             """.stripIndent()
-        File aSrcDir = projectDir.newFolder("a", "src", "test", "java", "com", "foo")
+        File aSrcDir = new File(projectDir, "a/src/test/java/com/foo")
+        aSrcDir.mkdirs()
         File aTestClass = new File(aSrcDir, "ATestClass.java")
         aTestClass.text = """\
                 package com.foo;
@@ -201,7 +207,8 @@ class RewriteRunTest extends RewriteTestBase {
                     }
                 }
             """.stripIndent()
-        File bSrcDir = projectDir.newFolder("b", "src", "test", "java", "com", "foo")
+        File bSrcDir = new File(projectDir, "b/src/test/java/com/foo")
+        bSrcDir.mkdirs()
         File bTestClass = new File(bSrcDir, "BTestClass.java")
         bTestClass.text = """\
                 package com.foo;

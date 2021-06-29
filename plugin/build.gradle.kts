@@ -7,8 +7,8 @@ plugins {
     java
     groovy
     `java-gradle-plugin`
-    id("com.gradle.plugin-publish") version ("0.13.0")
-    id("com.github.hierynomus.license") version "0.15.0" apply false
+    id("com.gradle.plugin-publish") version ("0.15.0")
+    id("com.github.hierynomus.license") version "0.16.1" apply false
     `maven-publish`
 }
 
@@ -79,8 +79,9 @@ dependencies {
     api("io.rsocket:rsocket-transport-netty:$nettyVersion")
 
     testImplementation(gradleTestKit())
-    testImplementation("org.codehaus.groovy:groovy-all:2.5.10")
-    testImplementation("org.spockframework:spock-core:1.3-groovy-2.5")
+    testImplementation(localGroovy())
+    testImplementation(platform("org.spockframework:spock-bom:2.0-groovy-3.0"))
+    testImplementation("org.spockframework:spock-core")
 }
 
 tasks.pluginUnderTestMetadata {
@@ -103,6 +104,11 @@ tasks.register<Test>("testGradleReleases") {
 tasks.register<Test>("testGradleNightlies") {
     jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getNightlyVersions))
 }
+
+tasks.withType<Test>() {
+    useJUnitPlatform()
+}
+
 
 configure<LicenseExtension> {
     ext.set("year", Calendar.getInstance().get(Calendar.YEAR))

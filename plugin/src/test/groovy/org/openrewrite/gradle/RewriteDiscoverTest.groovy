@@ -24,11 +24,11 @@ class RewriteDiscoverTest extends RewriteTestBase {
 
     def "rewriteDiscover will print some stuff"() {
         given:
-        projectDir.newFile("settings.gradle")
-        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
+        new File(projectDir, "settings.gradle").createNewFile()
+        File rewriteYaml = new File(projectDir, "rewrite-config.yml")
         rewriteYaml.text = rewriteYamlText
 
-        File buildGradleFile = projectDir.newFile("build.gradle")
+        File buildGradleFile = new File(projectDir, "build.gradle")
         buildGradleFile.text = buildGradleFileText
 
         when:
@@ -45,9 +45,9 @@ class RewriteDiscoverTest extends RewriteTestBase {
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/33")
     def "rewriteDiscover handles deserializing third-party dependencies"() {
         given:
-        projectDir.newFile("settings.gradle")
+        new File(projectDir, "settings.gradle")
 
-        File buildGradleFile = projectDir.newFile("build.gradle")
+        File buildGradleFile = new File(projectDir, "build.gradle")
         buildGradleFile.text = """\
                 plugins {
                     id("java")

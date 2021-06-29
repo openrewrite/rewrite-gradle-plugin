@@ -23,11 +23,11 @@ class RewriteDryRunTest extends RewriteTestBase {
 
     def "rewriteDryRun task runs successfully as a standalone command without modifying source files"() {
         given:
-        projectDir.newFile("settings.gradle")
-        File rewriteYaml = projectDir.newFile("rewrite-config.yml")
+        new File(projectDir, "settings.gradle").createNewFile()
+        File rewriteYaml = new File(projectDir, "rewrite-config.yml")
         rewriteYaml.text = rewriteYamlText
 
-        File buildGradleFile = projectDir.newFile("build.gradle")
+        File buildGradleFile = new File(projectDir, "build.gradle")
         buildGradleFile.text = buildGradleFileText
         File sourceFile = writeSource(helloWorldJavaBeforeRefactor)
 
