@@ -118,10 +118,18 @@ public class RewriteReflectiveFacade {
             return this;
         }
 
-        public EnvironmentBuilder scanClasspath(Iterable<Path> compileClasspath, String... acceptPackages) {
+        public EnvironmentBuilder scanJar(Path jar, ClassLoader classLoader) {
             try {
-                real.getClass().getMethod("scanClasspath", Iterable.class, String[].class)
-                        .invoke(real, compileClasspath, acceptPackages);
+                real.getClass().getMethod("scanJar", Path.class, ClassLoader.class).invoke(real, jar, classLoader);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            return this;
+        }
+
+        public EnvironmentBuilder scanJar(Path jar) {
+            try {
+                real.getClass().getMethod("scanJar", Path.class, ClassLoader.class).invoke(real, jar, classLoader);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

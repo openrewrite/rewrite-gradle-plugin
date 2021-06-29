@@ -89,12 +89,13 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
         EnvironmentBuilder env = rewrite.environmentBuilder(properties)
                 .scanRuntimeClasspath()
-                .scanClasspath(
-                        configuration.getFiles().stream()
-                                .map(File::toPath)
-                                .collect(toList())
-                )
                 .scanUserHome();
+        List<Path> recipeJars = configuration.getFiles().stream()
+                .map(File::toPath)
+                .collect(toList());
+        for(Path rewriteJar : recipeJars) {
+            env.scanJar(rewriteJar);
+        }
 
         File rewriteConfig = extension.getConfigFile();
         if (rewriteConfig.exists()) {
