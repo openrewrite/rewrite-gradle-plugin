@@ -127,6 +127,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             return new ResultsContainer(baseDir, emptyList());
         }
         List<NamedStyles> styles = env.activateStyles(activeStyles);
+        File checkstyleConfig = extension.getCheckstyleConfigFile();
+        if(checkstyleConfig != null && checkstyleConfig.exists()) {
+            NamedStyles checkstyle = rewrite.loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties());
+            styles.add(checkstyle);
+        }
+
         Recipe recipe = env.activateRecipes(activeRecipes);
 
         getLog().lifecycle("Validating active recipes");

@@ -18,11 +18,18 @@ package org.openrewrite.gradle;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.quality.CodeQualityExtension;
 
+import javax.annotation.Nullable;
+import javax.inject.Provider;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyMap;
 
 public class RewriteExtension extends CodeQualityExtension {
     private static final String magicalMetricsLogString = "LOG";
@@ -32,8 +39,17 @@ public class RewriteExtension extends CodeQualityExtension {
     private boolean configFileSetDeliberately = false;
     private final Project project;
     private File configFile;
+    Provider<File> checkstyleConfigProvider;
+    Provider<Map<String,Object>> checkstylePropertiesProvider;
+    private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
-    private String rewriteVersion = "7.8.1";
+
+    @Nullable
+    private String rewriteVersion;
+
+    @Nullable
+    private Properties versionProps;
+
     private boolean logCompilationWarningsAndErrors;
 
     /**
@@ -61,6 +77,29 @@ public class RewriteExtension extends CodeQualityExtension {
     public void setConfigFile(String configFilePath) {
         configFileSetDeliberately = true;
         configFile = project.file(configFilePath);
+    }
+
+    public void setCheckstyleConfigFile(File configFile) {
+        this.checkstyleConfigFile = configFile;
+    }
+
+    /**
+     * Will prefer to return an explicitly configured checkstyle configuration file location.
+     * If none has been specified, will attempt to auto-detect an appropriate file.
+     */
+    @Nullable
+    public File getCheckstyleConfigFile() {
+        if(checkstyleConfigFile == null && checkstyleConfigProvider != null) {
+            return checkstyleConfigProvider.get();
+        }
+        return checkstyleConfigFile;
+    }
+
+    public Map<String, Object> getCheckstyleProperties() {
+        if(checkstyleConfigProvider == null) {
+            return emptyMap();
+        }
+        return checkstylePropertiesProvider.get();
     }
 
     /**
@@ -127,8 +166,32 @@ public class RewriteExtension extends CodeQualityExtension {
         return activeRecipes;
     }
 
+    private Properties getVersionProps() {
+        if(versionProps == null) {
+            if(rewriteVersion == null) {
+                try(InputStream is = RewriteExtension.class.getResourceAsStream("/versions.properties")) {
+                    versionProps = new Properties();
+                    versionProps.load(is);
+                } catch(IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        return versionProps;
+    }
+
+    /**
+     * Returns the version of rewrite core libraries to be used.
+     */
     public String getRewriteVersion() {
+        if(rewriteVersion == null) {
+            return getVersionProps().getProperty("org.openrewrite:rewrite-core");
+        }
         return rewriteVersion;
+    }
+
+    public String getCheckstyleToolsVersion() {
+        return getVersionProps().getProperty("com.puppycrawl.tools:checkstyle");
     }
 
     public void setRewriteVersion(String value) {

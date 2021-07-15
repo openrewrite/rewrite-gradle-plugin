@@ -16,6 +16,7 @@
 package org.openrewrite.gradle
 
 import org.gradle.testkit.runner.TaskOutcome
+import org.intellij.lang.annotations.Language
 import spock.lang.Issue
 import spock.lang.Unroll
 
@@ -253,6 +254,77 @@ class RewriteRunTest extends RewriteTestBase {
         rewriteRunResult.outcome == TaskOutcome.SUCCESS
         aTestClass.text == aTestClassExpected
         bTestClass.text == bTestClassExpected
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
+    def "uses checkstyle configuration"() {
+        given:
+        File checkstyleXml = new File(projectDir, "config/checkstyle/checkstyle.xml")
+        checkstyleXml.getParentFile().mkdirs()
+        checkstyleXml.text = """\
+                <!DOCTYPE module PUBLIC
+                    "-//Checkstyle//DTD Checkstyle Configuration 1.2//EN"
+                    "https://checkstyle.org/dtds/configuration_1_2.dtd">
+                <module name="Checker">
+                    <module name="EqualsAvoidsNull">
+                        <property name="ignoreEqualsIgnoreCase" value="true" />
+                    </module>
+                </module>
+            """.stripIndent()
+
+        File rootBuildGradle = new File(projectDir, "build.gradle")
+        rootBuildGradle.text = """\
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                    id("checkstyle")
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.java.cleanup.EqualsAvoidsNull")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                }
+            """.stripIndent()
+        File aSrcDir = new File(projectDir, "src/main/java/com/foo")
+        aSrcDir.mkdirs()
+        File aClass = new File(aSrcDir, "A.java")
+        aClass.text = """\
+                package com.foo;
+                
+                public class A {
+                    {
+                        String s = null;
+                        if(s.equals("test")) {}
+                        if(s.equalsIgnoreCase("test")) {}
+                    }
+                }
+            """.stripIndent()
+        String aClassExpected = """\
+                package com.foo;
+                
+                public class A {
+                    {
+                        String s = null;
+                        if("test".equals(s)) {}
+                        if(s.equalsIgnoreCase("test")) {}
+                    }
+                }
+            """.stripIndent()
+
+
+        when:
+        def result = gradleRunner(gradleVersion, "rewriteRun").build()
+        def rewriteRunResult = result.task(":rewriteRun")
+
+        then:
+        rewriteRunResult.outcome == TaskOutcome.SUCCESS
+        aClass.text == aClassExpected
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
