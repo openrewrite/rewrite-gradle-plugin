@@ -18,11 +18,16 @@ package org.openrewrite.gradle;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.quality.CodeQualityExtension;
 
+import javax.annotation.Nullable;
+import javax.inject.Provider;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyMap;
 
 public class RewriteExtension extends CodeQualityExtension {
     private static final String magicalMetricsLogString = "LOG";
@@ -32,8 +37,11 @@ public class RewriteExtension extends CodeQualityExtension {
     private boolean configFileSetDeliberately = false;
     private final Project project;
     private File configFile;
+    Provider<File> checkstyleConfigProvider;
+    Provider<Map<String,Object>> checkstylePropertiesProvider;
+    private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
-    private String rewriteVersion = "7.8.1";
+    private String rewriteVersion = "7.9.0-SNAPSHOT";
     private boolean logCompilationWarningsAndErrors;
 
     /**
@@ -61,6 +69,29 @@ public class RewriteExtension extends CodeQualityExtension {
     public void setConfigFile(String configFilePath) {
         configFileSetDeliberately = true;
         configFile = project.file(configFilePath);
+    }
+
+    public void setCheckstyleConfigFile(File configFile) {
+        this.checkstyleConfigFile = configFile;
+    }
+
+    /**
+     * Will prefer to return an explicitly configured checkstyle configuration file location.
+     * If none has been specified, will attempt to auto-detect an appropriate file.
+     */
+    @Nullable
+    public File getCheckstyleConfigFile() {
+        if(checkstyleConfigFile == null && checkstyleConfigProvider != null) {
+            return checkstyleConfigProvider.get();
+        }
+        return checkstyleConfigFile;
+    }
+
+    public Map<String, Object> getCheckstyleProperties() {
+        if(checkstyleConfigProvider == null) {
+            return emptyMap();
+        }
+        return checkstylePropertiesProvider.get();
     }
 
     /**

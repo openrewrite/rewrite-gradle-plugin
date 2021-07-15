@@ -22,6 +22,7 @@ import org.gradle.api.artifacts.dsl.DependencyHandler;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -63,6 +64,8 @@ public class RewriteReflectiveFacade {
             DependencyHandler dependencies = task.getProject().getDependencies();
             String configurationName = confWithRewrite.getName();
             String rewriteVersion = extension.getRewriteVersion();
+            dependencies.add(configurationName, "org.openrewrite:rewrite-core:" + rewriteVersion);
+            dependencies.add(configurationName, "org.openrewrite:rewrite-java:" + rewriteVersion);
             dependencies.add(configurationName, "org.openrewrite:rewrite-java-11:" + rewriteVersion);
             dependencies.add(configurationName, "org.openrewrite:rewrite-java-8:" + rewriteVersion);
             dependencies.add(configurationName, "org.openrewrite:rewrite-xml:" + rewriteVersion);
@@ -73,6 +76,10 @@ public class RewriteReflectiveFacade {
             // Ideally this would be the same implementation used by Gradle at runtime
             // But there are reflection and classpath shenanigans that make that one hard to get at
             dependencies.add(configurationName, "org.slf4j:slf4j-simple:1.7.30");
+
+            // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
+            // It's added this way because we want to support older gradle versions than have variant awareness
+            dependencies.add(configurationName, "com.puppycrawl.tools:checkstyle:latest.release");
 
             URL[] jars = confWithRewrite.getFiles().stream()
                     .map(File::toURI)
@@ -375,6 +382,16 @@ public class RewriteReflectiveFacade {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    public NamedStyles loadCheckstyleConfig(Path checkstyleConf, Map<String, Object> properties) {
+        try {
+            Class<?> checkstyleClass = classLoader.loadClass("org.openrewrite.java.style.CheckstyleConfigLoader");
+            Method method = checkstyleClass.getMethod("loadCheckstyleConfig", Path.class, Map.class);
+            return new NamedStyles(method.invoke(null, checkstyleConf, properties));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

@@ -16,6 +16,7 @@
 package org.openrewrite.gradle;
 
 import groovy.lang.Closure;
+import kotlin.reflect.jvm.internal.impl.util.Check;
 import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -23,6 +24,8 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.plugins.quality.CheckstyleExtension;
+import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.tasks.SourceSet;
 
 import java.util.HashSet;
@@ -68,6 +71,13 @@ public class RewritePlugin implements Plugin<Project> {
             // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
             // Do not replace all() with any form of collection iteration which does not share this important property
             project.getPlugins().all(plugin -> {
+                if(plugin instanceof CheckstylePlugin) {
+                    // A multi-project build could hypothetically have different checkstyle configuration per-project
+                    // In practice all projects tend to have the same configuration
+                    CheckstyleExtension checkstyleExtension = project.getExtensions().getByType(CheckstyleExtension.class);
+                    extension.checkstyleConfigProvider = checkstyleExtension::getConfigFile;
+                    extension.checkstylePropertiesProvider = checkstyleExtension::getConfigProperties;
+                }
                 if(!(plugin instanceof JavaBasePlugin)) {
                     return;
                 }
