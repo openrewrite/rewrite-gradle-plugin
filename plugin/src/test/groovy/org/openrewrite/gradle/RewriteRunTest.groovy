@@ -73,6 +73,9 @@ class RewriteRunTest extends RewriteTestBase {
                 repositories {
                     mavenLocal()
                     mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
                 }
                 
                 subprojects {
@@ -289,6 +292,9 @@ class RewriteRunTest extends RewriteTestBase {
                 repositories {
                     mavenLocal()
                     mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
                 }
             """.stripIndent()
         File aSrcDir = new File(projectDir, "src/main/java/com/foo")

@@ -57,6 +57,9 @@ class RewriteDiscoverTest extends RewriteTestBase {
                 repositories {
                     mavenLocal()
                     mavenCentral()
+                    maven {
+                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
                 }
 
                 dependencies {
