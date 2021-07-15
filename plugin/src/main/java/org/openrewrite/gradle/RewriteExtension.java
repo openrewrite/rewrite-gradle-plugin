@@ -21,10 +21,12 @@ import org.gradle.api.plugins.quality.CodeQualityExtension;
 import javax.annotation.Nullable;
 import javax.inject.Provider;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
@@ -41,7 +43,13 @@ public class RewriteExtension extends CodeQualityExtension {
     Provider<Map<String,Object>> checkstylePropertiesProvider;
     private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
-    private String rewriteVersion = "7.9.0-SNAPSHOT";
+
+    @Nullable
+    private String rewriteVersion;
+
+    @Nullable
+    private Properties versionProps;
+
     private boolean logCompilationWarningsAndErrors;
 
     /**
@@ -158,8 +166,32 @@ public class RewriteExtension extends CodeQualityExtension {
         return activeRecipes;
     }
 
+    private Properties getVersionProps() {
+        if(versionProps == null) {
+            if(rewriteVersion == null) {
+                try(InputStream is = RewriteExtension.class.getResourceAsStream("/versions.properties")) {
+                    versionProps = new Properties();
+                    versionProps.load(is);
+                } catch(IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        return versionProps;
+    }
+
+    /**
+     * Returns the version of rewrite core libraries to be used.
+     */
     public String getRewriteVersion() {
+        if(rewriteVersion == null) {
+            return getVersionProps().getProperty("org.openrewrite:rewrite-core");
+        }
         return rewriteVersion;
+    }
+
+    public String getCheckstyleToolsVersion() {
+        return getVersionProps().getProperty("com.puppycrawl.tools:checkstyle");
     }
 
     public void setRewriteVersion(String value) {

@@ -4,3 +4,4 @@ out/
 !*/src/**/build
 .gradle/
 .idea/
+plugin/src/main/resources/versions.properties

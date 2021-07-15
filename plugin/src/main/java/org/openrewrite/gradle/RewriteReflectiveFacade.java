@@ -79,7 +79,7 @@ public class RewriteReflectiveFacade {
 
             // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
             // It's added this way because we want to support older gradle versions than have variant awareness
-            dependencies.add(configurationName, "com.puppycrawl.tools:checkstyle:latest.release");
+            dependencies.add(configurationName, "com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion());
 
             URL[] jars = confWithRewrite.getFiles().stream()
                     .map(File::toURI)

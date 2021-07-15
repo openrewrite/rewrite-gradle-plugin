@@ -11,4 +11,4 @@ allprojects {
     description = "Eliminate Tech-Debt. At build time."
 }
 
-evaluationDependsOn("plugin")
+evaluationDependsOn(":plugin")

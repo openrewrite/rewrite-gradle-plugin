@@ -65,6 +65,14 @@ tasks.named<JavaCompile>("compileJava") {
 
 val plugin: Configuration by configurations.creating
 
+val rewriteVersion = if(project.hasProperty("releasing")) {
+    "latest.release"
+} else {
+    "latest.integration"
+}
+val rewriteConfName = "rewriteDependencies"
+val rewriteDependencies = configurations.create("rewriteDependencies")
+
 configurations.getByName("compileOnly").extendsFrom(plugin)
 
 // Fixed version numbers because com.gradle.plugin-publish will publish poms with requested rather than resolved versions
@@ -77,6 +85,17 @@ dependencies {
 
     api("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
     api("io.rsocket:rsocket-transport-netty:$nettyVersion")
+
+
+    "rewriteDependencies"("org.openrewrite:rewrite-core:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-java:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-java-11:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-java-8:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-xml:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-yaml:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-properties:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-maven:$rewriteVersion")
+    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:latest.release")
 
     testImplementation(gradleTestKit())
     testImplementation(localGroovy())
@@ -109,6 +128,38 @@ tasks.withType<Test>() {
     useJUnitPlatform()
 }
 
+val gVP = tasks.register("generateVersionsProperties") {
+
+    val outputFile = file("src/main/resources/versions.properties")
+    description = "Creates a versions.properties in $outputFile"
+    group = "Build"
+
+    inputs.files(rewriteDependencies)
+    inputs.property("releasing", project.hasProperty("releasing"))
+
+    outputs.file(outputFile)
+
+    doLast {
+        if(outputFile.exists()) {
+            outputFile.delete()
+        } else {
+            outputFile.parentFile.mkdirs()
+        }
+        val resolvedModules = rewriteDependencies.resolvedConfiguration.firstLevelModuleDependencies
+        val props = Properties()
+        for(module in resolvedModules) {
+            props["${module.moduleGroup}:${module.moduleName}"] = module.moduleVersion
+        }
+        outputFile.outputStream().use {
+            props.store(it, null)
+        }
+    }
+}
+
+tasks.named("processResources") {
+    dependsOn(gVP)
+}
+
 
 configure<LicenseExtension> {
     ext.set("year", Calendar.getInstance().get(Calendar.YEAR))
@@ -116,4 +167,11 @@ configure<LicenseExtension> {
     header = project.rootProject.file("gradle/licenseHeader.txt")
     mapping(mapOf("kt" to "SLASHSTAR_STYLE", "java" to "SLASHSTAR_STYLE"))
     strictCheck = true
+    exclude("**/versions.properties")
+}
+
+// This is just here to silence a warning from Gradle about tasks using eachothers outputs
+// without declaring a dependency
+tasks.named("licenseMain") {
+    dependsOn(gVP)
 }
