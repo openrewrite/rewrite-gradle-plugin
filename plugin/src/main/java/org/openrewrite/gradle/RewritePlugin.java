@@ -16,7 +16,6 @@
 package org.openrewrite.gradle;
 
 import groovy.lang.Closure;
-import kotlin.reflect.jvm.internal.impl.util.Check;
 import org.gradle.api.Action;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
