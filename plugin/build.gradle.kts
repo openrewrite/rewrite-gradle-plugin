@@ -170,8 +170,14 @@ configure<LicenseExtension> {
     exclude("**/versions.properties")
 }
 
-// This is just here to silence a warning from Gradle about tasks using eachothers outputs
-// without declaring a dependency
+// This is here to silence a warning from Gradle about tasks using each-others outputs without declaring a dependency
 tasks.named("licenseMain") {
     dependsOn(gVP)
+}
+// The plugin that adds this task does it weirdly so it isn't available for configuration yet.
+// So have this behavior applied to it whenever it _is_ added.
+tasks.configureEach {
+    if(name == "publishPluginJar") {
+        dependsOn(gVP)
+    }
 }

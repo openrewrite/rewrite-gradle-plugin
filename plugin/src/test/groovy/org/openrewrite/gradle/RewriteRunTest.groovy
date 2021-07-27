@@ -16,7 +16,6 @@
 package org.openrewrite.gradle
 
 import org.gradle.testkit.runner.TaskOutcome
-import org.intellij.lang.annotations.Language
 import spock.lang.Issue
 import spock.lang.Unroll
 
@@ -271,7 +270,7 @@ class RewriteRunTest extends RewriteTestBase {
                     "-//Checkstyle//DTD Checkstyle Configuration 1.2//EN"
                     "https://checkstyle.org/dtds/configuration_1_2.dtd">
                 <module name="Checker">
-                    <module name="EqualsAvoidsNull">
+                    <module name="EqualsAvoidNull">
                         <property name="ignoreEqualsIgnoreCase" value="true" />
                     </module>
                 </module>

@@ -168,13 +168,11 @@ public class RewriteExtension extends CodeQualityExtension {
 
     private Properties getVersionProps() {
         if(versionProps == null) {
-            if(rewriteVersion == null) {
-                try(InputStream is = RewriteExtension.class.getResourceAsStream("/versions.properties")) {
-                    versionProps = new Properties();
-                    versionProps.load(is);
-                } catch(IOException e) {
-                    throw new RuntimeException(e);
-                }
+            try(InputStream is = RewriteExtension.class.getResourceAsStream("/versions.properties")) {
+                versionProps = new Properties();
+                versionProps.load(is);
+            } catch(IOException e) {
+                throw new RuntimeException(e);
             }
         }
         return versionProps;
