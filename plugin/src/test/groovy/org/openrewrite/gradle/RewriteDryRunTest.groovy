@@ -44,4 +44,55 @@ class RewriteDryRunTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
+    def "A recipe with optional configuration can be activated directly"() {
+        given:
+        new File(projectDir, "settings.gradle").createNewFile()
+
+        File buildGradleFile = new File(projectDir, "build.gradle")
+        buildGradleFile.text = """\
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.java.OrderImports")
+                }
+            """.stripIndent()
+        File sourceFile = writeSource("""\
+                package org.openrewrite.before;
+                
+                import java.util.ArrayList;
+                
+                import java.util.List;
+                
+                public class HelloWorld {
+                    public static void sayHello() {
+                        System.out.println("Hello world");
+                    }
+                
+                    public static void main(String[] args) {
+                        sayHello();
+                    }
+                }
+            """.stripIndent())
+
+        when:
+        def result = gradleRunner(gradleVersion, "rewriteDryRun").build()
+        def rewriteDryRunResult = result.task(":rewriteDryRun")
+
+        then:
+        rewriteDryRunResult.outcome == TaskOutcome.SUCCESS
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
 }
