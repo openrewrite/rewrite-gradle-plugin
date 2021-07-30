@@ -102,10 +102,10 @@ public class RewriteRunTask extends AbstractRewriteTask {
                     // Should we try to use git to move the file first, and only if that fails fall back to this?
                     assert result.getBefore() != null;
                     Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
-                    boolean deleteSucceeded = originalLocation.toFile().delete();
-                    if (!deleteSucceeded) {
-                        throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
-                    }
+                    /*boolean deleteSucceeded = */originalLocation.toFile().delete();
+//                    if (!deleteSucceeded) {
+//                        throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
+//                    }
                     assert result.getAfter() != null;
                     // Ensure directories exist in case something was moved into a hitherto non-existent package
                     Path afterLocation = results.getProjectRoot().resolve(result.getAfter().getSourcePath());
