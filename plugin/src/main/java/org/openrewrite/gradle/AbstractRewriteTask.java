@@ -170,6 +170,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .map(File::toPath)
                     .map(AbstractRewriteTask::toRealPath)
                     .collect(toList());
+
             List<Path> dependencyPaths = sourceSet.getCompileClasspath().getFiles().stream()
                     .map(File::toPath)
                     .map(AbstractRewriteTask::toRealPath)
@@ -193,7 +194,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             String resourcesPath = sourceSet.getResources().getSourceDirectories().getAsPath();
 
-            List<Path> yamlPaths = sourceSet.getResources().getSourceDirectories().getFiles().stream()
+            List<Path> yamlPaths = sourceSet.getResources().getFiles().stream()
                     .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
                     .map(File::toPath)
                     .collect(toList());
@@ -206,10 +207,10 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                                 .parse(yamlPaths, baseDir, ctx));
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
-                getLog().lifecycle("Parsed " + yamlPaths.size() + " Yaml files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+                getLog().lifecycle("Parsed " + yamlPaths.size() + " YAML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
             }
 
-            List<Path> propertiesPaths = sourceSet.getResources().getSourceDirectories().getFiles().stream()
+            List<Path> propertiesPaths = sourceSet.getResources().getFiles().stream()
                     .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
                     .map(File::toPath)
                     .collect(toList());
@@ -224,7 +225,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 getLog().lifecycle("Parsed " + propertiesPaths.size() + " properties files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
             }
 
-            List<Path> xmlPaths = sourceSet.getResources().getSourceDirectories().getFiles().stream()
+            List<Path> xmlPaths = sourceSet.getResources().getFiles().stream()
                     .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
                     .map(File::toPath)
                     .collect(toList());
