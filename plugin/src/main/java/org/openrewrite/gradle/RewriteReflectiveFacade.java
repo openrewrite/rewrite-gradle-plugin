@@ -47,6 +47,11 @@ public class RewriteReflectiveFacade {
     private final Task task;
     private URLClassLoader classLoader;
 
+    //Lazily creating and caching method references
+    private Method sourceFileGetMarkers = null;
+    private Method sourceFileWithMarkers = null;
+    private Method markersAddIfAbsent = null;
+
     public RewriteReflectiveFacade(Configuration configuration, RewriteExtension extension, Task task) {
         this.configuration = configuration;
         this.extension = extension;
@@ -171,6 +176,37 @@ public class RewriteReflectiveFacade {
         }
     }
 
+    public interface Marker {
+        Object getReal();
+    }
+
+    public class Markers {
+        final Object real;
+
+        public Markers(Object real) {
+            this.real = real;
+        }
+        public <M extends Marker> Markers addIfAbsent(M m) {
+            try {
+                Object newReal = markersAddIfAbsentMethod().invoke(real, m.getReal());
+                return newReal == real ? this : new Markers(newReal);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        private Method markersAddIfAbsentMethod() {
+            if (markersAddIfAbsent == null) {
+                try {
+                    Class<?> sourceFileClass = getClassLoader().loadClass("org.openrewrite.marker.Markers");
+                    markersAddIfAbsent = sourceFileClass.getMethod("addIfAbsent", getClassLoader().loadClass("org.openrewrite.marker.Marker"));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return markersAddIfAbsent;
+        }
+    }
+
     public class SourceFile {
         private final Object real;
 
@@ -194,61 +230,55 @@ public class RewriteReflectiveFacade {
             }
         }
 
-        public SourceFile withProvenance(JavaProvenance provenance) {
-            //Reflectively calling sourcefile.withMarkers(sourcefile.getMarkers().addIfAbsent(provenance)
+        public Markers getMarkers() {
             try {
-
-                return new SourceFile(sourceFileWithMarkersMethod().invoke(this.real,
-                        markersAddIfAbsentMethod().invoke(sourceFileGetMarkersMethod().invoke(this.real), provenance.real)
-                ));
+                return new Markers(sourceFileGetMarkersMethod().invoke(real));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
-    }
-
-    private Method sourceFileGetMarkers = null;
-    private Method sourceFileGetMarkersMethod() {
-        if (sourceFileGetMarkers == null) {
+        public SourceFile withMarkers(Markers markers) {
             try {
-                Class<?> sourceFileClass = getClassLoader().loadClass("org.openrewrite.SourceFile");
-                sourceFileGetMarkers = sourceFileClass.getMethod("getMarkers");
+                return new SourceFile(sourceFileWithMarkersMethod().invoke(real, markers.real));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
-        return sourceFileGetMarkers;
-    }
-    private Method sourceFileWithMarkers = null;
-    private Method sourceFileWithMarkersMethod() {
-        if (sourceFileWithMarkers == null) {
-            try {
-                Class<?> sourceFileClass = getClassLoader().loadClass("org.openrewrite.SourceFile");
-                sourceFileWithMarkers = sourceFileClass.getMethod("withMarkers", getClassLoader().loadClass("org.openrewrite.marker.Markers"));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return sourceFileWithMarkers;
 
-    }
-    private Method markersAddIfAbsent = null;
-    private Method markersAddIfAbsentMethod() {
-        if (markersAddIfAbsent == null) {
-            try {
-                Class<?> sourceFileClass = getClassLoader().loadClass("org.openrewrite.marker.Markers");
-                markersAddIfAbsent = sourceFileClass.getMethod("addIfAbsent", getClassLoader().loadClass("org.openrewrite.marker.Marker"));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+        private Method sourceFileGetMarkersMethod() {
+            if (sourceFileGetMarkers == null) {
+                try {
+                    Class<?> sourceFileClass = getClassLoader().loadClass("org.openrewrite.SourceFile");
+                    sourceFileGetMarkers = sourceFileClass.getMethod("getMarkers");
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
+            return sourceFileGetMarkers;
         }
-        return markersAddIfAbsent;
+        private Method sourceFileWithMarkersMethod() {
+            if (sourceFileWithMarkers == null) {
+                try {
+                    Class<?> sourceFileClass = getClassLoader().loadClass("org.openrewrite.SourceFile");
+                    sourceFileWithMarkers = sourceFileClass.getMethod("withMarkers", getClassLoader().loadClass("org.openrewrite.marker.Markers"));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return sourceFileWithMarkers;
+
+        }
     }
 
-    public static class JavaProvenance {
+    public static class JavaProvenance implements Marker {
         private final Object real;
 
         private JavaProvenance(Object real) {this.real = real; }
+
+        @Override
+        public Object getReal() {
+            return real;
+        }
     }
 
     public class JavaProvenanceBuilder {

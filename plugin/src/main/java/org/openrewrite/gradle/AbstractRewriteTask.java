@@ -201,7 +201,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                         .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                         .build()
                         .parse(javaPaths, baseDir, ctx),
-                        s -> s.withProvenance(javaProvenance)));
+                        s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
                 getLog().lifecycle("Parsed " + javaPaths.size() + " Java files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
@@ -217,9 +217,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if (yamlPaths.size() > 0) {
                 getLog().lifecycle("Parsing " + yamlPaths.size() + " YAML files from " + resourcesPath);
                 Instant start = Instant.now();
-                sourceFiles.addAll(
-                        rewrite.yamlParser()
-                                .parse(yamlPaths, baseDir, ctx));
+                sourceFiles.addAll(map(rewrite.yamlParser().parse(yamlPaths, baseDir, ctx),
+                        s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
                 getLog().lifecycle("Parsed " + yamlPaths.size() + " YAML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
@@ -232,9 +231,9 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if(propertiesPaths.size() > 0) {
                 getLog().lifecycle("Parsing " + propertiesPaths.size() + " properties files from " + resourcesPath);
                 Instant start = Instant.now();
-                sourceFiles.addAll(
-                        rewrite.propertiesParser()
-                                .parse(propertiesPaths, baseDir, ctx));
+                sourceFiles.addAll(map(rewrite.propertiesParser().parse(propertiesPaths, baseDir, ctx),
+                        s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
+
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
                 getLog().lifecycle("Parsed " + propertiesPaths.size() + " properties files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
@@ -247,9 +246,9 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if (xmlPaths.size() > 0) {
                 getLog().lifecycle("Parsing " + xmlPaths.size() + " XML files from " + resourcesPath);
                 Instant start = Instant.now();
-                sourceFiles.addAll(
-                        rewrite.yamlParser()
-                                .parse(yamlPaths, baseDir, ctx));
+                sourceFiles.addAll(map(rewrite.yamlParser().parse(yamlPaths, baseDir, ctx),
+                        s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
+
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
                 getLog().lifecycle("Parsed " + xmlPaths.size() + " XML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
