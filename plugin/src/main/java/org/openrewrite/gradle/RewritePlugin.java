@@ -80,17 +80,20 @@ public class RewritePlugin implements Plugin<Project> {
                 if(!(plugin instanceof JavaBasePlugin)) {
                     return;
                 }
+
                 //Collect Java metadata for each project (used for Java Provenance)
-                JavaPluginExtension javaPluginExtension = project.getExtensions().getByType(JavaPluginExtension.class);
+                //Using the older javaConvention because we need to support older versions of gradle.
+                @SuppressWarnings("deprecation") JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+
                 RewriteJavaMetadata rewriteJavaMetadata = new RewriteJavaMetadata(
-                        javaPluginExtension.getSourceCompatibility().toString(),
-                        javaPluginExtension.getTargetCompatibility().toString(),
+                        javaConvention.getSourceCompatibility().toString(),
+                        javaConvention.getTargetCompatibility().toString(),
                         project.getGroup().toString(),
                         project.getName(),
                         project.getVersion().toString()
                 );
 
-                javaPluginExtension.getSourceSets().all(sourceSet -> {
+                javaConvention.getSourceSets().all(sourceSet -> {
                     sourceSets.put(sourceSet, rewriteJavaMetadata);
 
                     // This is intended to ensure that any Groovy/Kotlin/etc. sources are available for type attribution during parsing

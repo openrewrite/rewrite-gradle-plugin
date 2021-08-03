@@ -194,7 +194,7 @@ public class RewriteReflectiveFacade {
             }
         }
 
-        public SourceFile addJavaProvenance(JavaProvenance provenance) {
+        public SourceFile withProvenance(JavaProvenance provenance) {
             //Reflectively calling sourcefile.withMarkers(sourcefile.getMarkers().addIfAbsent(provenance)
             try {
 
@@ -206,6 +206,7 @@ public class RewriteReflectiveFacade {
             }
         }
     }
+
     private Method sourceFileGetMarkers = null;
     private Method sourceFileGetMarkersMethod() {
         if (sourceFileGetMarkers == null) {
@@ -336,8 +337,8 @@ public class RewriteReflectiveFacade {
                 //Provenance
                 return new JavaProvenance(getClassLoader()
                         .loadClass("org.openrewrite.java.marker.JavaProvenance")
-                        .getConstructor(UUID.class, String.class, String.class, buildTool.getClass(), javaVersion.getClass(), publication.getClass())
-                        .newInstance(UUID.randomUUID(), this.projectName, this.sourceSetName, buildTool, javaVersion, publication));
+                        .getConstructor(UUID.class, String.class, String.class, buildTool.getClass(), javaVersion.getClass(), Set.class, publication.getClass())
+                        .newInstance(UUID.randomUUID(), this.projectName, this.sourceSetName, buildTool, javaVersion, Collections.emptySet(), publication));
 
             } catch (Exception e) {
                 throw new RuntimeException(e);

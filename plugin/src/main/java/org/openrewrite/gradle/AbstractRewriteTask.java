@@ -185,7 +185,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .buildToolVersion(GradleVersion.current().getVersion())
                     .sourceSetName(sourceSet.getName())
                     .vmRuntimeVersion(javaRuntimeVersion)
-                    .vmRuntimeVersion(System.getProperty("java.vm.vendor"))
+                    .vmVendor(System.getProperty("java.vm.vendor"))
                     .sourceCompatibility(javaMetadata.getSourceCompatibility())
                     .targetCompatibility(javaMetadata.getTargetCompatibility())
                     .build();
@@ -201,7 +201,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                         .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                         .build()
                         .parse(javaPaths, baseDir, ctx),
-                        s -> s.addJavaProvenance(javaProvenance)));
+                        s -> s.withProvenance(javaProvenance)));
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
                 getLog().lifecycle("Parsed " + javaPaths.size() + " Java files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
