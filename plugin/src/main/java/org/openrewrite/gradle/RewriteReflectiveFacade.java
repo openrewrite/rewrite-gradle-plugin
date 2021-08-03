@@ -310,8 +310,8 @@ public class RewriteReflectiveFacade {
         }
 
         public JavaProvenance build() {
-            try {
 
+            try {
                 //Build Tool Type Enum
                 @SuppressWarnings("rawtypes")
                 Enum gradleType = Enum.valueOf ((Class<? extends Enum>) getClassLoader()
