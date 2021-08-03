@@ -31,6 +31,7 @@ import org.openrewrite.gradle.ui.RecipeDescriptorTreePrompter;
 
 import javax.inject.Inject;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 
 public class RewriteDiscoverTask extends AbstractRewriteTask {
@@ -53,7 +54,7 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     }
 
     @Inject
-    public RewriteDiscoverTask(Configuration configuration, Collection<SourceSet> sourceSets, RewriteExtension extension) {
+    public RewriteDiscoverTask(Configuration configuration, Map<SourceSet, RewriteJavaMetadata> sourceSets, RewriteExtension extension) {
         super(configuration, sourceSets, extension);
         setGroup("rewrite");
         setDescription("Lists all available recipes and their visitors");
@@ -105,6 +106,7 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
 
     }
 
+    @SuppressWarnings("ConstantConditions")
     private void writeRecipeDescriptor(RecipeDescriptor rd, boolean verbose, int indentLevel) {
         if (verbose) {
             log.quiet(indent(indentLevel, rd.getDisplayName()));

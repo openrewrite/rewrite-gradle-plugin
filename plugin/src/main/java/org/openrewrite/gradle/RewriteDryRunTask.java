@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Map;
 import java.util.stream.Stream;
 
 public class RewriteDryRunTask extends AbstractRewriteTask {
@@ -41,7 +42,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
     }
 
     @Inject
-    public RewriteDryRunTask(Configuration configuration, Collection<SourceSet> sourceSets, RewriteExtension extension) {
+    public RewriteDryRunTask(Configuration configuration, Map<SourceSet, RewriteJavaMetadata> sourceSets, RewriteExtension extension) {
         super(configuration, sourceSets, extension);
         setGroup("rewrite");
         setDescription("Dry run the active refactoring recipes. No source files will be changed.");
