@@ -86,7 +86,7 @@ public class MeterRegistryProvider implements AutoCloseable {
                         clientTransport = TcpClientTransport.create(uri.getHost(), uri.getPort());
                         break;
                     default:
-                        log.warn("Unable to publish metrics. Unrecognized scheme " + uri.getScheme());
+                        log.warn("Unable to publish metrics. Unrecognized scheme {}", uri.getScheme());
                         return new CompositeMeterRegistry();
                 }
 

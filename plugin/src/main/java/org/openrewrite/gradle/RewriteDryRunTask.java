@@ -60,31 +60,23 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
         if (results.isNotEmpty()) {
             for (Result result : results.generated) {
                 assert result.getAfter() != null;
-                getLog().warn("These recipes would generate new file " +
-                        result.getAfter().getSourcePath() +
-                        ":");
+                getLog().warn("These recipes would generate new file {}:", result.getAfter().getSourcePath());
                 logRecipesThatMadeChanges(result);
             }
             for (Result result : results.deleted) {
                 assert result.getBefore() != null;
-                getLog().warn("These recipes would delete file " +
-                        result.getBefore().getSourcePath() +
-                        ":");
+                getLog().warn("These recipes would delete file {}:", result.getBefore().getSourcePath());
                 logRecipesThatMadeChanges(result);
             }
             for (Result result : results.moved) {
                 assert result.getBefore() != null;
                 assert result.getAfter() != null;
-                getLog().warn("These recipes would move file from " +
-                        result.getBefore().getSourcePath() + " to " +
-                        result.getAfter().getSourcePath() + ":");
+                getLog().warn("These recipes would move file from {} to {}:", result.getBefore().getSourcePath(), result.getAfter().getSourcePath());
                 logRecipesThatMadeChanges(result);
             }
             for (Result result : results.refactoredInPlace) {
                 assert result.getBefore() != null;
-                getLog().warn("These recipes would make results to " +
-                        result.getBefore().getSourcePath() +
-                        ":");
+                getLog().warn("These recipes would make results to {}:", result.getBefore().getSourcePath());
                 logRecipesThatMadeChanges(result);
             }
 
