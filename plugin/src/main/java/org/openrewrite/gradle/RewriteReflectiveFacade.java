@@ -47,6 +47,11 @@ public class RewriteReflectiveFacade {
     private final Task task;
     private URLClassLoader classLoader;
 
+    //Lazily creating and caching method references
+    private Method sourceFileGetMarkers = null;
+    private Method sourceFileWithMarkers = null;
+    private Method markersAddIfAbsent = null;
+
     public RewriteReflectiveFacade(Configuration configuration, RewriteExtension extension, Task task) {
         this.configuration = configuration;
         this.extension = extension;
@@ -171,6 +176,37 @@ public class RewriteReflectiveFacade {
         }
     }
 
+    public interface Marker {
+        Object getReal();
+    }
+
+    public class Markers {
+        final Object real;
+
+        public Markers(Object real) {
+            this.real = real;
+        }
+        public <M extends Marker> Markers addIfAbsent(M m) {
+            try {
+                Object newReal = markersAddIfAbsentMethod().invoke(real, m.getReal());
+                return newReal == real ? this : new Markers(newReal);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        private Method markersAddIfAbsentMethod() {
+            if (markersAddIfAbsent == null) {
+                try {
+                    Class<?> sourceFileClass = getClassLoader().loadClass("org.openrewrite.marker.Markers");
+                    markersAddIfAbsent = sourceFileClass.getMethod("addIfAbsent", getClassLoader().loadClass("org.openrewrite.marker.Marker"));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return markersAddIfAbsent;
+        }
+    }
+
     public class SourceFile {
         private final Object real;
 
@@ -193,6 +229,155 @@ public class RewriteReflectiveFacade {
                 throw new RuntimeException(e);
             }
         }
+
+        public Markers getMarkers() {
+            try {
+                return new Markers(sourceFileGetMarkersMethod().invoke(real));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        public SourceFile withMarkers(Markers markers) {
+            try {
+                return new SourceFile(sourceFileWithMarkersMethod().invoke(real, markers.real));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private Method sourceFileGetMarkersMethod() {
+            if (sourceFileGetMarkers == null) {
+                try {
+                    Class<?> sourceFileClass = getClassLoader().loadClass("org.openrewrite.SourceFile");
+                    sourceFileGetMarkers = sourceFileClass.getMethod("getMarkers");
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return sourceFileGetMarkers;
+        }
+        private Method sourceFileWithMarkersMethod() {
+            if (sourceFileWithMarkers == null) {
+                try {
+                    Class<?> sourceFileClass = getClassLoader().loadClass("org.openrewrite.SourceFile");
+                    sourceFileWithMarkers = sourceFileClass.getMethod("withMarkers", getClassLoader().loadClass("org.openrewrite.marker.Markers"));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return sourceFileWithMarkers;
+
+        }
+    }
+
+    public static class JavaProvenance implements Marker {
+        private final Object real;
+
+        private JavaProvenance(Object real) {this.real = real; }
+
+        @Override
+        public Object getReal() {
+            return real;
+        }
+    }
+
+    public class JavaProvenanceBuilder {
+        private String projectName;
+        private String sourceSetName;
+
+        //Build Tool
+        private String buildToolVersion;
+
+        //JavaVersion
+        private String vmRuntimeVersion;
+        private String vmVendor;
+        private String sourceCompatibility;
+        private String targetCompatibility;
+
+        //Publication
+        private String publicationGroupId;
+        private String publicationArtifactId;
+        private String publicationVersion;
+
+        public JavaProvenanceBuilder projectName(String projectName) {
+            this.projectName = projectName;
+            return this;
+        }
+        public JavaProvenanceBuilder sourceSetName(String sourceSetName) {
+            this.sourceSetName = sourceSetName;
+            return this;
+        }
+        public JavaProvenanceBuilder buildToolVersion(String buildToolVersion) {
+            this.buildToolVersion = buildToolVersion;
+            return this;
+        }
+        public JavaProvenanceBuilder vmRuntimeVersion(String vmRuntimeVersion) {
+            this.vmRuntimeVersion = vmRuntimeVersion;
+            return this;
+        }
+        public JavaProvenanceBuilder vmVendor(String vmVendor) {
+            this.vmVendor = vmVendor;
+            return this;
+        }
+        public JavaProvenanceBuilder sourceCompatibility(String sourceCompatibility) {
+            this.sourceCompatibility = sourceCompatibility;
+            return this;
+        }
+        public JavaProvenanceBuilder targetCompatibility(String targetCompatibility) {
+            this.targetCompatibility = targetCompatibility;
+            return this;
+        }
+        public JavaProvenanceBuilder publicationGroupId(String publicationGroupId) {
+            this.publicationGroupId = publicationGroupId;
+            return this;
+        }
+        public JavaProvenanceBuilder publicationArtifactId(String publicationArtifactId) {
+            this.publicationArtifactId = publicationArtifactId;
+            return this;
+        }
+        public JavaProvenanceBuilder publicationVersion(String publicationVersion) {
+            this.publicationVersion = publicationVersion;
+            return this;
+        }
+
+        public JavaProvenance build() {
+
+            try {
+                //Build Tool Type Enum
+                @SuppressWarnings("rawtypes")
+                Enum gradleType = Enum.valueOf ((Class<? extends Enum>) getClassLoader()
+                        .loadClass("org.openrewrite.java.marker.JavaProvenance$BuildTool$Type"), "Gradle");
+
+                Object buildTool = getClassLoader()
+                        .loadClass("org.openrewrite.java.marker.JavaProvenance$BuildTool")
+                        .getConstructor(gradleType.getClass(), String.class)
+                        .newInstance(gradleType, buildToolVersion);
+
+                //Version
+                Object javaVersion = getClassLoader()
+                        .loadClass("org.openrewrite.java.marker.JavaProvenance$JavaVersion")
+                        .getConstructor(String.class, String.class, String.class, String.class)
+                        .newInstance(this.vmRuntimeVersion, this.vmVendor, this.sourceCompatibility, this.targetCompatibility);
+
+                Object publication = getClassLoader()
+                        .loadClass("org.openrewrite.java.marker.JavaProvenance$Publication")
+                        .getConstructor(String.class, String.class, String.class)
+                        .newInstance(this.publicationGroupId, this.publicationArtifactId, this.publicationVersion);
+
+                //Provenance
+                return new JavaProvenance(getClassLoader()
+                        .loadClass("org.openrewrite.java.marker.JavaProvenance")
+                        .getConstructor(UUID.class, String.class, String.class, buildTool.getClass(), javaVersion.getClass(), Set.class, publication.getClass())
+                        .newInstance(UUID.randomUUID(), this.projectName, this.sourceSetName, buildTool, javaVersion, Collections.emptySet(), publication));
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public JavaProvenanceBuilder javaProvenanceBuilder() {
+        return new JavaProvenanceBuilder();
     }
 
     public class Result {

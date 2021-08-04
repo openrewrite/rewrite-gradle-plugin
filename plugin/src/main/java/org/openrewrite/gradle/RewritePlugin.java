@@ -16,18 +16,18 @@
 package org.openrewrite.gradle;
 
 import groovy.lang.Closure;
-import org.gradle.api.Action;
-import org.gradle.api.Plugin;
-import org.gradle.api.Project;
-import org.gradle.api.Task;
+import org.gradle.api.*;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.tasks.SourceSet;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -61,7 +61,7 @@ public class RewritePlugin implements Plugin<Project> {
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = rootProject.getConfigurations().maybeCreate("rewrite");
 
-        Set<SourceSet> sourceSets = new HashSet<>();
+        Map<SourceSet, RewriteJavaMetadata> sourceSets = new HashMap<>();
         Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class, rewriteConf, sourceSets, extension);
         Task rewriteDryRun = rootProject.getTasks().create("rewriteDryRun", RewriteDryRunTask.class, rewriteConf, sourceSets, extension);
         Task rewriteDiscover = rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class, rewriteConf, sourceSets, extension);
@@ -80,9 +80,21 @@ public class RewritePlugin implements Plugin<Project> {
                 if(!(plugin instanceof JavaBasePlugin)) {
                     return;
                 }
-                JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+
+                //Collect Java metadata for each project (used for Java Provenance)
+                //Using the older javaConvention because we need to support older versions of gradle.
+                @SuppressWarnings("deprecation") JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+
+                RewriteJavaMetadata rewriteJavaMetadata = new RewriteJavaMetadata(
+                        javaConvention.getSourceCompatibility().toString(),
+                        javaConvention.getTargetCompatibility().toString(),
+                        project.getGroup().toString(),
+                        project.getName(),
+                        project.getVersion().toString()
+                );
+
                 javaConvention.getSourceSets().all(sourceSet -> {
-                    sourceSets.add(sourceSet);
+                    sourceSets.put(sourceSet, rewriteJavaMetadata);
 
                     // This is intended to ensure that any Groovy/Kotlin/etc. sources are available for type attribution during parsing
                     // This may not be necessary if sourceSet.getCompileClasspath() guarantees that such sources will have been compiled
