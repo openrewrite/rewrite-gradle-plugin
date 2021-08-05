@@ -17,6 +17,8 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 
 import javax.annotation.Nullable;
@@ -31,6 +33,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
@@ -61,30 +64,28 @@ public class RewriteReflectiveFacade {
     private URLClassLoader getClassLoader() {
         // Lazily populate classLoader so that the configuration and extension have a chance to be altered by the rest of the build.gradle
         if (classLoader == null) {
-            // Once resolved no new dependencies may be added to a configuration
-            // If there are multiple rewrite tasks in the same project, as there usually are, the first will resolve the configuration
-            Configuration confWithRewrite = task.getProject().getConfigurations().maybeCreate(task.getName());
-            confWithRewrite.extendsFrom(configuration);
-
             DependencyHandler dependencies = task.getProject().getDependencies();
-            String configurationName = confWithRewrite.getName();
             String rewriteVersion = extension.getRewriteVersion();
-            dependencies.add(configurationName, "org.openrewrite:rewrite-core:" + rewriteVersion);
-            dependencies.add(configurationName, "org.openrewrite:rewrite-java:" + rewriteVersion);
-            dependencies.add(configurationName, "org.openrewrite:rewrite-java-11:" + rewriteVersion);
-            dependencies.add(configurationName, "org.openrewrite:rewrite-java-8:" + rewriteVersion);
-            dependencies.add(configurationName, "org.openrewrite:rewrite-xml:" + rewriteVersion);
-            dependencies.add(configurationName, "org.openrewrite:rewrite-yaml:" + rewriteVersion);
-            dependencies.add(configurationName, "org.openrewrite:rewrite-properties:" + rewriteVersion);
-            dependencies.add(configurationName, "org.openrewrite:rewrite-maven:" + rewriteVersion);
-            // Some rewrite classes use slf4j loggers (even though they probably shouldn't)
-            // Ideally this would be the same implementation used by Gradle at runtime
-            // But there are reflection and classpath shenanigans that make that one hard to get at
-            dependencies.add(configurationName, "org.slf4j:slf4j-simple:1.7.30");
+            Dependency[] deps = Stream.concat(
+                    configuration.getDependencies().stream(),
+                    Stream.of(
+                            dependencies.create("org.openrewrite:rewrite-core:" + rewriteVersion),
+                            dependencies.create("org.openrewrite:rewrite-java:" + rewriteVersion),
+                            dependencies.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
+                            dependencies.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
+                            dependencies.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
+                            dependencies.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
+                            dependencies.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
+                            // Some rewrite classes use slf4j loggers (even though they probably shouldn't)
+                            // Ideally this would be the same implementation used by Gradle at runtime
+                            // But there are reflection and classpath shenanigans that make that one hard to get at
+                            dependencies.create("org.slf4j:slf4j-simple:1.7.30"),
 
-            // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
-            // It's added this way because we want to support older gradle versions than have variant awareness
-            dependencies.add(configurationName, "com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion());
+                            // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
+                            dependencies.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion())
+                    )).toArray(Dependency[]::new);
+            // Use a detached configuration so as to avoid dependency resolution customizations
+            Configuration confWithRewrite = task.getProject().getConfigurations().detachedConfiguration(deps);
 
             URL[] jars = confWithRewrite.getFiles().stream()
                     .map(File::toURI)
