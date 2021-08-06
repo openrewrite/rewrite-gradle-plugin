@@ -381,6 +381,20 @@ public class RewriteReflectiveFacade {
         return new JavaProvenanceBuilder();
     }
 
+    public JavaProvenanceBuilder javaProvenanceBuilder(JavaProvenanceBuilder other) {
+        return new JavaProvenanceBuilder()
+                .buildToolVersion(other.buildToolVersion)
+                .projectName(other.projectName)
+                .publicationArtifactId(other.publicationArtifactId)
+                .publicationGroupId(other.publicationGroupId)
+                .publicationVersion(other.publicationVersion)
+                .sourceCompatibility(other.sourceCompatibility)
+                .sourceSetName(other.sourceSetName)
+                .targetCompatibility(other.targetCompatibility)
+                .vmRuntimeVersion(other.vmRuntimeVersion)
+                .vmVendor(other.vmVendor);
+    }
+
     public class Result {
         private final Object real;
 

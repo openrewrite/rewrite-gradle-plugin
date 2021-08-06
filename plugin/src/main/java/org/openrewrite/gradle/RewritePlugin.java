@@ -23,7 +23,9 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -56,8 +58,7 @@ public class RewritePlugin implements Plugin<Project> {
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = rootProject.getConfigurations().maybeCreate("rewrite");
-
-        Map<Project, RewriteJavaMetadata> projects = new HashMap<>();
+        List<Project> projects = new ArrayList<>();
 
         // We use this method of task creation because it works on old versions of Gradle
         // Don't replace with TaskContainer.register() (introduced in 4.9), or another overload of create() (introduced in 4.7)
@@ -75,6 +76,9 @@ public class RewritePlugin implements Plugin<Project> {
                 .setProjects(projects);
 
         rootProject.allprojects(project -> {
+
+            projects.add(project);
+
             // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
             // Do not replace all() with any form of collection iteration which does not share this important property
             project.getPlugins().all(plugin -> {
@@ -93,16 +97,6 @@ public class RewritePlugin implements Plugin<Project> {
                 //Using the older javaConvention because we need to support older versions of gradle.
                 @SuppressWarnings("deprecation")
                 JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
-
-                RewriteJavaMetadata rewriteJavaMetadata = new RewriteJavaMetadata(
-                        javaConvention.getSourceCompatibility().toString(),
-                        javaConvention.getTargetCompatibility().toString(),
-                        project.getGroup().toString(),
-                        project.getName(),
-                        project.getVersion().toString()
-                );
-
-                projects.put(project, rewriteJavaMetadata);
                 javaConvention.getSourceSets().all(sourceSet -> {
                     // This is intended to ensure that any Groovy/Kotlin/etc. sources are available for type attribution during parsing
                     // This may not be necessary if sourceSet.getCompileClasspath() guarantees that such sources will have been compiled

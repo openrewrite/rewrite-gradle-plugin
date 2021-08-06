@@ -28,26 +28,23 @@ import org.openrewrite.gradle.RewriteReflectiveFacade.*;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.UnaryOperator;
 
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 public abstract class AbstractRewriteTask extends DefaultTask implements RewriteTask {
 
     private Configuration configuration;
-    private Map<Project, RewriteJavaMetadata> projects;
+    private List<Project> projects;
     private RewriteExtension extension;
     private RewriteReflectiveFacade rewrite;
 
@@ -56,8 +53,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return this;
     }
 
-    AbstractRewriteTask setProjects(Map<Project, RewriteJavaMetadata> sourceSets) {
-        this.projects = sourceSets;
+    AbstractRewriteTask setProjects(List<Project> projects) {
+        this.projects = projects;
         return this;
     }
 
@@ -181,7 +178,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         }
 
         InMemoryExecutionContext ctx = executionContext();
-        List<SourceFile> sourceFiles = projects.keySet().stream()
+        List<SourceFile> sourceFiles = projects.stream()
                 .flatMap(p -> parse(p, styles, ctx).stream())
                 .collect(toList());
 
@@ -196,22 +193,30 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             Path baseDir = getProject().getRootProject().getRootDir().toPath();
 
             @SuppressWarnings("deprecation")
-            JavaPluginConvention javaConvention = subproject.getConvention().getPlugin(JavaPluginConvention.class);
+            JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
 
-            String javaRuntimeVersion = System.getProperty("java.runtime.version");
-            RewriteJavaMetadata javaMetadata =  projects.get(subproject);
-            JavaProvenance javaProvenance = getRewrite().javaProvenanceBuilder()
+            JavaProvenanceBuilder sharedProvenance = getRewrite().javaProvenanceBuilder()
                     .projectName(getProject().getName())
                     .buildToolVersion(GradleVersion.current().getVersion())
-                    .sourceSetName(subproject.getName())
-                    .vmRuntimeVersion(javaRuntimeVersion)
-                    .vmVendor(System.getProperty("java.vm.vendor"))
-                    .sourceCompatibility(javaMetadata.getSourceCompatibility())
-                    .targetCompatibility(javaMetadata.getTargetCompatibility())
-                    .build();
+                    .vmRuntimeVersion(System.getProperty("java.runtime.version"))
+                    .vmVendor(System.getProperty("java.vm.vendor"));
+
+            Set<SourceSet> sourceSets;
+            if(javaConvention == null) {
+                sourceSets = emptySet();
+            } else {
+                sourceSets = javaConvention.getSourceSets();
+                sharedProvenance.sourceCompatibility(javaConvention.getSourceCompatibility().toString())
+                        .targetCompatibility(javaConvention.getTargetCompatibility().toString());
+            }
 
             List<SourceFile> sourceFiles = new ArrayList<>();
-            for(SourceSet sourceSet : javaConvention.getSourceSets()) {
+            for(SourceSet sourceSet : sourceSets) {
+                JavaProvenance javaProvenance = getRewrite()
+                        .javaProvenanceBuilder(sharedProvenance)
+                        .sourceSetName(sourceSet.getName())
+                        .build();
+
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
                         .map(File::toPath)
@@ -239,6 +244,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     getLog().lifecycle("Parsed " + javaPaths.size() + " Java files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
                 }
             }
+            JavaProvenance sourceSetAgnosticProvenance = sharedProvenance.build();
             List<Path> yamlPaths = new ArrayList<>();
             List<Path> propertiesPaths = new ArrayList<>();
             List<Path> xmlPaths = new ArrayList<>();
@@ -258,7 +264,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 getLog().lifecycle("Parsing " + yamlPaths.size() + " YAML files from " + subproject.getProjectDir());
                 Instant start = Instant.now();
                 sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
-                        s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
+                        s -> s.withMarkers(s.getMarkers().addIfAbsent(sourceSetAgnosticProvenance))));
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
                 getLog().lifecycle("Parsed " + yamlPaths.size() + " YAML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(yamlPaths.size())) + " per file)");
@@ -268,7 +274,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 getLog().lifecycle("Parsing " + propertiesPaths.size() + " properties files from " + subproject.getProjectDir());
                 Instant start = Instant.now();
                 sourceFiles.addAll(map(getRewrite().propertiesParser().parse(propertiesPaths, baseDir, ctx),
-                        s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
+                        s -> s.withMarkers(s.getMarkers().addIfAbsent(sourceSetAgnosticProvenance))));
 
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
@@ -279,7 +285,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 getLog().lifecycle("Parsing " + xmlPaths.size() + " XML files from " + subproject.getProjectDir());
                 Instant start = Instant.now();
                 sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
-                        s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
+                        s -> s.withMarkers(s.getMarkers().addIfAbsent(sourceSetAgnosticProvenance))));
 
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
