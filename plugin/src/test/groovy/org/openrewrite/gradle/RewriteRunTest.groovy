@@ -47,6 +47,58 @@ class RewriteRunTest extends RewriteTestBase {
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
 
+    def "Applies recipes to files not inside of source directories"() {
+        given:
+        new File(projectDir, "settings.gradle").createNewFile()
+        File rewriteYaml = new File(projectDir, "rewrite.yml")
+        rewriteYaml.text = """\
+                ---
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.GradleWrapper7
+                displayName: Use Gradle version 7.1.1
+                description: Sets the gradle version to 7.1.1 in gradle/wrapper/gradle-wrapper.properties
+                recipeList:
+                  - org.openrewrite.properties.ChangePropertyValue:
+                      propertyKey: distributionUrl
+                      newValue: https\\://services.gradle.org/distributions/gradle-7.1.1-bin.zip
+            """.stripIndent()
+
+        File gradleWrapperProperties = new File(projectDir, "gradle/wrapper/gradle-wrapper.properties")
+        gradleWrapperProperties.getParentFile().mkdirs()
+        gradleWrapperProperties.text = """\
+                distributionUrl=https\\://services.gradle.org/distributions/gradle-7.0.1-bin.zip
+            """.stripIndent()
+
+        File buildGradle = new File(projectDir, "build.gradle")
+        buildGradle.text = """\
+                 plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                 }
+                 
+                 rewrite {
+                    activeRecipe("org.openrewrite.test.GradleWrapper7")
+                 }
+                 
+                 repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+            """.stripIndent()
+        when:
+        def result = gradleRunner(gradleVersion, "rewriteRun").build()
+        def rewriteRunMainResult = result.task(":rewriteRun")
+
+        then:
+        gradleWrapperProperties.text == "distributionUrl=https\\://services.gradle.org/distributions/gradle-7.1.1-bin.zip\n"
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
     def "rewriteRun applies built-in AutoFormat to a multi-project build"() {
         // note, the "output" result of this test is at least somewhat contingent
         // on the current state of what the recipe will perform depending on the version
