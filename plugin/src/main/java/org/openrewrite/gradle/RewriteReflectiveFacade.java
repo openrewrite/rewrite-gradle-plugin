@@ -295,6 +295,9 @@ public class RewriteReflectiveFacade {
         private String sourceCompatibility;
         private String targetCompatibility;
 
+        //Classpath
+        private Iterable<Path> classpath;
+
         //Publication
         private String publicationGroupId;
         private String publicationArtifactId;
@@ -326,6 +329,10 @@ public class RewriteReflectiveFacade {
         }
         public JavaProvenanceBuilder targetCompatibility(String targetCompatibility) {
             this.targetCompatibility = targetCompatibility;
+            return this;
+        }
+        public JavaProvenanceBuilder classpath(Iterable<Path> classpath) {
+            this.classpath = classpath;
             return this;
         }
         public JavaProvenanceBuilder publicationGroupId(String publicationGroupId) {
@@ -366,11 +373,9 @@ public class RewriteReflectiveFacade {
                         .newInstance(this.publicationGroupId, this.publicationArtifactId, this.publicationVersion);
 
                 //Provenance
-                return new JavaProvenance(getClassLoader()
-                        .loadClass("org.openrewrite.java.marker.JavaProvenance")
-                        .getConstructor(UUID.class, String.class, String.class, buildTool.getClass(), javaVersion.getClass(), Set.class, publication.getClass())
-                        .newInstance(UUID.randomUUID(), this.projectName, this.sourceSetName, buildTool, javaVersion, Collections.emptySet(), publication));
-
+                Class<?> c = getClassLoader().loadClass("org.openrewrite.java.marker.JavaProvenance");
+                Method javaProvenanceBuilder = c.getMethod("build", String.class, String.class, buildTool.getClass(), javaVersion.getClass(), Iterable.class, publication.getClass());
+                return new JavaProvenance(javaProvenanceBuilder.invoke(c.getName(), this.projectName, this.sourceSetName, buildTool, javaVersion, classpath, publication));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
