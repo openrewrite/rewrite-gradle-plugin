@@ -15,12 +15,10 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.specs.Specs;
-import org.gradle.api.tasks.OutputFile;
-import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 import org.openrewrite.gradle.RewriteReflectiveFacade.Result;
 
@@ -29,21 +27,20 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Map;
 import java.util.stream.Stream;
 
 public class RewriteDryRunTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteDryRunTask.class);
 
-    @OutputFile
+    // This @Internal is a lie, the correct annotation here would be @OutputFile
+    // On Gradle 4.0 annotating this with @OutputFile triggers a bug that deadlocks Gradle and the task can never begin executing
+    @Internal
     Path getReportPath() {
         return getProject().getBuildDir().toPath().resolve("reports").resolve("rewrite").resolve("rewrite.patch");
     }
 
     @Inject
-    public RewriteDryRunTask(Configuration configuration, Map<SourceSet, RewriteJavaMetadata> sourceSets, RewriteExtension extension) {
-        super(configuration, sourceSets, extension);
+    public RewriteDryRunTask() {
         setGroup("rewrite");
         setDescription("Dry run the active refactoring recipes. No source files will be changed.");
         getOutputs().upToDateWhen(Specs.SATISFIES_NONE);
@@ -105,9 +102,11 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
             getLog().warn(indent(1, patchFile.normalize().toString()));
             getLog().warn("Run 'gradle rewriteRun' to apply the recipes.");
 
-            if (extension.getFailOnDryRunResults()) {
+            if (getExtension().getFailOnDryRunResults()) {
                 throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
             }
+        } else {
+            getLog().lifecycle("Applying recipes would make no changes. No report generated.");
         }
     }
 }

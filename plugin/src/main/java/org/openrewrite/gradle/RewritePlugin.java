@@ -62,9 +62,21 @@ public class RewritePlugin implements Plugin<Project> {
         Configuration rewriteConf = rootProject.getConfigurations().maybeCreate("rewrite");
 
         Map<SourceSet, RewriteJavaMetadata> sourceSets = new HashMap<>();
-        Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class, rewriteConf, sourceSets, extension);
-        Task rewriteDryRun = rootProject.getTasks().create("rewriteDryRun", RewriteDryRunTask.class, rewriteConf, sourceSets, extension);
-        Task rewriteDiscover = rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class, rewriteConf, sourceSets, extension);
+
+        // We use this method of task creation because it works on old versions of Gradle
+        // Don't replace with TaskContainer.register() (introduced in 4.9), or another overload of create() (introduced in 4.7)
+        Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class)
+                .setConfiguration(rewriteConf)
+                .setExtension(extension)
+                .setSourceSets(sourceSets);
+        Task rewriteDryRun = rootProject.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
+                .setConfiguration(rewriteConf)
+                .setExtension(extension)
+                .setSourceSets(sourceSets);
+        Task rewriteDiscover = rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
+                .setConfiguration(rewriteConf)
+                .setExtension(extension)
+                .setSourceSets(sourceSets);
 
         rootProject.allprojects(project -> {
             // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
@@ -83,7 +95,8 @@ public class RewritePlugin implements Plugin<Project> {
 
                 //Collect Java metadata for each project (used for Java Provenance)
                 //Using the older javaConvention because we need to support older versions of gradle.
-                @SuppressWarnings("deprecation") JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+                @SuppressWarnings("deprecation")
+                JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
 
                 RewriteJavaMetadata rewriteJavaMetadata = new RewriteJavaMetadata(
                         javaConvention.getSourceCompatibility().toString(),

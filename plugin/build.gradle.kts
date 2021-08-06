@@ -116,6 +116,17 @@ tasks.named<Test>("test") {
     )
 }
 
+val testGradle4 = tasks.register<Test>("testGradle4") {
+    systemProperty(GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME, "4.0")
+    // Gradle 4.0 predates support for Java 11
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(8))
+    })
+}
+tasks.named("check").configure {
+    dependsOn(testGradle4)
+}
+
 tasks.register<Test>("testGradleReleases") {
     jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getReleasedVersions))
 }

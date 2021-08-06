@@ -39,16 +39,37 @@ import static java.util.stream.Collectors.toMap;
 
 public abstract class AbstractRewriteTask extends DefaultTask implements RewriteTask {
 
-    private final Configuration configuration;
-    private final Map<SourceSet, RewriteJavaMetadata> sourceSets;
-    protected final RewriteExtension extension;
-    private final RewriteReflectiveFacade rewrite;
+    private Configuration configuration;
+    private Map<SourceSet, RewriteJavaMetadata> sourceSets;
+    private RewriteExtension extension;
+    private RewriteReflectiveFacade rewrite;
 
-    public AbstractRewriteTask(Configuration configuration, Map<SourceSet, RewriteJavaMetadata> sourceSets, RewriteExtension extension) {
+    AbstractRewriteTask setConfiguration(Configuration configuration) {
         this.configuration = configuration;
-        this.extension = extension;
+        return this;
+    }
+
+    AbstractRewriteTask setSourceSets(Map<SourceSet, RewriteJavaMetadata> sourceSets) {
         this.sourceSets = sourceSets;
-        this.rewrite = new RewriteReflectiveFacade(configuration, extension, this);
+        return this;
+    }
+
+    AbstractRewriteTask setExtension(RewriteExtension extension) {
+        this.extension = extension;
+        return this;
+    }
+
+    @Internal
+    RewriteExtension getExtension() {
+        return extension;
+    }
+
+    @Internal
+    RewriteReflectiveFacade getRewrite() {
+        if(rewrite == null) {
+            rewrite = new RewriteReflectiveFacade(configuration, extension, this);
+        }
+        return rewrite;
     }
 
     @Internal
@@ -89,7 +110,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         Properties properties = new Properties();
         properties.putAll(gradleProps);
 
-        EnvironmentBuilder env = rewrite.environmentBuilder(properties)
+        EnvironmentBuilder env = getRewrite().environmentBuilder(properties)
                 .scanRuntimeClasspath()
                 .scanUserHome();
         List<Path> recipeJars = configuration.getFiles().stream()
@@ -102,7 +123,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         File rewriteConfig = extension.getConfigFile();
         if (rewriteConfig.exists()) {
             try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                YamlResourceLoader resourceLoader = rewrite.yamlResourceLoader(is, rewriteConfig.toURI(), properties);
+                YamlResourceLoader resourceLoader = getRewrite().yamlResourceLoader(is, rewriteConfig.toURI(), properties);
                 env.load(resourceLoader);
             } catch (IOException e) {
                 throw new RuntimeException("Unable to load rewrite configuration", e);
@@ -115,7 +136,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     }
 
     protected InMemoryExecutionContext executionContext() {
-        return rewrite.inMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
+        return getRewrite().inMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
     }
 
     protected ResultsContainer listResults() {
@@ -131,7 +152,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         List<NamedStyles> styles = env.activateStyles(activeStyles);
         File checkstyleConfig = extension.getCheckstyleConfigFile();
         if(checkstyleConfig != null && checkstyleConfig.exists()) {
-            NamedStyles checkstyle = rewrite.loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties());
+            NamedStyles checkstyle = getRewrite().loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties());
             styles.add(checkstyle);
         }
 
@@ -145,7 +166,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             failedValidations.forEach(failedValidation -> getLog().error(
                     "Recipe validation error in " + failedValidation.getProperty() + ": " +
                             failedValidation.getMessage(), failedValidation.getException()));
-            if (this.extension.getFailOnInvalidActiveRecipes()) {
+            if (getExtension().getFailOnInvalidActiveRecipes()) {
                 throw new RuntimeException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
             } else {
                 getLog().error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
@@ -180,7 +201,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             String javaRuntimeVersion = System.getProperty("java.runtime.version");
             RewriteJavaMetadata javaMetadata =  sourceSets.get(sourceSet);
-            JavaProvenance javaProvenance = rewrite.javaProvenanceBuilder()
+            JavaProvenance javaProvenance = getRewrite().javaProvenanceBuilder()
                     .projectName(getProject().getName())
                     .buildToolVersion(GradleVersion.current().getVersion())
                     .sourceSetName(sourceSet.getName())
@@ -194,7 +215,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if(javaPaths.size() > 0) {
                 getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllJava().getSourceDirectories().getAsPath());
                 Instant start = Instant.now();
-                sourceFiles.addAll(map(rewrite.javaParserFromJavaVersion()
+                sourceFiles.addAll(map(getRewrite().javaParserFromJavaVersion()
                         .relaxedClassTypeMatching(true)
                         .styles(styles)
                         .classpath(dependencyPaths)
@@ -217,7 +238,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if (yamlPaths.size() > 0) {
                 getLog().lifecycle("Parsing " + yamlPaths.size() + " YAML files from " + resourcesPath);
                 Instant start = Instant.now();
-                sourceFiles.addAll(map(rewrite.yamlParser().parse(yamlPaths, baseDir, ctx),
+                sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
                         s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
@@ -231,7 +252,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if(propertiesPaths.size() > 0) {
                 getLog().lifecycle("Parsing " + propertiesPaths.size() + " properties files from " + resourcesPath);
                 Instant start = Instant.now();
-                sourceFiles.addAll(map(rewrite.propertiesParser().parse(propertiesPaths, baseDir, ctx),
+                sourceFiles.addAll(map(getRewrite().propertiesParser().parse(propertiesPaths, baseDir, ctx),
                         s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
 
                 Instant end = Instant.now();
@@ -246,7 +267,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             if (xmlPaths.size() > 0) {
                 getLog().lifecycle("Parsing " + xmlPaths.size() + " XML files from " + resourcesPath);
                 Instant start = Instant.now();
-                sourceFiles.addAll(map(rewrite.yamlParser().parse(yamlPaths, baseDir, ctx),
+                sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
                         s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
 
                 Instant end = Instant.now();

@@ -15,10 +15,8 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
-import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
 import org.openrewrite.gradle.RewriteReflectiveFacade.*;
 
@@ -28,15 +26,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Map;
 
 public class RewriteRunTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteRunTask.class);
 
     @Inject
-    public RewriteRunTask(Configuration configuration, Map<SourceSet, RewriteJavaMetadata> sourceSets, RewriteExtension extension) {
-        super(configuration, sourceSets, extension);
+    public RewriteRunTask() {
         setGroup("rewrite");
         setDescription("Apply the active refactoring recipes");
     }
@@ -103,10 +98,11 @@ public class RewriteRunTask extends AbstractRewriteTask {
                     // Should we try to use git to move the file first, and only if that fails fall back to this?
                     assert result.getBefore() != null;
                     Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
-                    /*boolean deleteSucceeded = */originalLocation.toFile().delete();
-//                    if (!deleteSucceeded) {
-//                        throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
-//                    }
+
+                    // On Mac this can return "false" even when the file was deleted, so skip the check
+                    //noinspection ResultOfMethodCallIgnored
+                    originalLocation.toFile().delete();
+
                     assert result.getAfter() != null;
                     // Ensure directories exist in case something was moved into a hitherto non-existent package
                     Path afterLocation = results.getProjectRoot().resolve(result.getAfter().getSourcePath());
