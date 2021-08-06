@@ -20,15 +20,11 @@ import org.gradle.api.*;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
-import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
-import org.gradle.api.tasks.SourceSet;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Adds the RewriteExtension to the current project and registers tasks per-sourceSet.
@@ -61,22 +57,22 @@ public class RewritePlugin implements Plugin<Project> {
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = rootProject.getConfigurations().maybeCreate("rewrite");
 
-        Map<SourceSet, RewriteJavaMetadata> sourceSets = new HashMap<>();
+        Map<Project, RewriteJavaMetadata> projects = new HashMap<>();
 
         // We use this method of task creation because it works on old versions of Gradle
         // Don't replace with TaskContainer.register() (introduced in 4.9), or another overload of create() (introduced in 4.7)
         Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class)
                 .setConfiguration(rewriteConf)
                 .setExtension(extension)
-                .setSourceSets(sourceSets);
+                .setProjects(projects);
         Task rewriteDryRun = rootProject.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
                 .setConfiguration(rewriteConf)
                 .setExtension(extension)
-                .setSourceSets(sourceSets);
+                .setProjects(projects);
         Task rewriteDiscover = rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
                 .setConfiguration(rewriteConf)
                 .setExtension(extension)
-                .setSourceSets(sourceSets);
+                .setProjects(projects);
 
         rootProject.allprojects(project -> {
             // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
@@ -106,9 +102,8 @@ public class RewritePlugin implements Plugin<Project> {
                         project.getVersion().toString()
                 );
 
+                projects.put(project, rewriteJavaMetadata);
                 javaConvention.getSourceSets().all(sourceSet -> {
-                    sourceSets.put(sourceSet, rewriteJavaMetadata);
-
                     // This is intended to ensure that any Groovy/Kotlin/etc. sources are available for type attribution during parsing
                     // This may not be necessary if sourceSet.getCompileClasspath() guarantees that such sources will have been compiled
                     Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());

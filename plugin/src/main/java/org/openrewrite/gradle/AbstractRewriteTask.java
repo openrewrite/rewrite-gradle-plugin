@@ -16,8 +16,10 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
+import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.SourceSet;
@@ -26,8 +28,13 @@ import org.openrewrite.gradle.RewriteReflectiveFacade.*;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -40,7 +47,7 @@ import static java.util.stream.Collectors.toMap;
 public abstract class AbstractRewriteTask extends DefaultTask implements RewriteTask {
 
     private Configuration configuration;
-    private Map<SourceSet, RewriteJavaMetadata> sourceSets;
+    private Map<Project, RewriteJavaMetadata> projects;
     private RewriteExtension extension;
     private RewriteReflectiveFacade rewrite;
 
@@ -49,8 +56,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return this;
     }
 
-    AbstractRewriteTask setSourceSets(Map<SourceSet, RewriteJavaMetadata> sourceSets) {
-        this.sourceSets = sourceSets;
+    AbstractRewriteTask setProjects(Map<Project, RewriteJavaMetadata> sourceSets) {
+        this.projects = sourceSets;
         return this;
     }
 
@@ -174,8 +181,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         }
 
         InMemoryExecutionContext ctx = executionContext();
-        List<SourceFile> sourceFiles = sourceSets.keySet().stream()
-                .flatMap(sourceSet -> parse(sourceSet, styles, ctx).stream())
+        List<SourceFile> sourceFiles = projects.keySet().stream()
+                .flatMap(p -> parse(p, styles, ctx).stream())
                 .collect(toList());
 
         getLog().lifecycle("Running recipe(s)...");
@@ -184,27 +191,19 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return new ResultsContainer(baseDir, results);
     }
 
-    protected List<SourceFile> parse(SourceSet sourceSet, List<NamedStyles> styles, InMemoryExecutionContext ctx) {
+    protected List<SourceFile> parse(Project subproject, List<NamedStyles> styles, InMemoryExecutionContext ctx) {
         try {
             Path baseDir = getProject().getRootProject().getRootDir().toPath();
 
-            List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
-                    .filter(it -> it.isFile() && it.getName().endsWith(".java"))
-                    .map(File::toPath)
-                    .map(AbstractRewriteTask::toRealPath)
-                    .collect(toList());
-
-            List<Path> dependencyPaths = sourceSet.getCompileClasspath().getFiles().stream()
-                    .map(File::toPath)
-                    .map(AbstractRewriteTask::toRealPath)
-                    .collect(toList());
+            @SuppressWarnings("deprecation")
+            JavaPluginConvention javaConvention = subproject.getConvention().getPlugin(JavaPluginConvention.class);
 
             String javaRuntimeVersion = System.getProperty("java.runtime.version");
-            RewriteJavaMetadata javaMetadata =  sourceSets.get(sourceSet);
+            RewriteJavaMetadata javaMetadata =  projects.get(subproject);
             JavaProvenance javaProvenance = getRewrite().javaProvenanceBuilder()
                     .projectName(getProject().getName())
                     .buildToolVersion(GradleVersion.current().getVersion())
-                    .sourceSetName(sourceSet.getName())
+                    .sourceSetName(subproject.getName())
                     .vmRuntimeVersion(javaRuntimeVersion)
                     .vmVendor(System.getProperty("java.vm.vendor"))
                     .sourceCompatibility(javaMetadata.getSourceCompatibility())
@@ -212,67 +211,79 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .build();
 
             List<SourceFile> sourceFiles = new ArrayList<>();
-            if(javaPaths.size() > 0) {
-                getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllJava().getSourceDirectories().getAsPath());
-                Instant start = Instant.now();
-                sourceFiles.addAll(map(getRewrite().javaParserFromJavaVersion()
-                        .relaxedClassTypeMatching(true)
-                        .styles(styles)
-                        .classpath(dependencyPaths)
-                        .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                        .build()
-                        .parse(javaPaths, baseDir, ctx),
-                        s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
-                Instant end = Instant.now();
-                Duration duration = Duration.between(start, end);
-                getLog().lifecycle("Parsed " + javaPaths.size() + " Java files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+            for(SourceSet sourceSet : javaConvention.getSourceSets()) {
+                List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
+                        .filter(it -> it.isFile() && it.getName().endsWith(".java"))
+                        .map(File::toPath)
+                        .map(AbstractRewriteTask::toRealPath)
+                        .collect(toList());
+
+                List<Path> dependencyPaths = sourceSet.getCompileClasspath().getFiles().stream()
+                        .map(File::toPath)
+                        .map(AbstractRewriteTask::toRealPath)
+                        .collect(toList());
+
+                if(javaPaths.size() > 0) {
+                    getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllJava().getSourceDirectories().getAsPath());
+                    Instant start = Instant.now();
+                    sourceFiles.addAll(map(getRewrite().javaParserFromJavaVersion()
+                                    .relaxedClassTypeMatching(true)
+                                    .styles(styles)
+                                    .classpath(dependencyPaths)
+                                    .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                                    .build()
+                                    .parse(javaPaths, baseDir, ctx),
+                            s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
+                    Instant end = Instant.now();
+                    Duration duration = Duration.between(start, end);
+                    getLog().lifecycle("Parsed " + javaPaths.size() + " Java files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+                }
             }
-
-            String resourcesPath = sourceSet.getResources().getSourceDirectories().getAsPath();
-
-            List<Path> yamlPaths = sourceSet.getResources().getFiles().stream()
-                    .filter(it -> it.isFile() && it.getName().endsWith(".yml") || it.getName().endsWith(".yaml"))
-                    .map(File::toPath)
-                    .collect(toList());
+            List<Path> yamlPaths = new ArrayList<>();
+            List<Path> propertiesPaths = new ArrayList<>();
+            List<Path> xmlPaths = new ArrayList<>();
+            Files.walk(subproject.getProjectDir().toPath())
+                    .forEach(file -> {
+                        String fileName = file.toString().toLowerCase();
+                        if(fileName.endsWith(".yml") || fileName.endsWith(".yaml")) {
+                            yamlPaths.add(file);
+                        } else if(fileName.endsWith(".properties")) {
+                            propertiesPaths.add(file);
+                        } else if(fileName.endsWith(".xml")) {
+                            xmlPaths.add(file);
+                        }
+                    });
 
             if (yamlPaths.size() > 0) {
-                getLog().lifecycle("Parsing " + yamlPaths.size() + " YAML files from " + resourcesPath);
+                getLog().lifecycle("Parsing " + yamlPaths.size() + " YAML files from " + subproject.getProjectDir());
                 Instant start = Instant.now();
                 sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
                         s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
-                getLog().lifecycle("Parsed " + yamlPaths.size() + " YAML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+                getLog().lifecycle("Parsed " + yamlPaths.size() + " YAML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(yamlPaths.size())) + " per file)");
             }
 
-            List<Path> propertiesPaths = sourceSet.getResources().getFiles().stream()
-                    .filter(it -> it.isFile() && it.getName().endsWith(".properties"))
-                    .map(File::toPath)
-                    .collect(toList());
             if(propertiesPaths.size() > 0) {
-                getLog().lifecycle("Parsing " + propertiesPaths.size() + " properties files from " + resourcesPath);
+                getLog().lifecycle("Parsing " + propertiesPaths.size() + " properties files from " + subproject.getProjectDir());
                 Instant start = Instant.now();
                 sourceFiles.addAll(map(getRewrite().propertiesParser().parse(propertiesPaths, baseDir, ctx),
                         s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
 
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
-                getLog().lifecycle("Parsed " + propertiesPaths.size() + " properties files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+                getLog().lifecycle("Parsed " + propertiesPaths.size() + " properties files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(propertiesPaths.size())) + " per file)");
             }
 
-            List<Path> xmlPaths = sourceSet.getResources().getFiles().stream()
-                    .filter(it -> it.isFile() && it.getName().endsWith(".xml"))
-                    .map(File::toPath)
-                    .collect(toList());
             if (xmlPaths.size() > 0) {
-                getLog().lifecycle("Parsing " + xmlPaths.size() + " XML files from " + resourcesPath);
+                getLog().lifecycle("Parsing " + xmlPaths.size() + " XML files from " + subproject.getProjectDir());
                 Instant start = Instant.now();
                 sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
                         s -> s.withMarkers(s.getMarkers().addIfAbsent(javaProvenance))));
 
                 Instant end = Instant.now();
                 Duration duration = Duration.between(start, end);
-                getLog().lifecycle("Parsed " + xmlPaths.size() + " XML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
+                getLog().lifecycle("Parsed " + xmlPaths.size() + " XML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(xmlPaths.size())) + " per file)");
             }
 
             return sourceFiles;
