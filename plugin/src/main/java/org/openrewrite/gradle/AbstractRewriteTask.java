@@ -199,7 +199,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .projectName(getProject().getName())
                     .buildToolVersion(GradleVersion.current().getVersion())
                     .vmRuntimeVersion(System.getProperty("java.runtime.version"))
-                    .vmVendor(System.getProperty("java.vm.vendor"));
+                    .vmVendor(System.getProperty("java.vm.vendor"))
+                    .classpath(new HashSet<>());
 
             Set<SourceSet> sourceSets;
             if(javaConvention == null) {
@@ -212,10 +213,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             for(SourceSet sourceSet : sourceSets) {
-                JavaProvenance javaProvenance = getRewrite()
-                        .javaProvenanceBuilder(sharedProvenance)
-                        .sourceSetName(sourceSet.getName())
-                        .build();
 
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
@@ -227,6 +224,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                         .map(File::toPath)
                         .map(AbstractRewriteTask::toRealPath)
                         .collect(toList());
+
+                JavaProvenance javaProvenance = getRewrite()
+                        .javaProvenanceBuilder(sharedProvenance)
+                        .sourceSetName(sourceSet.getName())
+                        .classpath(dependencyPaths)
+                        .build();
 
                 if(javaPaths.size() > 0) {
                     getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllJava().getSourceDirectories().getAsPath());
