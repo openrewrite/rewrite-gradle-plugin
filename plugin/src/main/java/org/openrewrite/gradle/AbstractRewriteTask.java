@@ -200,7 +200,10 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     .projectName(getProject().getName())
                     .buildToolVersion(GradleVersion.current().getVersion())
                     .vmRuntimeVersion(System.getProperty("java.runtime.version"))
-                    .vmVendor(System.getProperty("java.vm.vendor"));
+                    .vmVendor(System.getProperty("java.vm.vendor"))
+                    .publicationGroupId(subproject.getGroup().toString())
+                    .publicationArtifactId(subproject.getName())
+                    .publicationArtifactId(subproject.getVersion().toString());
 
             Set<SourceSet> sourceSets;
             if(javaConvention == null) {
