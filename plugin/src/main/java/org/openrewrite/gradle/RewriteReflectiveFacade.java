@@ -18,7 +18,6 @@ package org.openrewrite.gradle;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 
 import javax.annotation.Nullable;
@@ -177,8 +176,13 @@ public class RewriteReflectiveFacade {
         }
     }
 
-    public interface Marker {
-        Object getReal();
+    public class Marker {
+        private final Object real;
+
+        public Marker(Object real) { this.real = real; }
+        Object getReal() {
+            return real;
+        }
     }
 
     public class Markers {
@@ -187,9 +191,12 @@ public class RewriteReflectiveFacade {
         public Markers(Object real) {
             this.real = real;
         }
-        public <M extends Marker> Markers addIfAbsent(M m) {
+        public Markers addAll(List<Marker> markers) {
             try {
-                Object newReal = markersAddIfAbsentMethod().invoke(real, m.getReal());
+                Object newReal = real;
+                for (Marker marker : markers) {
+                    newReal = markersAddIfAbsentMethod().invoke(newReal, marker.getReal());
+                }
                 return newReal == real ? this : new Markers(newReal);
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -271,20 +278,19 @@ public class RewriteReflectiveFacade {
         }
     }
 
-    public static class JavaProvenance implements Marker {
-        private final Object real;
+    public Marker javaSourceSet(String sourceSetName, Iterable<Path> classpath) {
+        try {
+            Class<?> c = getClassLoader().loadClass("org.openrewrite.java.marker.JavaSourceSet");
+            Method javaSourceSetBuild = c.getMethod("build", String.class, Iterable.class);
 
-        private JavaProvenance(Object real) {this.real = real; }
-
-        @Override
-        public Object getReal() {
-            return real;
+            return new Marker(javaSourceSetBuild.invoke(null, sourceSetName, classpath));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
-    public class JavaProvenanceBuilder {
+    public class JavaProjectProvenanceBuilder {
         private String projectName;
-        private String sourceSetName;
 
         //Build Tool
         private String buildToolVersion;
@@ -295,109 +301,87 @@ public class RewriteReflectiveFacade {
         private String sourceCompatibility;
         private String targetCompatibility;
 
-        //Classpath
-        private Iterable<Path> classpath;
-
         //Publication
         private String publicationGroupId;
         private String publicationArtifactId;
         private String publicationVersion;
 
-        public JavaProvenanceBuilder projectName(String projectName) {
+        public JavaProjectProvenanceBuilder projectName(String projectName) {
             this.projectName = projectName;
             return this;
         }
-        public JavaProvenanceBuilder sourceSetName(String sourceSetName) {
-            this.sourceSetName = sourceSetName;
-            return this;
-        }
-        public JavaProvenanceBuilder buildToolVersion(String buildToolVersion) {
+        public JavaProjectProvenanceBuilder buildToolVersion(String buildToolVersion) {
             this.buildToolVersion = buildToolVersion;
             return this;
         }
-        public JavaProvenanceBuilder vmRuntimeVersion(String vmRuntimeVersion) {
+        public JavaProjectProvenanceBuilder vmRuntimeVersion(String vmRuntimeVersion) {
             this.vmRuntimeVersion = vmRuntimeVersion;
             return this;
         }
-        public JavaProvenanceBuilder vmVendor(String vmVendor) {
+        public JavaProjectProvenanceBuilder vmVendor(String vmVendor) {
             this.vmVendor = vmVendor;
             return this;
         }
-        public JavaProvenanceBuilder sourceCompatibility(String sourceCompatibility) {
+        public JavaProjectProvenanceBuilder sourceCompatibility(String sourceCompatibility) {
             this.sourceCompatibility = sourceCompatibility;
             return this;
         }
-        public JavaProvenanceBuilder targetCompatibility(String targetCompatibility) {
+        public JavaProjectProvenanceBuilder targetCompatibility(String targetCompatibility) {
             this.targetCompatibility = targetCompatibility;
             return this;
         }
-        public JavaProvenanceBuilder classpath(Iterable<Path> classpath) {
-            this.classpath = classpath;
-            return this;
-        }
-        public JavaProvenanceBuilder publicationGroupId(String publicationGroupId) {
+        public JavaProjectProvenanceBuilder publicationGroupId(String publicationGroupId) {
             this.publicationGroupId = publicationGroupId;
             return this;
         }
-        public JavaProvenanceBuilder publicationArtifactId(String publicationArtifactId) {
+        public JavaProjectProvenanceBuilder publicationArtifactId(String publicationArtifactId) {
             this.publicationArtifactId = publicationArtifactId;
             return this;
         }
-        public JavaProvenanceBuilder publicationVersion(String publicationVersion) {
+        public JavaProjectProvenanceBuilder publicationVersion(String publicationVersion) {
             this.publicationVersion = publicationVersion;
             return this;
         }
 
-        public JavaProvenance build() {
+        public List<Marker> build() {
 
             try {
                 //Build Tool Type Enum
                 @SuppressWarnings("rawtypes")
                 Enum gradleType = Enum.valueOf ((Class<? extends Enum>) getClassLoader()
-                        .loadClass("org.openrewrite.java.marker.JavaProvenance$BuildTool$Type"), "Gradle");
+                        .loadClass("org.openrewrite.marker.BuildTool$Type"), "Gradle");
 
                 Object buildTool = getClassLoader()
-                        .loadClass("org.openrewrite.java.marker.JavaProvenance$BuildTool")
-                        .getConstructor(gradleType.getClass(), String.class)
-                        .newInstance(gradleType, buildToolVersion);
+                        .loadClass("org.openrewrite.marker.BuildTool")
+                        .getConstructor(UUID.class, gradleType.getClass(), String.class)
+                        .newInstance(UUID.randomUUID(), gradleType, buildToolVersion);
 
                 //Version
                 Object javaVersion = getClassLoader()
-                        .loadClass("org.openrewrite.java.marker.JavaProvenance$JavaVersion")
-                        .getConstructor(String.class, String.class, String.class, String.class)
-                        .newInstance(this.vmRuntimeVersion, this.vmVendor, this.sourceCompatibility, this.targetCompatibility);
+                        .loadClass("org.openrewrite.java.marker.JavaVersion")
+                        .getConstructor(UUID.class, String.class, String.class, String.class, String.class)
+                        .newInstance(UUID.randomUUID(), this.vmRuntimeVersion, this.vmVendor, this.sourceCompatibility, this.targetCompatibility);
 
                 Object publication = getClassLoader()
-                        .loadClass("org.openrewrite.java.marker.JavaProvenance$Publication")
+                        .loadClass("org.openrewrite.java.marker.JavaProject$Publication")
                         .getConstructor(String.class, String.class, String.class)
                         .newInstance(this.publicationGroupId, this.publicationArtifactId, this.publicationVersion);
 
+                Object javaProject = getClassLoader()
+                        .loadClass("org.openrewrite.java.marker.JavaProject")
+                        .getConstructor(UUID.class, String.class, publication.getClass())
+                        .newInstance(UUID.randomUUID(), projectName, publication);
+
                 //Provenance
-                Class<?> c = getClassLoader().loadClass("org.openrewrite.java.marker.JavaProvenance");
-                Method javaProvenanceBuilder = c.getMethod("build", String.class, String.class, buildTool.getClass(), javaVersion.getClass(), Iterable.class, publication.getClass());
-                return new JavaProvenance(javaProvenanceBuilder.invoke(c.getName(), this.projectName, this.sourceSetName, buildTool, javaVersion, classpath, publication));
+                return Arrays.asList(new Marker(buildTool), new Marker(javaVersion), new Marker(javaProject));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
     }
 
-    public JavaProvenanceBuilder javaProvenanceBuilder() {
-        return new JavaProvenanceBuilder();
-    }
-
-    public JavaProvenanceBuilder javaProvenanceBuilder(JavaProvenanceBuilder other) {
-        return new JavaProvenanceBuilder()
-                .buildToolVersion(other.buildToolVersion)
-                .projectName(other.projectName)
-                .publicationArtifactId(other.publicationArtifactId)
-                .publicationGroupId(other.publicationGroupId)
-                .publicationVersion(other.publicationVersion)
-                .sourceCompatibility(other.sourceCompatibility)
-                .sourceSetName(other.sourceSetName)
-                .targetCompatibility(other.targetCompatibility)
-                .vmRuntimeVersion(other.vmRuntimeVersion)
-                .vmVendor(other.vmVendor);
+    public JavaProjectProvenanceBuilder javaProjectProvenanceBuilder() {
+        return new JavaProjectProvenanceBuilder();
     }
 
     public class Result {
