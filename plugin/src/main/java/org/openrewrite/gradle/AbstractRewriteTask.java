@@ -211,8 +211,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 sourceSets = emptySet();
             } else {
                 sourceSets = javaConvention.getSourceSets();
-                //TODO Need to get Java Metadata to get group, artifact and version.
-
                 projectProvenanceBuilder.sourceCompatibility(javaConvention.getSourceCompatibility().toString())
                         .targetCompatibility(javaConvention.getTargetCompatibility().toString());
             }
@@ -223,13 +221,11 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             Set<Path> seenSourceFiles = new HashSet<>();
             for(SourceSet sourceSet : sourceSets) {
 
-                List<Path> javaPaths = new ArrayList<>();
-                for (File file : sourceSet.getAllJava()) {
-                    if (file.getName().endsWith(".java")) {
-                        javaPaths.add(file.toPath().toRealPath());
-                    }
-
-                }
+                List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
+                        .filter(it -> it.isFile() && it.getName().endsWith(".java"))
+                        .map(File::toPath)
+                        .map(AbstractRewriteTask::toRealPath)
+                        .collect(toList());
 
                 List<Path> dependencyPaths = sourceSet.getCompileClasspath().getFiles().stream()
                         .map(File::toPath)
@@ -239,7 +235,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 Marker javaSourceSet = getRewrite().javaSourceSet(sourceSet.getName(), dependencyPaths);
 
                 if(javaPaths.size() > 0) {
-                    getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllSource().getSourceDirectories().getAsPath());
+                    getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllJava().getSourceDirectories().getAsPath());
                     Instant start = Instant.now();
                     sourceFiles.addAll(map(getRewrite().javaParserFromJavaVersion()
                                     .relaxedClassTypeMatching(true)
@@ -307,7 +303,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             }
 
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-            //We do not want to collect any of the files from sub-project folders or the build folder, or the .gradle
+            //We do not want to collect any of the files from sub-project folders, the build folder, or the "/.gradle"
             //folder.
             List<Path> yamlPaths = new ArrayList<>();
             List<Path> propertiesPaths = new ArrayList<>();
