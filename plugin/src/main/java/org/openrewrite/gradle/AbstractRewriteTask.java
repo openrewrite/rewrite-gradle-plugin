@@ -198,7 +198,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
 
             JavaProjectProvenanceBuilder projectProvenanceBuilder = getRewrite().javaProjectProvenanceBuilder()
-                    .projectName(getProject().getName())
+                    .projectName(subproject.getName())
                     .buildToolVersion(GradleVersion.current().getVersion())
                     .vmRuntimeVersion(System.getProperty("java.runtime.version"))
                     .vmVendor(System.getProperty("java.vm.vendor"))
