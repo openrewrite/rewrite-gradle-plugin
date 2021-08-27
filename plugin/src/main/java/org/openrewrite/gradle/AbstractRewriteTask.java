@@ -146,48 +146,52 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     }
 
     protected ResultsContainer listResults() {
-        Path baseDir = getProject().getRootProject().getRootDir().toPath();
-        Environment env = environment();
-        Set<String> activeRecipes = getActiveRecipes();
-        Set<String> activeStyles = getActiveStyles();
-        getLog().lifecycle(String.format("Using active recipe(s) %s", activeRecipes));
-        getLog().lifecycle(String.format("Using active styles(s) %s", activeStyles));
-        if (activeRecipes.isEmpty()) {
-            return new ResultsContainer(baseDir, emptyList());
-        }
-        List<NamedStyles> styles = env.activateStyles(activeStyles);
-        File checkstyleConfig = extension.getCheckstyleConfigFile();
-        if(checkstyleConfig != null && checkstyleConfig.exists()) {
-            NamedStyles checkstyle = getRewrite().loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties());
-            styles.add(checkstyle);
-        }
-
-        Recipe recipe = env.activateRecipes(activeRecipes);
-
-        getLog().lifecycle("Validating active recipes");
-        Collection<Validated> validated = recipe.validateAll();
-        List<Validated.Invalid> failedValidations = validated.stream().map(Validated::failures)
-                .flatMap(Collection::stream).collect(toList());
-        if (!failedValidations.isEmpty()) {
-            failedValidations.forEach(failedValidation -> getLog().error(
-                    "Recipe validation error in " + failedValidation.getProperty() + ": " +
-                            failedValidation.getMessage(), failedValidation.getException()));
-            if (getExtension().getFailOnInvalidActiveRecipes()) {
-                throw new RuntimeException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
-            } else {
-                getLog().error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
+        try {
+            Path baseDir = getProject().getRootProject().getRootDir().toPath();
+            Environment env = environment();
+            Set<String> activeRecipes = getActiveRecipes();
+            Set<String> activeStyles = getActiveStyles();
+            getLog().lifecycle(String.format("Using active recipe(s) %s", activeRecipes));
+            getLog().lifecycle(String.format("Using active styles(s) %s", activeStyles));
+            if (activeRecipes.isEmpty()) {
+                return new ResultsContainer(baseDir, emptyList());
             }
+            List<NamedStyles> styles = env.activateStyles(activeStyles);
+            File checkstyleConfig = extension.getCheckstyleConfigFile();
+            if (checkstyleConfig != null && checkstyleConfig.exists()) {
+                NamedStyles checkstyle = getRewrite().loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties());
+                styles.add(checkstyle);
+            }
+
+            Recipe recipe = env.activateRecipes(activeRecipes);
+
+            getLog().lifecycle("Validating active recipes");
+            Collection<Validated> validated = recipe.validateAll();
+            List<Validated.Invalid> failedValidations = validated.stream().map(Validated::failures)
+                    .flatMap(Collection::stream).collect(toList());
+            if (!failedValidations.isEmpty()) {
+                failedValidations.forEach(failedValidation -> getLog().error(
+                        "Recipe validation error in " + failedValidation.getProperty() + ": " +
+                                failedValidation.getMessage(), failedValidation.getException()));
+                if (getExtension().getFailOnInvalidActiveRecipes()) {
+                    throw new RuntimeException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
+                } else {
+                    getLog().error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
+                }
+            }
+
+            InMemoryExecutionContext ctx = executionContext();
+            List<SourceFile> sourceFiles = projects.stream()
+                    .flatMap(p -> parse(p, styles, ctx).stream())
+                    .collect(toList());
+
+            getLog().lifecycle("Running recipe(s)...");
+            List<Result> results = recipe.run(sourceFiles);
+
+            return new ResultsContainer(baseDir, results);
+        } finally {
+            rewrite.clearFlyweights();
         }
-
-        InMemoryExecutionContext ctx = executionContext();
-        List<SourceFile> sourceFiles = projects.stream()
-                .flatMap(p -> parse(p, styles, ctx).stream())
-                .collect(toList());
-
-        getLog().lifecycle("Running recipe(s)...");
-        List<Result> results = recipe.run(sourceFiles);
-
-        return new ResultsContainer(baseDir, results);
     }
 
     protected List<SourceFile> parse(Project subproject, List<NamedStyles> styles, InMemoryExecutionContext ctx) {
