@@ -940,9 +940,9 @@ public class RewriteReflectiveFacade {
 
     public void clearFlyweights() {
         try {
-            Class<?> c = getClassLoader().loadClass("org.openrewrite.java.tree.JavaType");
-            Method javaTypeClearCaches = c.getMethod("clearCaches");
-            javaTypeClearCaches.invoke(null);
+            Class<?> c = getClassLoader().loadClass("org.openrewrite.java.tree.J");
+            Method javaClearCaches = c.getMethod("clearCaches");
+            javaClearCaches.invoke(null);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
