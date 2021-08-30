@@ -190,7 +190,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             return new ResultsContainer(baseDir, results);
         } finally {
-            rewrite.clearFlyweights();
+            rewrite.shutdown();
         }
     }
 

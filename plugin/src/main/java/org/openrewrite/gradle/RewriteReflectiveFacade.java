@@ -938,11 +938,15 @@ public class RewriteReflectiveFacade {
         }
     }
 
-    public void clearFlyweights() {
+    public void shutdown() {
         try {
             Class<?> c = getClassLoader().loadClass("org.openrewrite.java.tree.J");
             Method javaClearCaches = c.getMethod("clearCaches");
             javaClearCaches.invoke(null);
+
+            getClassLoader().loadClass("org.openrewrite.shaded.jgit.api.Git").getMethod("shutdown").invoke(null);
+
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
