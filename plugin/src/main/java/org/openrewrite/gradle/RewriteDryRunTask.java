@@ -53,60 +53,63 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        ResultsContainer results = listResults();
+        try {
+            ResultsContainer results = listResults();
 
-        if (results.isNotEmpty()) {
-            for (Result result : results.generated) {
-                assert result.getAfter() != null;
-                getLog().warn("These recipes would generate new file {}:", result.getAfter().getSourcePath());
-                logRecipesThatMadeChanges(result);
-            }
-            for (Result result : results.deleted) {
-                assert result.getBefore() != null;
-                getLog().warn("These recipes would delete file {}:", result.getBefore().getSourcePath());
-                logRecipesThatMadeChanges(result);
-            }
-            for (Result result : results.moved) {
-                assert result.getBefore() != null;
-                assert result.getAfter() != null;
-                getLog().warn("These recipes would move file from {} to {}:", result.getBefore().getSourcePath(), result.getAfter().getSourcePath());
-                logRecipesThatMadeChanges(result);
-            }
-            for (Result result : results.refactoredInPlace) {
-                assert result.getBefore() != null;
-                getLog().warn("These recipes would make results to {}:", result.getBefore().getSourcePath());
-                logRecipesThatMadeChanges(result);
-            }
+            if (results.isNotEmpty()) {
+                for (Result result : results.generated) {
+                    assert result.getAfter() != null;
+                    getLog().warn("These recipes would generate new file {}:", result.getAfter().getSourcePath());
+                    logRecipesThatMadeChanges(result);
+                }
+                for (Result result : results.deleted) {
+                    assert result.getBefore() != null;
+                    getLog().warn("These recipes would delete file {}:", result.getBefore().getSourcePath());
+                    logRecipesThatMadeChanges(result);
+                }
+                for (Result result : results.moved) {
+                    assert result.getBefore() != null;
+                    assert result.getAfter() != null;
+                    getLog().warn("These recipes would move file from {} to {}:", result.getBefore().getSourcePath(), result.getAfter().getSourcePath());
+                    logRecipesThatMadeChanges(result);
+                }
+                for (Result result : results.refactoredInPlace) {
+                    assert result.getBefore() != null;
+                    getLog().warn("These recipes would make results to {}:", result.getBefore().getSourcePath());
+                    logRecipesThatMadeChanges(result);
+                }
 
-            Path patchFile = getReportPath();
-            //noinspection ResultOfMethodCallIgnored
-            patchFile.getParent().toFile().mkdirs();
-            try (BufferedWriter writer = Files.newBufferedWriter(patchFile)) {
-                Stream.concat(
-                        Stream.concat(results.generated.stream(), results.deleted.stream()),
-                        Stream.concat(results.moved.stream(), results.refactoredInPlace.stream())
-                )
-                        .map(Result::diff)
-                        .forEach(diff -> {
-                            try {
-                                writer.write(diff + "\n");
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        });
+                Path patchFile = getReportPath();
+                //noinspection ResultOfMethodCallIgnored
+                patchFile.getParent().toFile().mkdirs();
+                try (BufferedWriter writer = Files.newBufferedWriter(patchFile)) {
+                    Stream.concat(
+                                    Stream.concat(results.generated.stream(), results.deleted.stream()),
+                                    Stream.concat(results.moved.stream(), results.refactoredInPlace.stream())
+                            )
+                            .map(Result::diff)
+                            .forEach(diff -> {
+                                try {
+                                    writer.write(diff + "\n");
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            });
+                } catch (Exception e) {
+                    throw new RuntimeException("Unable to generate rewrite result file.", e);
+                }
+                getLog().warn("Report available:");
+                getLog().warn(indent(1, patchFile.normalize().toString()));
+                getLog().warn("Run 'gradle rewriteRun' to apply the recipes.");
 
-            } catch (Exception e) {
-                throw new RuntimeException("Unable to generate rewrite result file.", e);
+                if (getExtension().getFailOnDryRunResults()) {
+                    throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
+                }
+            } else {
+                getLog().lifecycle("Applying recipes would make no changes. No report generated.");
             }
-            getLog().warn("Report available:");
-            getLog().warn(indent(1, patchFile.normalize().toString()));
-            getLog().warn("Run 'gradle rewriteRun' to apply the recipes.");
-
-            if (getExtension().getFailOnDryRunResults()) {
-                throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
-            }
-        } else {
-            getLog().lifecycle("Applying recipes would make no changes. No report generated.");
+        } finally {
+            shutdownRewrite();
         }
     }
 }

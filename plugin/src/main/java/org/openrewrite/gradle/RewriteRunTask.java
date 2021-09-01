@@ -43,87 +43,91 @@ public class RewriteRunTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        ResultsContainer results = listResults();
+        try {
+            ResultsContainer results = listResults();
 
-        if (results.isNotEmpty()) {
-            for (Result result : results.generated) {
-                assert result.getAfter() != null;
-                getLog().lifecycle("Generated new file " +
-                        result.getAfter().getSourcePath() +
-                        " by:");
-                logRecipesThatMadeChanges(result);
-            }
-            for (Result result : results.deleted) {
-                assert result.getBefore() != null;
-                getLog().lifecycle("Deleted file " +
-                        result.getBefore().getSourcePath() +
-                        " by:");
-                logRecipesThatMadeChanges(result);
-            }
-            for (Result result : results.moved) {
-                assert result.getAfter() != null;
-                assert result.getBefore() != null;
-                getLog().lifecycle("File has been moved from " +
-                        result.getBefore().getSourcePath() + " to " +
-                        result.getAfter().getSourcePath() + " by:");
-                logRecipesThatMadeChanges(result);
-            }
-            for (Result result : results.refactoredInPlace) {
-                assert result.getBefore() != null;
-                getLog().lifecycle("Changes have been made to " +
-                        result.getBefore().getSourcePath() +
-                        " by:");
-                logRecipesThatMadeChanges(result);
-            }
-
-            getLog().lifecycle("Please review and commit the results.");
-
-            try {
+            if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
-                    try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                            results.getProjectRoot().resolve(result.getAfter().getSourcePath()))) {
-                        sourceFileWriter.write(result.getAfter().print());
-                    }
+                    getLog().lifecycle("Generated new file " +
+                            result.getAfter().getSourcePath() +
+                            " by:");
+                    logRecipesThatMadeChanges(result);
                 }
                 for (Result result : results.deleted) {
                     assert result.getBefore() != null;
-                    Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
-                    boolean deleteSucceeded = originalLocation.toFile().delete();
-                    if (!deleteSucceeded) {
-                        throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
-                    }
+                    getLog().lifecycle("Deleted file " +
+                            result.getBefore().getSourcePath() +
+                            " by:");
+                    logRecipesThatMadeChanges(result);
                 }
                 for (Result result : results.moved) {
-                    // Should we try to use git to move the file first, and only if that fails fall back to this?
-                    assert result.getBefore() != null;
-                    Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
-
-                    // On Mac this can return "false" even when the file was deleted, so skip the check
-                    //noinspection ResultOfMethodCallIgnored
-                    originalLocation.toFile().delete();
-
                     assert result.getAfter() != null;
-                    // Ensure directories exist in case something was moved into a hitherto non-existent package
-                    Path afterLocation = results.getProjectRoot().resolve(result.getAfter().getSourcePath());
-                    File parentDir = afterLocation.toFile().getParentFile();
-                    //noinspection ResultOfMethodCallIgnored
-                    parentDir.mkdirs();
-                    try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(afterLocation)) {
-                        sourceFileWriter.write(result.getAfter().print());
-                    }
+                    assert result.getBefore() != null;
+                    getLog().lifecycle("File has been moved from " +
+                            result.getBefore().getSourcePath() + " to " +
+                            result.getAfter().getSourcePath() + " by:");
+                    logRecipesThatMadeChanges(result);
                 }
                 for (Result result : results.refactoredInPlace) {
                     assert result.getBefore() != null;
-                    try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                            results.getProjectRoot().resolve(result.getBefore().getSourcePath()))) {
-                        assert result.getAfter() != null;
-                        sourceFileWriter.write(result.getAfter().print());
-                    }
+                    getLog().lifecycle("Changes have been made to " +
+                            result.getBefore().getSourcePath() +
+                            " by:");
+                    logRecipesThatMadeChanges(result);
                 }
-            } catch (IOException e) {
-                throw new RuntimeException("Unable to rewrite source files", e);
+
+                getLog().lifecycle("Please review and commit the results.");
+
+                try {
+                    for (Result result : results.generated) {
+                        assert result.getAfter() != null;
+                        try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
+                                results.getProjectRoot().resolve(result.getAfter().getSourcePath()))) {
+                            sourceFileWriter.write(result.getAfter().print());
+                        }
+                    }
+                    for (Result result : results.deleted) {
+                        assert result.getBefore() != null;
+                        Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
+                        boolean deleteSucceeded = originalLocation.toFile().delete();
+                        if (!deleteSucceeded) {
+                            throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
+                        }
+                    }
+                    for (Result result : results.moved) {
+                        // Should we try to use git to move the file first, and only if that fails fall back to this?
+                        assert result.getBefore() != null;
+                        Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
+
+                        // On Mac this can return "false" even when the file was deleted, so skip the check
+                        //noinspection ResultOfMethodCallIgnored
+                        originalLocation.toFile().delete();
+
+                        assert result.getAfter() != null;
+                        // Ensure directories exist in case something was moved into a hitherto non-existent package
+                        Path afterLocation = results.getProjectRoot().resolve(result.getAfter().getSourcePath());
+                        File parentDir = afterLocation.toFile().getParentFile();
+                        //noinspection ResultOfMethodCallIgnored
+                        parentDir.mkdirs();
+                        try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(afterLocation)) {
+                            sourceFileWriter.write(result.getAfter().print());
+                        }
+                    }
+                    for (Result result : results.refactoredInPlace) {
+                        assert result.getBefore() != null;
+                        try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
+                                results.getProjectRoot().resolve(result.getBefore().getSourcePath()))) {
+                            assert result.getAfter() != null;
+                            sourceFileWriter.write(result.getAfter().print());
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException("Unable to rewrite source files", e);
+                }
             }
+        } finally {
+            shutdownRewrite();
         }
     }
 }
