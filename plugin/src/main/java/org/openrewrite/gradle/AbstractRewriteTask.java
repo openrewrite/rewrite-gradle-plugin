@@ -49,6 +49,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     private List<Project> projects;
     private RewriteExtension extension;
     private RewriteReflectiveFacade rewrite;
+    private static final Map<File, byte[]> astCache = new HashMap<>();
+    protected boolean useAstCache;
 
     AbstractRewriteTask setConfiguration(Configuration configuration) {
         this.configuration = configuration;
@@ -146,52 +148,64 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     }
 
     protected ResultsContainer listResults() {
-        try {
-            Path baseDir = getProject().getRootProject().getRootDir().toPath();
-            Environment env = environment();
-            Set<String> activeRecipes = getActiveRecipes();
-            Set<String> activeStyles = getActiveStyles();
-            getLog().lifecycle(String.format("Using active recipe(s) %s", activeRecipes));
-            getLog().lifecycle(String.format("Using active styles(s) %s", activeStyles));
-            if (activeRecipes.isEmpty()) {
-                return new ResultsContainer(baseDir, emptyList());
-            }
-            List<NamedStyles> styles = env.activateStyles(activeStyles);
-            File checkstyleConfig = extension.getCheckstyleConfigFile();
-            if (checkstyleConfig != null && checkstyleConfig.exists()) {
-                NamedStyles checkstyle = getRewrite().loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties());
-                styles.add(checkstyle);
-            }
+        Path baseDir = getProject().getRootProject().getRootDir().toPath();
+        Environment env = environment();
+        Set<String> activeRecipes = getActiveRecipes();
+        Set<String> activeStyles = getActiveStyles();
+        getLog().lifecycle(String.format("Using active recipe(s) %s", activeRecipes));
+        getLog().lifecycle(String.format("Using active styles(s) %s", activeStyles));
+        if (activeRecipes.isEmpty()) {
+            return new ResultsContainer(baseDir, emptyList());
+        }
+        List<NamedStyles> styles = env.activateStyles(activeStyles);
+        File checkstyleConfig = extension.getCheckstyleConfigFile();
+        if (checkstyleConfig != null && checkstyleConfig.exists()) {
+            NamedStyles checkstyle = getRewrite().loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties());
+            styles.add(checkstyle);
+        }
 
-            Recipe recipe = env.activateRecipes(activeRecipes);
+        Recipe recipe = env.activateRecipes(activeRecipes);
 
-            getLog().lifecycle("Validating active recipes");
-            Collection<Validated> validated = recipe.validateAll();
-            List<Validated.Invalid> failedValidations = validated.stream().map(Validated::failures)
-                    .flatMap(Collection::stream).collect(toList());
-            if (!failedValidations.isEmpty()) {
-                failedValidations.forEach(failedValidation -> getLog().error(
-                        "Recipe validation error in " + failedValidation.getProperty() + ": " +
-                                failedValidation.getMessage(), failedValidation.getException()));
-                if (getExtension().getFailOnInvalidActiveRecipes()) {
-                    throw new RuntimeException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
-                } else {
-                    getLog().error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
-                }
+        getLog().lifecycle("Validating active recipes");
+        Collection<Validated> validated = recipe.validateAll();
+        List<Validated.Invalid> failedValidations = validated.stream().map(Validated::failures)
+                .flatMap(Collection::stream).collect(toList());
+        if (!failedValidations.isEmpty()) {
+            failedValidations.forEach(failedValidation -> getLog().error(
+                    "Recipe validation error in " + failedValidation.getProperty() + ": " +
+                            failedValidation.getMessage(), failedValidation.getException()));
+            if (getExtension().getFailOnInvalidActiveRecipes()) {
+                throw new RuntimeException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
+            } else {
+                getLog().error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
             }
+        }
 
+        List<SourceFile> sourceFiles;
+        if (useAstCache && astCache.containsKey(getProject().getRootProject().getRootDir())) {
+            getLog().lifecycle("Using cached in-memory ASTs...");
+            sourceFiles = getRewrite().toSourceFile(astCache.get(getProject().getRootProject().getRootDir()));
+        } else {
             InMemoryExecutionContext ctx = executionContext();
-            List<SourceFile> sourceFiles = projects.stream()
+            sourceFiles = projects.stream()
                     .flatMap(p -> parse(p, styles, ctx).stream())
                     .collect(toList());
-
-            getLog().lifecycle("Running recipe(s)...");
-            List<Result> results = recipe.run(sourceFiles);
-
-            return new ResultsContainer(baseDir, results);
-        } finally {
-            rewrite.shutdown();
+            if (useAstCache) {
+                astCache.put(getProject().getRootProject().getRootDir(), getRewrite().toBytes(sourceFiles));
+            }
         }
+        getLog().lifecycle("Running recipe(s)...");
+        List<Result> results = recipe.run(sourceFiles);
+
+        return new ResultsContainer(baseDir, results);
+    }
+
+    protected void clearAstCache() {
+        astCache.clear();
+    }
+
+    protected void shutdownRewrite() {
+        rewrite.shutdown();
     }
 
     protected List<SourceFile> parse(Project subproject, List<NamedStyles> styles, InMemoryExecutionContext ctx) {
