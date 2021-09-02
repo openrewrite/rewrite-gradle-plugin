@@ -18,8 +18,10 @@ package org.openrewrite.gradle;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.specs.Specs;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.options.Option;
 import org.openrewrite.gradle.RewriteReflectiveFacade.Result;
 
 import javax.inject.Inject;
@@ -44,6 +46,16 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
         setGroup("rewrite");
         setDescription("Dry run the active refactoring recipes. No source files will be changed.");
         getOutputs().upToDateWhen(Specs.SATISFIES_NONE);
+    }
+
+    @Option(description = "Cache the AST results in-memory when using the Gradle daemon.", option = "useAstCache")
+    public void setUseAstCache(boolean useAstCache) {
+        this.useAstCache = useAstCache;
+    }
+
+    @Input
+    public boolean isUseAstCache() {
+        return useAstCache;
     }
 
     @Override

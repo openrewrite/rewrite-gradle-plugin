@@ -938,6 +938,28 @@ public class RewriteReflectiveFacade {
         }
     }
 
+    byte[] toBytes(List<SourceFile> sourceFiles) {
+        List<Object> trees = sourceFiles.stream().map(s -> s.real).collect(Collectors.toList());
+        try {
+            Class<?> serializerClass = getClassLoader().loadClass("org.openrewrite.TreeSerializer");
+            Object serializer = serializerClass.getDeclaredConstructor().newInstance();
+            return (byte[]) serializerClass.getMethod("write", Iterable.class).invoke(serializer, trees);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    List<SourceFile> toSourceFile(byte[] trees) {
+        try {
+            Class<?> serializerClass = getClassLoader().loadClass("org.openrewrite.TreeSerializer");
+            Object serializer = serializerClass.getDeclaredConstructor().newInstance();
+            List<Object> sources = (List<Object>) serializerClass.getMethod("readList", byte[].class).invoke(serializer, trees);
+            return sources.stream().map(SourceFile::new).collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void shutdown() {
         try {
             getClassLoader().loadClass("org.openrewrite.java.tree.J").getMethod("clearCaches").invoke(null);

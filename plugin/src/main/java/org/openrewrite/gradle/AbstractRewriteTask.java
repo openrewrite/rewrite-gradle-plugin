@@ -49,6 +49,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     private List<Project> projects;
     private RewriteExtension extension;
     private RewriteReflectiveFacade rewrite;
+    private static final Map<File, byte[]> astCache = new HashMap<>();
+    protected boolean useAstCache;
 
     AbstractRewriteTask setConfiguration(Configuration configuration) {
         this.configuration = configuration;
@@ -179,15 +181,27 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             }
         }
 
-        InMemoryExecutionContext ctx = executionContext();
-        List<SourceFile> sourceFiles = projects.stream()
-                .flatMap(p -> parse(p, styles, ctx).stream())
-                .collect(toList());
-
+        List<SourceFile> sourceFiles;
+        if (useAstCache && astCache.containsKey(getProject().getRootProject().getRootDir())) {
+            getLog().lifecycle("Using cached in-memory ASTs...");
+            sourceFiles = getRewrite().toSourceFile(astCache.get(getProject().getRootProject().getRootDir()));
+        } else {
+            InMemoryExecutionContext ctx = executionContext();
+            sourceFiles = projects.stream()
+                    .flatMap(p -> parse(p, styles, ctx).stream())
+                    .collect(toList());
+            if (useAstCache) {
+                astCache.put(getProject().getRootProject().getRootDir(), getRewrite().toBytes(sourceFiles));
+            }
+        }
         getLog().lifecycle("Running recipe(s)...");
         List<Result> results = recipe.run(sourceFiles);
 
         return new ResultsContainer(baseDir, results);
+    }
+
+    protected void clearAstCache() {
+        astCache.clear();
     }
 
     protected void shutdownRewrite() {

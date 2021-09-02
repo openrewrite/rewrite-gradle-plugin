@@ -24,9 +24,7 @@ import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Adds the RewriteExtension to the current project and registers tasks per-sourceSet.
@@ -71,6 +69,10 @@ public class RewritePlugin implements Plugin<Project> {
                 .setExtension(extension)
                 .setProjects(projects);
         Task rewriteDiscover = rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
+                .setConfiguration(rewriteConf)
+                .setExtension(extension)
+                .setProjects(projects);
+        Task rewriteCleanCache = rootProject.getTasks().create("rewriteClearCache", RewriteClearCacheTask.class)
                 .setConfiguration(rewriteConf)
                 .setExtension(extension)
                 .setProjects(projects);
