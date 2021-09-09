@@ -250,7 +250,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                         .map(AbstractRewriteTask::toRealPath)
                         .collect(toList());
 
-                Marker javaSourceSet = getRewrite().javaSourceSet(sourceSet.getName(), dependencyPaths);
+                Marker javaSourceSet = getRewrite().javaSourceSet(sourceSet.getName(), dependencyPaths, ctx);
 
                 if(javaPaths.size() > 0) {
                     getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllJava().getSourceDirectories().getAsPath());

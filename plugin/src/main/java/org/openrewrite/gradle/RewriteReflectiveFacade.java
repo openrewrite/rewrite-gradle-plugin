@@ -278,12 +278,13 @@ public class RewriteReflectiveFacade {
         }
     }
 
-    public Marker javaSourceSet(String sourceSetName, Iterable<Path> classpath) {
+    public Marker javaSourceSet(String sourceSetName, Iterable<Path> classpath, InMemoryExecutionContext ctx) {
         try {
+            Class<?> executionContextClass = getClassLoader().loadClass("org.openrewrite.ExecutionContext");
             Class<?> c = getClassLoader().loadClass("org.openrewrite.java.marker.JavaSourceSet");
-            Method javaSourceSetBuild = c.getMethod("build", String.class, Iterable.class);
+            Method javaSourceSetBuild = c.getMethod("build", String.class, Iterable.class, executionContextClass);
 
-            return new Marker(javaSourceSetBuild.invoke(null, sourceSetName, classpath));
+            return new Marker(javaSourceSetBuild.invoke(null, sourceSetName, classpath, ctx.real));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
