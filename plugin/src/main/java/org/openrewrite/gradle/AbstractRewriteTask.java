@@ -242,12 +242,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
                         .map(File::toPath)
-                        .map(AbstractRewriteTask::toRealPath)
+                        .map(AbstractRewriteTask::normalizePath)
                         .collect(toList());
 
                 List<Path> dependencyPaths = sourceSet.getCompileClasspath().getFiles().stream()
                         .map(File::toPath)
-                        .map(AbstractRewriteTask::toRealPath)
+                        .map(AbstractRewriteTask::normalizePath)
                         .collect(toList());
 
                 Marker javaSourceSet = getRewrite().javaSourceSet(sourceSet.getName(), dependencyPaths, ctx);
@@ -276,11 +276,11 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 for (File file : sourceSet.getResources()) {
                     String fileName = file.getName().toLowerCase();
                     if (fileName.endsWith(".yml") || fileName.endsWith(".yaml")) {
-                        yamlPaths.add(file.toPath().toRealPath());
+                        yamlPaths.add(normalizePath(file.toPath()));
                     } else if (fileName.endsWith(".properties")) {
-                        propertiesPaths.add(file.toPath().toRealPath());
+                        propertiesPaths.add(normalizePath(file.toPath()));
                     } else if (fileName.endsWith(".xml")) {
-                        xmlPaths.add(file.toPath().toRealPath());
+                        xmlPaths.add(normalizePath(file.toPath()));
                     }
                 }
 
@@ -328,11 +328,14 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             List<Path> xmlPaths = new ArrayList<>();
             Set<Path> excludeDirectories = subproject.getSubprojects().stream()
                     .map(Project::getProjectDir)
-                    .map(File::toPath).collect(Collectors.toSet());
-            excludeDirectories.add(subproject.getBuildDir().toPath());
-            excludeDirectories.add(subproject.getProjectDir().toPath().resolve(".gradle"));
+                    .map(File::toPath)
+                    .map(AbstractRewriteTask::normalizePath)
+                    .collect(Collectors.toSet());
+            excludeDirectories.add(normalizePath(subproject.getBuildDir().toPath()));
+            excludeDirectories.add(normalizePath(subproject.getProjectDir().toPath().resolve(".gradle")));
 
             Files.walk(subproject.getProjectDir().toPath())
+                    .map(AbstractRewriteTask::normalizePath)
                     .forEach(file -> {
                         if (Files.isDirectory(file) || seenSourceFiles.contains(file)) {
                             return;
@@ -443,12 +446,8 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         }
     }
 
-    private static Path toRealPath(Path path) {
-        try {
-            return path.toRealPath();
-        } catch (IOException e) {
-            return path;
-        }
+    private static Path normalizePath(Path path) {
+        return path.toAbsolutePath().normalize();
     }
 
     protected static String indent(int indent, CharSequence content) {
