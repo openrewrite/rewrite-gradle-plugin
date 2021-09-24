@@ -34,11 +34,8 @@ import java.util.List;
 public class RewritePlugin implements Plugin<Project> {
     /*
      Note on compatibility:
-     Since we're in the software modernization and improvement business we want to support old versions of Gradle.
-     As written this project doesn't use any APIs not present as of Gradle 4.7.
+     As written this project doesn't use any APIs not present as of Gradle 4.0.
      That predates Gradle supporting Java 11, which came in Gradle 5.0.
-     Our automated tests wont currently _enforce_ this compatibility guarantee.
-     Until that changes, tread carefully and test manually if you introduce any new usage of any Gradle API.
      */
 
     @Override
@@ -99,6 +96,7 @@ public class RewritePlugin implements Plugin<Project> {
                 //Using the older javaConvention because we need to support older versions of gradle.
                 @SuppressWarnings("deprecation")
                 JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+
                 javaConvention.getSourceSets().all(sourceSet -> {
                     // This is intended to ensure that any Groovy/Kotlin/etc. sources are available for type attribution during parsing
                     // This may not be necessary if sourceSet.getCompileClasspath() guarantees that such sources will have been compiled

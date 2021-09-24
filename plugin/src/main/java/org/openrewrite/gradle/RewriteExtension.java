@@ -108,7 +108,7 @@ public class RewriteExtension extends CodeQualityExtension {
      * signal that the file should be expected to exist. So this signal can be used to decide if a warning should be
      * displayed if the specified file cannot be found.
      */
-    boolean getConfigFileSetDeliberately() {
+    public boolean getConfigFileSetDeliberately() {
         return configFileSetDeliberately;
     }
 
@@ -218,5 +218,21 @@ public class RewriteExtension extends CodeQualityExtension {
 
     public void setLogCompilationWarningsAndErrors(boolean logCompilationWarningsAndErrors) {
         this.logCompilationWarningsAndErrors = logCompilationWarningsAndErrors;
+    }
+
+    public Provider<File> getCheckstyleConfigProvider() {
+        return checkstyleConfigProvider;
+    }
+
+    public void setCheckstyleConfigProvider(Provider<File> checkstyleConfigProvider) {
+        this.checkstyleConfigProvider = checkstyleConfigProvider;
+    }
+
+    public Provider<Map<String, Object>> getCheckstylePropertiesProvider() {
+        return checkstylePropertiesProvider;
+    }
+
+    public void setCheckstylePropertiesProvider(Provider<Map<String, Object>> checkstylePropertiesProvider) {
+        this.checkstylePropertiesProvider = checkstylePropertiesProvider;
     }
 }

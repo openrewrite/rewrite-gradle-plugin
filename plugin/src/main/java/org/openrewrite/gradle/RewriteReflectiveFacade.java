@@ -60,7 +60,7 @@ public class RewriteReflectiveFacade {
         this.task = task;
     }
 
-    private URLClassLoader getClassLoader() {
+    protected URLClassLoader getClassLoader() {
         // Lazily populate classLoader so that the configuration and extension have a chance to be altered by the rest of the build.gradle
         if (classLoader == null) {
             DependencyHandler dependencies = task.getProject().getDependencies();
@@ -275,6 +275,10 @@ public class RewriteReflectiveFacade {
             }
             return sourceFileWithMarkers;
 
+        }
+
+        public Object getReal() {
+            return real;
         }
     }
 

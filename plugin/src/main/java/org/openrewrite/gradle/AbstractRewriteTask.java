@@ -404,7 +404,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         };
     }
 
-
     public static class ResultsContainer {
         final Path projectRoot;
         final List<Result> generated = new ArrayList<>();
