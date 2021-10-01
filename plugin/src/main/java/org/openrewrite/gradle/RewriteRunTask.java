@@ -96,7 +96,7 @@ public class RewriteRunTask extends AbstractRewriteTask {
                         assert result.getAfter() != null;
                         try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
                                 results.getProjectRoot().resolve(result.getAfter().getSourcePath()))) {
-                            sourceFileWriter.write(result.getAfter().print());
+                            sourceFileWriter.write(result.getAfter().printAll());
                         }
                     }
                     for (Result result : results.deleted) {
@@ -123,7 +123,7 @@ public class RewriteRunTask extends AbstractRewriteTask {
                         //noinspection ResultOfMethodCallIgnored
                         parentDir.mkdirs();
                         try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(afterLocation)) {
-                            sourceFileWriter.write(result.getAfter().print());
+                            sourceFileWriter.write(result.getAfter().printAll());
                         }
                     }
                     for (Result result : results.refactoredInPlace) {
@@ -131,7 +131,7 @@ public class RewriteRunTask extends AbstractRewriteTask {
                         try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
                                 results.getProjectRoot().resolve(result.getBefore().getSourcePath()))) {
                             assert result.getAfter() != null;
-                            sourceFileWriter.write(result.getAfter().print());
+                            sourceFileWriter.write(result.getAfter().printAll());
                         }
                     }
                 } catch (IOException e) {

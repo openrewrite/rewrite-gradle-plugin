@@ -230,9 +230,9 @@ public class RewriteReflectiveFacade {
             }
         }
 
-        public String print() {
+        public String printAll() {
             try {
-                return (String) real.getClass().getMethod("print").invoke(real);
+                return (String) real.getClass().getMethod("printAll").invoke(real);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
