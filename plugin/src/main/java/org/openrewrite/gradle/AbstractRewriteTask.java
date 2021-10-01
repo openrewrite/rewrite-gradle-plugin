@@ -256,7 +256,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                     getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllJava().getSourceDirectories().getAsPath());
                     Instant start = Instant.now();
                     sourceFiles.addAll(map(getRewrite().javaParserFromJavaVersion()
-                                    .relaxedClassTypeMatching(true)
                                     .styles(styles)
                                     .classpath(dependencyPaths)
                                     .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
