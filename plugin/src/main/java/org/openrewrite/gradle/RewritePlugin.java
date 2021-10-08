@@ -15,7 +15,6 @@
  */
 package org.openrewrite.gradle;
 
-import groovy.lang.Closure;
 import org.gradle.api.*;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.JavaBasePlugin;
@@ -31,6 +30,7 @@ import java.util.List;
  * Only needs to be applied to projects with java sources. No point in applying this to any project that does
  * not have java sources of its own, such as the root project in a multi-project builds.
  */
+@SuppressWarnings("unused")
 public class RewritePlugin implements Plugin<Project> {
     /*
      Note on compatibility:
@@ -65,17 +65,16 @@ public class RewritePlugin implements Plugin<Project> {
                 .setConfiguration(rewriteConf)
                 .setExtension(extension)
                 .setProjects(projects);
-        Task rewriteDiscover = rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
+        rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
                 .setConfiguration(rewriteConf)
                 .setExtension(extension)
                 .setProjects(projects);
-        Task rewriteCleanCache = rootProject.getTasks().create("rewriteClearCache", RewriteClearCacheTask.class)
+        rootProject.getTasks().create("rewriteClearCache", RewriteClearCacheTask.class)
                 .setConfiguration(rewriteConf)
                 .setExtension(extension)
                 .setProjects(projects);
 
         rootProject.allprojects(project -> {
-
             projects.add(project);
 
             // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
@@ -107,48 +106,4 @@ public class RewritePlugin implements Plugin<Project> {
             });
         });
     }
-
-    private Closure<Task> taskClosure(Action<Task> configFun) {
-        return new Closure<Task>(this) {
-            public void doCall(Task arg) {
-                configFun.execute(arg);
-            }
-        };
-    }
-
-//    void configureMetrics(RewriteTask task) {
-//        Project project = task.getProject();
-//
-//        RewriteMetricsPlugin metricsPlugin = project.getRootProject().getPlugins().findPlugin(RewriteMetricsPlugin.class);
-//
-//        getMeterRegistry().config()
-//                .commonTags(
-//                        "project.name", project.getName(),
-//                        "project.display.name", project.getDisplayName(),
-//                        "project.path", project.getPath(),
-//                        "project.root.project.name", project.getRootProject().getName(),
-//                        "gradle.version", project.getGradle().getGradleVersion(),
-//                        "rewrite.plan.name", getRewritePlanName()
-//                )
-//                .commonTags(metricsPlugin != null ? metricsPlugin.getExtraTags() : Tags.empty())
-//                .meterFilter(new MeterFilter() {
-//                    @Override
-//                    public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
-//                        if (id.getName().equals("rewrite.parse")) {
-//                            return DistributionStatisticConfig.builder()
-//                                    .percentilesHistogram(true)
-//                                    .maximumExpectedValue((double) Duration.ofMillis(250).toNanos())
-//                                    .build()
-//                                    .merge(config);
-//                        }
-//                        return config;
-//                    }
-//                });
-//
-//        task.setMeterRegistry(getMeterRegistry());
-//    }
-//
-//    String getRewritePlanName();
-//
-//    PrometheusMeterRegistry getMeterRegistry();
 }

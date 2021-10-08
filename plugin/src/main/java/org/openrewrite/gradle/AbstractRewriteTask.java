@@ -101,7 +101,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     /**
      * The prefix used to left-pad log messages, multiplied per "level" of log message.
      */
-    private static final String LOG_INDENT_INCREMENT = "    ";
     private static final int HOURS_PER_DAY = 24;
     private static final int MINUTES_PER_HOUR = 60;
     private static final int SECONDS_PER_MINUTE = 60;
@@ -440,25 +439,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
     protected void logRecipesThatMadeChanges(Result result) {
         for (Recipe recipe : result.getRecipesThatMadeChanges()) {
-            getLog().warn(indent(1, recipe.getName()));
+            getLog().warn("    " + recipe.getName());
         }
     }
 
     private static Path normalizePath(Path path) {
         return path.toAbsolutePath().normalize();
-    }
-
-    protected static String indent(int indent, CharSequence content) {
-        StringBuilder prefix = repeat(indent, LOG_INDENT_INCREMENT);
-        return prefix.append(content).toString();
-    }
-
-    private static StringBuilder repeat(int repeat, String str) {
-        StringBuilder buffer = new StringBuilder(repeat * str.length());
-        for (int i = 0; i < repeat; i++) {
-            buffer.append(str);
-        }
-        return buffer;
     }
 
     private static String prettyPrint(Duration duration) {
