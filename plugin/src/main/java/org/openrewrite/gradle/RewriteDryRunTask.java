@@ -44,7 +44,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
     @Inject
     public RewriteDryRunTask() {
         setGroup("rewrite");
-        setDescription("Dry run the active refactoring recipes. No source files will be changed.");
+        setDescription("Run the active refactoring recipes, producing a patch file. No source files will be changed.");
         getOutputs().upToDateWhen(Specs.SATISFIES_NONE);
     }
 
