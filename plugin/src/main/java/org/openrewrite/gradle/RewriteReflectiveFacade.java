@@ -23,6 +23,7 @@ import org.gradle.api.artifacts.dsl.DependencyHandler;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -75,6 +76,8 @@ public class RewriteReflectiveFacade {
                             dependencies.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
                             dependencies.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
                             dependencies.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
+                            dependencies.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
+                            dependencies.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
                             // Some rewrite classes use slf4j loggers (even though they probably shouldn't)
                             // Ideally this would be the same implementation used by Gradle at runtime
                             // But there are reflection and classpath shenanigans that make that one hard to get at
@@ -111,6 +114,97 @@ public class RewriteReflectiveFacade {
                     .collect(toList());
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public GradleParser gradleParser(GroovyParserBuilder groovyParserBuilder) {
+        try {
+            Class<?> groovyParserBuilderClass = getClassLoader().loadClass("org.openrewrite.groovy.GroovyParser$Builder");
+            return new GradleParser(getClassLoader().loadClass("org.openrewrite.gradle.GradleParser")
+                    .getDeclaredConstructor(groovyParserBuilderClass)
+                    .newInstance(groovyParserBuilder.real));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public class GradleParser {
+        private final Object real;
+
+        private GradleParser(Object real) {
+            this.real = real;
+        }
+
+        public List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx) {
+            return parseBase(real, sourcePaths, baseDir, ctx);
+        }
+    }
+
+    public class GroovyParser {
+        private final Object real;
+
+        private GroovyParser(Object real) {
+            this.real = real;
+        }
+
+        public List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx) {
+            return parseBase(real, sourcePaths, baseDir, ctx);
+        }
+    }
+
+    public GroovyParserBuilder groovyParserBuilder() {
+        try {
+            return new GroovyParserBuilder(getClassLoader()
+                    .loadClass("org.openrewrite.groovy.GroovyParser")
+                    .getMethod("builder")
+                    .invoke(null));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public class GroovyParserBuilder {
+        private final Object real;
+
+        private GroovyParserBuilder(Object real) {
+            this.real = real;
+        }
+
+        public GroovyParserBuilder styles(List<NamedStyles> styles) {
+            try {
+                List<Object> unwrappedStyles = styles.stream()
+                        .map(it -> it.real)
+                        .collect(toList());
+                real.getClass().getMethod("styles", Iterable.class).invoke(real, unwrappedStyles);
+                return this;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public GroovyParserBuilder classpath(Collection<Path> classpath) {
+            try {
+                real.getClass().getMethod("classpath", Collection.class).invoke(real, classpath);
+                return this;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public GroovyParserBuilder logCompilationWarningsAndErrors(boolean logCompilationWarningsAndErrors) {
+            try {
+                real.getClass().getMethod("logCompilationWarningsAndErrors", boolean.class).invoke(real, logCompilationWarningsAndErrors);
+                return this;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public GroovyParser build() {
+            try {
+                return new GroovyParser(real.getClass().getMethod("build").invoke(real));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

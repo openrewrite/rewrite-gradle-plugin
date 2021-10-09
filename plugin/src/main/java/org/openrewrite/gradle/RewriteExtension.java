@@ -43,6 +43,7 @@ public class RewriteExtension extends CodeQualityExtension {
     Provider<Map<String,Object>> checkstylePropertiesProvider;
     private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
+    private boolean enableExperimentalGradleBuildScriptParsing;
 
     @Nullable
     private String rewriteVersion;
@@ -234,5 +235,13 @@ public class RewriteExtension extends CodeQualityExtension {
 
     public void setCheckstylePropertiesProvider(Provider<Map<String, Object>> checkstylePropertiesProvider) {
         this.checkstylePropertiesProvider = checkstylePropertiesProvider;
+    }
+
+    public boolean isEnableExperimentalGradleBuildScriptParsing() {
+        return enableExperimentalGradleBuildScriptParsing;
+    }
+
+    public void setEnableExperimentalGradleBuildScriptParsing(boolean enableExperimentalGradleBuildScriptParsing) {
+        this.enableExperimentalGradleBuildScriptParsing = enableExperimentalGradleBuildScriptParsing;
     }
 }

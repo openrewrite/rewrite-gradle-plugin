@@ -15,12 +15,10 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
 import org.openrewrite.gradle.RewriteReflectiveFacade.Environment;
@@ -31,11 +29,11 @@ import org.openrewrite.gradle.ui.RecipeDescriptorTreePrompter;
 
 import javax.inject.Inject;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Set;
 
 public class RewriteDiscoverTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteDiscoverTask.class);
+    private static final String LOG_INDENT_INCREMENT = "    ";
     private boolean interactive;
 
     @Option(description = "Whether to enter an interactive shell to explore available recipes.", option = "interactive")
@@ -133,4 +131,16 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
 
     }
 
+    private static String indent(int indent, CharSequence content) {
+        StringBuilder prefix = repeat(indent);
+        return prefix.append(content).toString();
+    }
+
+    private static StringBuilder repeat(int repeat) {
+        StringBuilder buffer = new StringBuilder(repeat * LOG_INDENT_INCREMENT.length());
+        for (int i = 0; i < repeat; i++) {
+            buffer.append(LOG_INDENT_INCREMENT);
+        }
+        return buffer;
+    }
 }

@@ -38,8 +38,7 @@ import java.util.*;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptySet;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
@@ -235,6 +234,21 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             List<Marker> projectProvenance = projectProvenanceBuilder.build();
 
             List<SourceFile> sourceFiles = new ArrayList<>();
+            if(extension.isEnableExperimentalGradleBuildScriptParsing()) {
+                Path buildScriptPath = subproject.getBuildFile().toPath();
+                try {
+                    if (buildScriptPath.toString().toLowerCase().endsWith(".gradle")) {
+                        GradleParser gradleParser = getRewrite().gradleParser(
+                                getRewrite().groovyParserBuilder()
+                                        .styles(styles)
+                                        .logCompilationWarningsAndErrors(true));
+                        sourceFiles.addAll(gradleParser.parse(singleton(buildScriptPath), baseDir, ctx));
+                    }
+                } catch (Exception e) {
+                    getLog().warn("Problem with parsing gradle script at \"" + buildScriptPath.normalize()  + "\" : ", e);
+                }
+            }
+
             Set<Path> seenSourceFiles = new HashSet<>();
             for(SourceSet sourceSet : sourceSets) {
 

@@ -95,6 +95,8 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-yaml:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-properties:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-maven:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:latest.release")
 
     testImplementation(gradleTestKit())

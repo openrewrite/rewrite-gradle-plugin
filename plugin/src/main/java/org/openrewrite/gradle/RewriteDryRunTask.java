@@ -111,7 +111,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
                     throw new RuntimeException("Unable to generate rewrite result file.", e);
                 }
                 getLog().warn("Report available:");
-                getLog().warn(indent(1, patchFile.normalize().toString()));
+                getLog().warn("    " + patchFile.normalize());
                 getLog().warn("Run 'gradle rewriteRun' to apply the recipes.");
 
                 if (getExtension().getFailOnDryRunResults()) {
