@@ -51,9 +51,9 @@ public class RewriteReflectiveFacade {
     private URLClassLoader classLoader;
 
     //Lazily creating and caching method references
-    private Method sourceFileGetMarkers = null;
-    private Method sourceFileWithMarkers = null;
-    private Method markersAddIfAbsent = null;
+    private Method sourceFileGetMarkers;
+    private Method sourceFileWithMarkers;
+    private Method markersAddIfAbsent;
 
     public RewriteReflectiveFacade(Configuration configuration, RewriteExtension extension, Task task) {
         this.configuration = configuration;

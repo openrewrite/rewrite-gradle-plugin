@@ -36,7 +36,7 @@ public class RewriteExtension extends CodeQualityExtension {
 
     private final List<String> activeRecipes = new ArrayList<>();
     private final List<String> activeStyles = new ArrayList<>();
-    private boolean configFileSetDeliberately = false;
+    private boolean configFileSetDeliberately;
     private final Project project;
     private File configFile;
     Provider<File> checkstyleConfigProvider;
@@ -60,9 +60,9 @@ public class RewriteExtension extends CodeQualityExtension {
      * For the time, this default is "false" to prevent one improperly recipe from failing the build.
      * In the future, this default may be changed to "true" to be more restrictive.
      */
-    private boolean failOnInvalidActiveRecipes = false;
+    private boolean failOnInvalidActiveRecipes;
 
-    private boolean failOnDryRunResults = false;
+    private boolean failOnDryRunResults;
 
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
