@@ -15,7 +15,6 @@
  */
 package org.openrewrite.gradle;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import org.gradle.api.Task;
 
 public interface RewriteTask extends Task {
