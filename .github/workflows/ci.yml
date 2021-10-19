@@ -39,7 +39,7 @@ jobs:
         with:
           distribution: "temurin"
           java-version: ${{ matrix.java }}
-          cache: 'gradle'
+          cache: "gradle"
       - name: build
         run: ./gradlew ${GRADLE_SWITCHES} build test
         env:
