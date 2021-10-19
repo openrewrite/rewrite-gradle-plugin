@@ -42,3 +42,5 @@ jobs:
           cache: 'gradle'
       - name: build
         run: ./gradlew ${GRADLE_SWITCHES} build test
+        env:
+          GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
