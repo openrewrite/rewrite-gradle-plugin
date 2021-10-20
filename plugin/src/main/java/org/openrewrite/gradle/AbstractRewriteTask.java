@@ -44,17 +44,12 @@ import static java.util.stream.Collectors.toMap;
 
 public abstract class AbstractRewriteTask extends DefaultTask implements RewriteTask {
 
-    private Configuration configuration;
     private List<Project> projects;
     private RewriteExtension extension;
     private RewriteReflectiveFacade rewrite;
+    private ResolveRewriteDependenciesTask resolveDependenciesTask;
     private static final Map<File, byte[]> astCache = new HashMap<>();
     protected boolean useAstCache;
-
-    AbstractRewriteTask setConfiguration(Configuration configuration) {
-        this.configuration = configuration;
-        return this;
-    }
 
     AbstractRewriteTask setProjects(List<Project> projects) {
         this.projects = projects;
@@ -66,6 +61,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return this;
     }
 
+    AbstractRewriteTask setResolveDependenciesTask(ResolveRewriteDependenciesTask resolveRewriteDependenciesTask) {
+        this.resolveDependenciesTask = resolveRewriteDependenciesTask;
+        this.dependsOn(resolveRewriteDependenciesTask);
+        return this;
+    }
+
     @Internal
     RewriteExtension getExtension() {
         return extension;
@@ -74,7 +75,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     @Internal
     RewriteReflectiveFacade getRewrite() {
         if(rewrite == null) {
-            rewrite = new RewriteReflectiveFacade(configuration, extension, this);
+            rewrite = new RewriteReflectiveFacade(resolveDependenciesTask.getResolvedDependencies(), extension, this);
         }
         return rewrite;
     }
@@ -119,7 +120,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         EnvironmentBuilder env = getRewrite().environmentBuilder(properties)
                 .scanRuntimeClasspath()
                 .scanUserHome();
-        List<Path> recipeJars = configuration.getFiles().stream()
+        List<Path> recipeJars = resolveDependenciesTask.getResolvedDependencies().stream()
                 .map(File::toPath)
                 .collect(toList());
         for(Path rewriteJar : recipeJars) {
@@ -235,17 +236,17 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             if(extension.isEnableExperimentalGradleBuildScriptParsing()) {
-                Path buildScriptPath = subproject.getBuildFile().toPath();
+                File buildScriptFile = subproject.getBuildFile();
                 try {
-                    if (buildScriptPath.toString().toLowerCase().endsWith(".gradle")) {
+                    if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists()) {
                         GradleParser gradleParser = getRewrite().gradleParser(
                                 getRewrite().groovyParserBuilder()
                                         .styles(styles)
                                         .logCompilationWarningsAndErrors(true));
-                        sourceFiles.addAll(gradleParser.parse(singleton(buildScriptPath), baseDir, ctx));
+                        sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
                     }
                 } catch (Exception e) {
-                    getLog().warn("Problem with parsing gradle script at \"" + buildScriptPath.normalize()  + "\" : ", e);
+                    getLog().warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath()  + "\" : ", e);
                 }
             }
 

@@ -44,7 +44,7 @@ import static java.util.stream.Collectors.toList;
 @SuppressWarnings({"unchecked", "UnusedReturnValue", "InnerClassMayBeStatic"})
 public class RewriteReflectiveFacade {
 
-    private final Configuration configuration;
+    private final Collection<File> rewriteDependencies;
     private final RewriteExtension extension;
     private final Task task;
     private URLClassLoader classLoader;
@@ -54,8 +54,8 @@ public class RewriteReflectiveFacade {
     private Method sourceFileWithMarkers;
     private Method markersAddIfAbsent;
 
-    public RewriteReflectiveFacade(Configuration configuration, RewriteExtension extension, Task task) {
-        this.configuration = configuration;
+    public RewriteReflectiveFacade(Collection<File> rewriteDependencies, RewriteExtension extension, Task task) {
+        this.rewriteDependencies = rewriteDependencies;
         this.extension = extension;
         this.task = task;
     }
@@ -65,30 +65,8 @@ public class RewriteReflectiveFacade {
         if (classLoader == null) {
             DependencyHandler dependencies = task.getProject().getDependencies();
             String rewriteVersion = extension.getRewriteVersion();
-            Dependency[] deps = Stream.concat(
-                    configuration.getDependencies().stream(),
-                    Stream.of(
-                            dependencies.create("org.openrewrite:rewrite-core:" + rewriteVersion),
-                            dependencies.create("org.openrewrite:rewrite-java:" + rewriteVersion),
-                            dependencies.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
-                            dependencies.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
-                            dependencies.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
-                            dependencies.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
-                            dependencies.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
-//                            dependencies.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
-//                            dependencies.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
-                            // Some rewrite classes use slf4j loggers (even though they probably shouldn't)
-                            // Ideally this would be the same implementation used by Gradle at runtime
-                            // But there are reflection and classpath shenanigans that make that one hard to get at
-                            dependencies.create("org.slf4j:slf4j-simple:1.7.30"),
 
-                            // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
-                            dependencies.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion())
-                    )).toArray(Dependency[]::new);
-            // Use a detached configuration so as to avoid dependency resolution customizations
-            Configuration confWithRewrite = task.getProject().getConfigurations().detachedConfiguration(deps);
-
-            URL[] jars = confWithRewrite.getFiles().stream()
+            URL[] jars = rewriteDependencies.stream()
                     .map(File::toURI)
                     .map(uri -> {
                         try {

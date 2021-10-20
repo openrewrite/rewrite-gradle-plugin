@@ -57,20 +57,23 @@ public class RewritePlugin implements Plugin<Project> {
 
         // We use this method of task creation because it works on old versions of Gradle
         // Don't replace with TaskContainer.register() (introduced in 4.9), or another overload of create() (introduced in 4.7)
-        Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class)
+        ResolveRewriteDependenciesTask resolveRewriteDependenciesTask = rootProject.getTasks().create("rewriteResolveDependencies", ResolveRewriteDependenciesTask.class)
                 .setConfiguration(rewriteConf)
+                .setExtension(extension);
+        Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class)
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask)
                 .setExtension(extension)
                 .setProjects(projects);
         Task rewriteDryRun = rootProject.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
-                .setConfiguration(rewriteConf)
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask)
                 .setExtension(extension)
                 .setProjects(projects);
         rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
-                .setConfiguration(rewriteConf)
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask)
                 .setExtension(extension)
                 .setProjects(projects);
         rootProject.getTasks().create("rewriteClearCache", RewriteClearCacheTask.class)
-                .setConfiguration(rewriteConf)
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask)
                 .setExtension(extension)
                 .setProjects(projects);
 
