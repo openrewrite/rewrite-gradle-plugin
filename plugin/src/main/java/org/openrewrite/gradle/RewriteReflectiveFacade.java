@@ -75,8 +75,8 @@ public class RewriteReflectiveFacade {
                             dependencies.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
                             dependencies.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
                             dependencies.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
-                            dependencies.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
-                            dependencies.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
+//                            dependencies.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
+//                            dependencies.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
                             // Some rewrite classes use slf4j loggers (even though they probably shouldn't)
                             // Ideally this would be the same implementation used by Gradle at runtime
                             // But there are reflection and classpath shenanigans that make that one hard to get at
