@@ -17,7 +17,6 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.Input;
@@ -30,13 +29,11 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
@@ -72,8 +69,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return extension;
     }
 
-    @Internal
-    RewriteReflectiveFacade getRewrite() {
+    RewriteReflectiveFacade rewrite() {
         if(rewrite == null) {
             rewrite = new RewriteReflectiveFacade(resolveDependenciesTask.getResolvedDependencies(), extension, this);
         }
@@ -117,7 +113,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         Properties properties = new Properties();
         properties.putAll(gradleProps);
 
-        EnvironmentBuilder env = getRewrite().environmentBuilder(properties)
+        EnvironmentBuilder env = rewrite().environmentBuilder(properties)
                 .scanRuntimeClasspath()
                 .scanUserHome();
         List<Path> recipeJars = resolveDependenciesTask.getResolvedDependencies().stream()
@@ -130,7 +126,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         File rewriteConfig = extension.getConfigFile();
         if (rewriteConfig.exists()) {
             try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                YamlResourceLoader resourceLoader = getRewrite().yamlResourceLoader(is, rewriteConfig.toURI(), properties);
+                YamlResourceLoader resourceLoader = rewrite().yamlResourceLoader(is, rewriteConfig.toURI(), properties);
                 env.load(resourceLoader);
             } catch (IOException e) {
                 throw new RuntimeException("Unable to load rewrite configuration", e);
@@ -143,7 +139,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
     }
 
     protected InMemoryExecutionContext executionContext() {
-        return getRewrite().inMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
+        return rewrite().inMemoryExecutionContext(t -> getLog().warn(t.getMessage(), t));
     }
 
     protected ResultsContainer listResults() {
@@ -159,7 +155,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         List<NamedStyles> styles = env.activateStyles(activeStyles);
         File checkstyleConfig = extension.getCheckstyleConfigFile();
         if (checkstyleConfig != null && checkstyleConfig.exists()) {
-            NamedStyles checkstyle = getRewrite().loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties());
+            NamedStyles checkstyle = rewrite().loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties());
             styles.add(checkstyle);
         }
 
@@ -183,14 +179,14 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         List<SourceFile> sourceFiles;
         if (useAstCache && astCache.containsKey(getProject().getRootProject().getRootDir())) {
             getLog().lifecycle("Using cached in-memory ASTs...");
-            sourceFiles = getRewrite().toSourceFile(astCache.get(getProject().getRootProject().getRootDir()));
+            sourceFiles = rewrite().toSourceFile(astCache.get(getProject().getRootProject().getRootDir()));
         } else {
             InMemoryExecutionContext ctx = executionContext();
             sourceFiles = projects.stream()
                     .flatMap(p -> parse(p, styles, ctx).stream())
                     .collect(toList());
             if (useAstCache) {
-                astCache.put(getProject().getRootProject().getRootDir(), getRewrite().toBytes(sourceFiles));
+                astCache.put(getProject().getRootProject().getRootDir(), rewrite().toBytes(sourceFiles));
             }
         }
         getLog().lifecycle("Running recipe(s)...");
@@ -214,7 +210,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
 
-            JavaProjectProvenanceBuilder projectProvenanceBuilder = getRewrite().javaProjectProvenanceBuilder()
+            JavaProjectProvenanceBuilder projectProvenanceBuilder = rewrite().javaProjectProvenanceBuilder()
                     .projectName(subproject.getName())
                     .buildToolVersion(GradleVersion.current().getVersion())
                     .vmRuntimeVersion(System.getProperty("java.runtime.version"))
@@ -234,13 +230,15 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
 
             List<Marker> projectProvenance = projectProvenanceBuilder.build();
 
+            ResourceParser rp = new ResourceParser(rewrite());
+            Set<Path> alreadyParsed = new HashSet<>();
             List<SourceFile> sourceFiles = new ArrayList<>();
             if(extension.isEnableExperimentalGradleBuildScriptParsing()) {
                 File buildScriptFile = subproject.getBuildFile();
                 try {
                     if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists()) {
-                        GradleParser gradleParser = getRewrite().gradleParser(
-                                getRewrite().groovyParserBuilder()
+                        GradleParser gradleParser = rewrite().gradleParser(
+                                rewrite().groovyParserBuilder()
                                         .styles(styles)
                                         .logCompilationWarningsAndErrors(true));
                         sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
@@ -250,9 +248,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 }
             }
 
-            Set<Path> seenSourceFiles = new HashSet<>();
             for(SourceSet sourceSet : sourceSets) {
-
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
                         .map(File::toPath)
@@ -264,12 +260,12 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                         .map(AbstractRewriteTask::normalizePath)
                         .collect(toList());
 
-                Marker javaSourceSet = getRewrite().javaSourceSet(sourceSet.getName(), dependencyPaths, ctx);
+                Marker javaSourceSet = rewrite().javaSourceSet(sourceSet.getName(), dependencyPaths, ctx);
 
                 if(javaPaths.size() > 0) {
                     getLog().lifecycle("Parsing " + javaPaths.size() + " Java files from " + sourceSet.getAllJava().getSourceDirectories().getAsPath());
                     Instant start = Instant.now();
-                    sourceFiles.addAll(map(getRewrite().javaParserFromJavaVersion()
+                    sourceFiles.addAll(map(rewrite().javaParserFromJavaVersion()
                                     .relaxedClassTypeMatching(true)
                                     .styles(styles)
                                     .classpath(dependencyPaths)
@@ -279,127 +275,19 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                             addProvenance(projectProvenance, javaSourceSet)));
                     Instant end = Instant.now();
                     Duration duration = Duration.between(start, end);
+                    alreadyParsed.addAll(javaPaths);
                     getLog().lifecycle("Parsed " + javaPaths.size() + " Java files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(javaPaths.size())) + " per file)");
                 }
 
-                //Other resources in the source set, these will be marked with the Java Source set provenance information
-                List<Path> yamlPaths = new ArrayList<>();
-                List<Path> propertiesPaths = new ArrayList<>();
-                List<Path> xmlPaths = new ArrayList<>();
-
-                for (File file : sourceSet.getResources()) {
-                    String fileName = file.getName().toLowerCase();
-                    if (fileName.endsWith(".yml") || fileName.endsWith(".yaml")) {
-                        yamlPaths.add(normalizePath(file.toPath()));
-                    } else if (fileName.endsWith(".properties")) {
-                        propertiesPaths.add(normalizePath(file.toPath()));
-                    } else if (fileName.endsWith(".xml")) {
-                        xmlPaths.add(normalizePath(file.toPath()));
+                for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
+                    if(resourcesDir.exists()) {
+                        sourceFiles.addAll(map(rp.parse(resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, javaSourceSet)));
                     }
-                }
-
-                if (yamlPaths.size() > 0) {
-                    seenSourceFiles.addAll(yamlPaths);
-                    getLog().lifecycle("Parsing " + yamlPaths.size() + " YAML files from " + sourceSet.getResources().getSourceDirectories().getAsPath());
-                    Instant start = Instant.now();
-                    sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
-                            addProvenance(projectProvenance, javaSourceSet)));
-                    Instant end = Instant.now();
-                    Duration duration = Duration.between(start, end);
-                    getLog().lifecycle("Parsed " + yamlPaths.size() + " YAML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(yamlPaths.size())) + " per file)");
-                }
-
-                if (propertiesPaths.size() > 0) {
-                    seenSourceFiles.addAll(propertiesPaths);
-                    getLog().lifecycle("Parsing " + propertiesPaths.size() + " properties files from " + sourceSet.getResources().getSourceDirectories().getAsPath());
-                    Instant start = Instant.now();
-                    sourceFiles.addAll(map(getRewrite().propertiesParser().parse(propertiesPaths, baseDir, ctx),
-                            addProvenance(projectProvenance, javaSourceSet)));
-
-                    Instant end = Instant.now();
-                    Duration duration = Duration.between(start, end);
-                    getLog().lifecycle("Parsed " + propertiesPaths.size() + " properties files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(propertiesPaths.size())) + " per file)");
-                }
-
-                if (xmlPaths.size() > 0) {
-                    seenSourceFiles.addAll(xmlPaths);
-                    getLog().lifecycle("Parsing " + xmlPaths.size() + " XML files from " + sourceSet.getResources().getSourceDirectories().getAsPath());
-                    Instant start = Instant.now();
-                    sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
-                            addProvenance(projectProvenance, javaSourceSet)));
-
-                    Instant end = Instant.now();
-                    Duration duration = Duration.between(start, end);
-                    getLog().lifecycle("Parsed " + xmlPaths.size() + " XML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(xmlPaths.size())) + " per file)");
                 }
             }
 
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-            //We do not want to collect any of the files from sub-project folders, the build folder, or the "/.gradle"
-            //folder.
-            List<Path> yamlPaths = new ArrayList<>();
-            List<Path> propertiesPaths = new ArrayList<>();
-            List<Path> xmlPaths = new ArrayList<>();
-            Set<Path> excludeDirectories = subproject.getSubprojects().stream()
-                    .map(Project::getProjectDir)
-                    .map(File::toPath)
-                    .map(AbstractRewriteTask::normalizePath)
-                    .collect(Collectors.toSet());
-            excludeDirectories.add(normalizePath(subproject.getBuildDir().toPath()));
-            excludeDirectories.add(normalizePath(subproject.getProjectDir().toPath().resolve(".gradle")));
-
-            Files.walk(subproject.getProjectDir().toPath())
-                    .map(AbstractRewriteTask::normalizePath)
-                    .forEach(file -> {
-                        if (Files.isDirectory(file) || seenSourceFiles.contains(file)) {
-                            return;
-                        }
-                        for (Path exclude : excludeDirectories) {
-                            if (file.startsWith(exclude)) {
-                                return;
-                            }
-                        }
-                        String fileName = file.toString().toLowerCase();
-                        if (fileName.endsWith(".yml") || fileName.endsWith(".yaml")) {
-                            yamlPaths.add(file);
-                        } else if (fileName.endsWith(".properties")) {
-                            propertiesPaths.add(file);
-                        } else if (fileName.endsWith(".xml")) {
-                            xmlPaths.add(file);
-                        }
-                    });
-
-            if (yamlPaths.size() > 0) {
-                getLog().lifecycle("Parsing " + yamlPaths.size() + " YAML files from " + subproject.getProjectDir());
-                Instant start = Instant.now();
-                sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
-                        addProvenance(projectProvenance, null)));
-                Instant end = Instant.now();
-                Duration duration = Duration.between(start, end);
-                getLog().lifecycle("Parsed " + yamlPaths.size() + " YAML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(yamlPaths.size())) + " per file)");
-            }
-
-            if(propertiesPaths.size() > 0) {
-                getLog().lifecycle("Parsing " + propertiesPaths.size() + " properties files from " + subproject.getProjectDir());
-                Instant start = Instant.now();
-                sourceFiles.addAll(map(getRewrite().propertiesParser().parse(propertiesPaths, baseDir, ctx),
-                        addProvenance(projectProvenance, null)));
-
-                Instant end = Instant.now();
-                Duration duration = Duration.between(start, end);
-                getLog().lifecycle("Parsed " + propertiesPaths.size() + " properties files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(propertiesPaths.size())) + " per file)");
-            }
-
-            if (xmlPaths.size() > 0) {
-                getLog().lifecycle("Parsing " + xmlPaths.size() + " XML files from " + subproject.getProjectDir());
-                Instant start = Instant.now();
-                sourceFiles.addAll(map(getRewrite().yamlParser().parse(yamlPaths, baseDir, ctx),
-                        addProvenance(projectProvenance, null)));
-
-                Instant end = Instant.now();
-                Duration duration = Duration.between(start, end);
-                getLog().lifecycle("Parsed " + xmlPaths.size() + " XML files in " + prettyPrint(duration) + " (" + prettyPrint(duration.dividedBy(xmlPaths.size())) + " per file)");
-            }
+            sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
 
             return sourceFiles;
         } catch (Exception e) {

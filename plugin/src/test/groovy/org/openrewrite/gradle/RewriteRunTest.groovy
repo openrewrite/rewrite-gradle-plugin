@@ -386,4 +386,62 @@ class RewriteRunTest extends RewriteTestBase {
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
     }
+
+    def "can apply non-java recipe to files inside and outside of java resources directories"() {
+        given:
+        new File(projectDir, "settings.gradle").createNewFile()
+
+        File rewriteYaml = new File(projectDir, "rewrite.yml")
+        rewriteYaml.text = """\
+                ---
+                type: specs.openrewrite.org/v1beta/recipe
+                name: com.example.RenameSam
+                displayName: Rename property keys
+                description: Renames property keys named 'sam' to 'samuel'
+                recipeList:
+                  - org.openrewrite.properties.ChangePropertyKey:
+                      oldPropertyKey: sam
+                      newPropertyKey: samuel
+            """.stripIndent()
+
+        File buildGradleFile = new File(projectDir, "build.gradle")
+        buildGradleFile.text = """\
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                rewrite {
+                    activeRecipe("com.example.RenameSam")
+                }
+            """.stripIndent()
+
+        String propertiesFileText = "sam=true\n"
+        String propertiesTextExpected = "samuel=true\n"
+        File propertiesFileNotInSourceSet = new File(projectDir, "outside-of-sourceset.properties")
+        propertiesFileNotInSourceSet.text = propertiesFileText
+        File propertiesFileInSourceSet = new File(projectDir, "src/main/resources/in-sourceset.properties")
+        propertiesFileInSourceSet.getParentFile().mkdirs()
+        propertiesFileInSourceSet.text = propertiesFileText
+
+        when:
+        def result = gradleRunner(gradleVersion, "rewriteRun").build()
+        def rewriteRunResult = result.task(":rewriteRun")
+
+        then:
+        rewriteRunResult.outcome == TaskOutcome.SUCCESS
+        propertiesFileNotInSourceSet.text == propertiesTextExpected
+        propertiesFileInSourceSet.text == propertiesTextExpected
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
 }

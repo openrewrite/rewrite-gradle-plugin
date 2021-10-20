@@ -94,6 +94,21 @@ public class RewriteReflectiveFacade {
         }
     }
 
+    private boolean acceptBase(Object real, Path path) {
+        try {
+            return (boolean) real.getClass().getMethod("accept", Path.class)
+                    .invoke(real, path);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public interface Parser {
+        List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx);
+
+        boolean accept(Path path);
+    }
+
     public GradleParser gradleParser(GroovyParserBuilder groovyParserBuilder) {
         try {
             Class<?> groovyParserBuilderClass = getClassLoader().loadClass("org.openrewrite.groovy.GroovyParser$Builder");
@@ -105,7 +120,7 @@ public class RewriteReflectiveFacade {
         }
     }
 
-    public class GradleParser {
+    public class GradleParser implements Parser {
         private final Object real;
 
         private GradleParser(Object real) {
@@ -115,9 +130,14 @@ public class RewriteReflectiveFacade {
         public List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx) {
             return parseBase(real, sourcePaths, baseDir, ctx);
         }
+
+        @Override
+        public boolean accept(Path path) {
+            return acceptBase(real, path);
+        }
     }
 
-    public class GroovyParser {
+    public class GroovyParser implements Parser {
         private final Object real;
 
         private GroovyParser(Object real) {
@@ -126,6 +146,11 @@ public class RewriteReflectiveFacade {
 
         public List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx) {
             return parseBase(real, sourcePaths, baseDir, ctx);
+        }
+
+        @Override
+        public boolean accept(Path path) {
+            return acceptBase(real, path);
         }
     }
 
@@ -139,6 +164,7 @@ public class RewriteReflectiveFacade {
             throw new RuntimeException(e);
         }
     }
+
     public class GroovyParserBuilder {
         private final Object real;
 
@@ -250,7 +276,10 @@ public class RewriteReflectiveFacade {
     public class Marker {
         private final Object real;
 
-        public Marker(Object real) { this.real = real; }
+        public Marker(Object real) {
+            this.real = real;
+        }
+
         Object getReal() {
             return real;
         }
@@ -262,6 +291,7 @@ public class RewriteReflectiveFacade {
         public Markers(Object real) {
             this.real = real;
         }
+
         public Markers addAll(List<Marker> markers) {
             try {
                 Object newReal = real;
@@ -273,6 +303,7 @@ public class RewriteReflectiveFacade {
                 throw new RuntimeException(e);
             }
         }
+
         private Method markersAddIfAbsentMethod() {
             if (markersAddIfAbsent == null) {
                 try {
@@ -316,6 +347,7 @@ public class RewriteReflectiveFacade {
                 throw new RuntimeException(e);
             }
         }
+
         public SourceFile withMarkers(Markers markers) {
             try {
                 return new SourceFile(sourceFileWithMarkersMethod().invoke(real, markers.real));
@@ -335,6 +367,7 @@ public class RewriteReflectiveFacade {
             }
             return sourceFileGetMarkers;
         }
+
         private Method sourceFileWithMarkersMethod() {
             if (sourceFileWithMarkers == null) {
                 try {
@@ -386,34 +419,42 @@ public class RewriteReflectiveFacade {
             this.projectName = projectName;
             return this;
         }
+
         public JavaProjectProvenanceBuilder buildToolVersion(String buildToolVersion) {
             this.buildToolVersion = buildToolVersion;
             return this;
         }
+
         public JavaProjectProvenanceBuilder vmRuntimeVersion(String vmRuntimeVersion) {
             this.vmRuntimeVersion = vmRuntimeVersion;
             return this;
         }
+
         public JavaProjectProvenanceBuilder vmVendor(String vmVendor) {
             this.vmVendor = vmVendor;
             return this;
         }
+
         public JavaProjectProvenanceBuilder sourceCompatibility(String sourceCompatibility) {
             this.sourceCompatibility = sourceCompatibility;
             return this;
         }
+
         public JavaProjectProvenanceBuilder targetCompatibility(String targetCompatibility) {
             this.targetCompatibility = targetCompatibility;
             return this;
         }
+
         public JavaProjectProvenanceBuilder publicationGroupId(String publicationGroupId) {
             this.publicationGroupId = publicationGroupId;
             return this;
         }
+
         public JavaProjectProvenanceBuilder publicationArtifactId(String publicationArtifactId) {
             this.publicationArtifactId = publicationArtifactId;
             return this;
         }
+
         public JavaProjectProvenanceBuilder publicationVersion(String publicationVersion) {
             this.publicationVersion = publicationVersion;
             return this;
@@ -424,7 +465,7 @@ public class RewriteReflectiveFacade {
             try {
                 //Build Tool Type Enum
                 @SuppressWarnings("rawtypes")
-                Enum gradleType = Enum.valueOf ((Class<? extends Enum>) getClassLoader()
+                Enum gradleType = Enum.valueOf((Class<? extends Enum>) getClassLoader()
                         .loadClass("org.openrewrite.marker.BuildTool$Type"), "Gradle");
 
                 Object buildTool = getClassLoader()
@@ -948,7 +989,7 @@ public class RewriteReflectiveFacade {
         }
     }
 
-    public class YamlParser {
+    public class YamlParser implements Parser {
         private final Object real;
 
         private YamlParser(Object real) {
@@ -957,6 +998,11 @@ public class RewriteReflectiveFacade {
 
         public List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx) {
             return parseBase(real, sourcePaths, baseDir, ctx);
+        }
+
+        @Override
+        public boolean accept(Path path) {
+            return acceptBase(real, path);
         }
     }
 
@@ -970,7 +1016,7 @@ public class RewriteReflectiveFacade {
         }
     }
 
-    public class PropertiesParser {
+    public class PropertiesParser implements Parser {
         private final Object real;
 
         private PropertiesParser(Object real) {
@@ -979,6 +1025,11 @@ public class RewriteReflectiveFacade {
 
         public List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx) {
             return parseBase(real, sourcePaths, baseDir, ctx);
+        }
+
+        @Override
+        public boolean accept(Path path) {
+            return acceptBase(real, path);
         }
     }
 
@@ -992,7 +1043,7 @@ public class RewriteReflectiveFacade {
         }
     }
 
-    public class XmlParser {
+    public class XmlParser implements Parser {
         private final Object real;
 
         private XmlParser(Object real) {
@@ -1002,6 +1053,11 @@ public class RewriteReflectiveFacade {
         public List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx) {
             return parseBase(real, sourcePaths, baseDir, ctx);
         }
+
+        @Override
+        public boolean accept(Path path) {
+            return acceptBase(real, path);
+        }
     }
 
     public XmlParser xmlParser() {
@@ -1009,6 +1065,65 @@ public class RewriteReflectiveFacade {
             return new XmlParser(getClassLoader().loadClass("org.openrewrite.xml.XmlParser")
                     .getDeclaredConstructor()
                     .newInstance());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public class JsonParser implements Parser {
+        private final Object real;
+
+        private JsonParser(Object real) {
+            this.real = real;
+        }
+
+        public List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx) {
+            return parseBase(real, sourcePaths, baseDir, ctx);
+        }
+
+        @Override
+        public boolean accept(Path path) {
+            return acceptBase(real, path);
+        }
+    }
+
+    public JsonParser jsonParser() {
+        try {
+            return new JsonParser(getClassLoader().loadClass("org.openrewrite.json.JsonParser")
+                    .getDeclaredConstructor()
+                    .newInstance());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    public class HclParser implements Parser {
+        private final Object real;
+
+        private HclParser(Object real) {
+            this.real = real;
+        }
+
+        public List<SourceFile> parse(Iterable<Path> sourcePaths, Path baseDir, InMemoryExecutionContext ctx) {
+            return parseBase(real, sourcePaths, baseDir, ctx);
+        }
+
+        @Override
+        public boolean accept(Path path) {
+            return acceptBase(real, path);
+        }
+    }
+
+    public HclParser hclParser() {
+        try {
+            Object hclBuilder = getClassLoader()
+                    .loadClass("org.openrewrite.hcl.HclParser")
+                    .getMethod("builder")
+                    .invoke(null);
+            return new HclParser(hclBuilder.getClass().getMethod("build")
+                    .invoke(hclBuilder));
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
