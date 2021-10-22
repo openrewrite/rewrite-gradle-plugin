@@ -60,6 +60,10 @@ public class RewritePlugin implements Plugin<Project> {
         ResolveRewriteDependenciesTask resolveRewriteDependenciesTask = rootProject.getTasks().create("rewriteResolveDependencies", ResolveRewriteDependenciesTask.class)
                 .setConfiguration(rewriteConf)
                 .setExtension(extension);
+        Task foo = rootProject.getTasks().create("foo", ExampleRewriteTask.class)
+                .setExtension(extension)
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+
         Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask)
                 .setExtension(extension)

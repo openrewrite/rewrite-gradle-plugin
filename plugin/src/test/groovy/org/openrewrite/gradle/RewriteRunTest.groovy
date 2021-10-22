@@ -22,6 +22,45 @@ import spock.lang.Unroll
 @Unroll
 class RewriteRunTest extends RewriteTestBase {
 
+    def "rewrite is isolated from conflicting versions of jackson on the classpath"() {
+        given:
+        new File(projectDir, "settings.gradle").createNewFile()
+        File buildGradleFile = new File(projectDir, "build.gradle")
+
+        buildGradleFile.text = """
+            buildscript {
+                repositories {
+                    mavenCentral()
+                }
+                dependencies {
+                    classpath("com.fasterxml.jackson.core:jackson-core:2.7.9")
+                }
+            }
+            plugins {
+                id("java")
+                id("org.openrewrite.rewrite")
+            }
+            
+            repositories {
+                mavenLocal()
+                mavenCentral()
+                maven {
+                   url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                }
+            }
+        """.stripIndent()
+
+        when:
+        def buildResult = gradleRunner(gradleVersion, "foo").build()
+        def taskResult = buildResult.task(":foo")
+
+        then:
+        taskResult.outcome == TaskOutcome.SUCCESS
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
     def "rewriteRun will alter the source file according to the provided active recipe"() {
         given:
         new File(projectDir, "settings.gradle").createNewFile()

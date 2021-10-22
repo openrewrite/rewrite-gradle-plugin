@@ -86,7 +86,6 @@ dependencies {
     api("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
     api("io.rsocket:rsocket-transport-netty:$nettyVersion")
 
-
     "rewriteDependencies"("org.openrewrite:rewrite-core:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-java:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-java-11:$rewriteVersion")
@@ -95,9 +94,20 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-yaml:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-properties:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-maven:$rewriteVersion")
-//    "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
-//    "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:latest.release")
+    implementation("org.openrewrite:rewrite-core:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-java:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-java-11:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-java-8:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-xml:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-yaml:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-properties:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-maven:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-groovy:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-gradle:$rewriteVersion")
+    runtimeOnly("com.puppycrawl.tools:checkstyle:latest.release")
 
     testImplementation(gradleTestKit())
     testImplementation(localGroovy())
@@ -172,7 +182,6 @@ val gVP = tasks.register("generateVersionsProperties") {
 tasks.named("processResources") {
     dependsOn(gVP)
 }
-
 
 configure<LicenseExtension> {
     ext.set("year", Calendar.getInstance().get(Calendar.YEAR))

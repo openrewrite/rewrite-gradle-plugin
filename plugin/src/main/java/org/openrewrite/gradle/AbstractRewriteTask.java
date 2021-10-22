@@ -237,7 +237,7 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
                 File buildScriptFile = subproject.getBuildFile();
                 try {
                     if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists()) {
-                        GradleParser gradleParser = rewrite().gradleParser(
+                        RewriteReflectiveFacade.GradleParser gradleParser = rewrite().gradleParser(
                                 rewrite().groovyParserBuilder()
                                         .styles(styles)
                                         .logCompilationWarningsAndErrors(true));
