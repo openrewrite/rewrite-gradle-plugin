@@ -7,18 +7,18 @@ import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 /**
  * Rewrite uses jackson for serialization/deserialization. So do lots of other build plugins.
  * Gradle plugins all share the same classpath at runtime.
  *
- * This classloader exists to isolate rewrite and the version of jackson it uses from the rest of the build.
+ * This classloader exists to isolate rewrite's use of jackson from the rest of the build.
  */
 public class RewriteClassLoader extends URLClassLoader {
-    private static final List<String> neverLoadFromParent = Collections.singletonList(
-            "org.openrewrite.internal.MetricsHelper"
+    private static final List<String> neverLoadFromParent = Arrays.asList(
+            "org.openrewrite.internal.MetricsHelper",
+            "com.fasterxml"
     );
 
     private static final List<String> loadFromParent = Arrays.asList(

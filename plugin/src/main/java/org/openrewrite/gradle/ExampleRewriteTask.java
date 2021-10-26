@@ -21,8 +21,11 @@ public class ExampleRewriteTask extends DefaultTask {
     @TaskAction
     void run() {
         try {
+            @SuppressWarnings("ConstantConditions")
             String path = ExampleRewriteTask.class.getResource("/" + ExampleRewriteTask.class.getName().replace('.', '/') + ".class").toString();
-            path = path.substring(4); // remove "jar:"
+            if(path.startsWith("jar:")) {
+                path = path.substring(4);
+            }
             int indexOfBang = path.indexOf("!");
             if(indexOfBang != -1) {
                 path = path.substring(0, indexOfBang);
