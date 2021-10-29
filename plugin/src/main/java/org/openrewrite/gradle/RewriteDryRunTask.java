@@ -32,7 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
-public class RewriteDryRunTask extends ExampleRewriteTask {
+public class RewriteDryRunTask extends AbstractRewriteTask {
     private static final Logger logger = Logging.getLogger(RewriteDryRunTask.class);
 
     // This @Internal is a lie, the correct annotation here would be @OutputFile

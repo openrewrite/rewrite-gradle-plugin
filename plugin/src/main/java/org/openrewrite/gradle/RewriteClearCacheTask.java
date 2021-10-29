@@ -15,22 +15,11 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.logging.Logger;
-import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.gradle.RewriteReflectiveFacade.Environment;
-import org.openrewrite.gradle.RewriteReflectiveFacade.RecipeDescriptor;
 
 import javax.inject.Inject;
-import java.util.Collection;
 
 public class RewriteClearCacheTask extends AbstractRewriteTask {
-    private static final Logger log = Logging.getLogger(RewriteClearCacheTask.class);
-
-    @Override
-    protected Logger getLog() {
-        return log;
-    }
 
     @Inject
     public RewriteClearCacheTask() {
@@ -40,10 +29,6 @@ public class RewriteClearCacheTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        Environment env = environment();
-        Collection<RecipeDescriptor> availableRecipeDescriptors = env.listRecipeDescriptors();
-
-        log.quiet("Clearing AST Cache...");
         clearAstCache();
     }
 }

@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class RewriteRunTask extends ExampleRewriteTask {
+public class RewriteRunTask extends AbstractRewriteTask {
     private static final Logger logger = Logging.getLogger(RewriteRunTask.class);
 
     @Inject

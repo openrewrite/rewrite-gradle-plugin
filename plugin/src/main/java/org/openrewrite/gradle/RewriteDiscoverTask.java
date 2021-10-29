@@ -31,7 +31,7 @@ import javax.inject.Inject;
 import java.util.Collection;
 import java.util.Set;
 
-public class RewriteDiscoverTask extends ExampleRewriteTask {
+public class RewriteDiscoverTask extends AbstractRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteDiscoverTask.class);
     private static final String LOG_INDENT_INCREMENT = "    ";
     private boolean interactive;
