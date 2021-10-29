@@ -45,7 +45,5 @@ public class RewriteClearCacheTask extends AbstractRewriteTask {
 
         log.quiet("Clearing AST Cache...");
         clearAstCache();
-
     }
-
 }

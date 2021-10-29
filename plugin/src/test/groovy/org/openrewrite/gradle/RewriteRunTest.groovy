@@ -48,11 +48,26 @@ class RewriteRunTest extends RewriteTestBase {
                    url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                 }
             }
+            
+            rewrite {
+                activeRecipe("org.openrewrite.java.format.AutoFormat")
+            }
         """.stripIndent()
 
+        File srcDir = new File(projectDir, "src/test/java/com/foo")
+        srcDir.mkdirs()
+        File testClass = new File(srcDir, "ATestClass.java")
+        testClass.text = """\
+                package com.foo;
+                
+                public class ATestClass {
+                public void passes() { }
+                }
+            """.stripIndent()
+
         when:
-        def buildResult = gradleRunner(gradleVersion, "foo").build()
-        def taskResult = buildResult.task(":foo")
+        def buildResult = gradleRunner(gradleVersion, "rewriteRun").build()
+        def taskResult = buildResult.task(":rewriteRun")
 
         then:
         taskResult.outcome == TaskOutcome.SUCCESS

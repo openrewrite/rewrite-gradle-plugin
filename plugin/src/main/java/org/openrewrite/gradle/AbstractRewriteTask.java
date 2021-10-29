@@ -94,9 +94,6 @@ public abstract class AbstractRewriteTask extends DefaultTask implements Rewrite
         return new TreeSet<>(extension.getActiveStyles());
     }
 
-    /**
-     * The prefix used to left-pad log messages, multiplied per "level" of log message.
-     */
     private static final int HOURS_PER_DAY = 24;
     private static final int MINUTES_PER_HOUR = 60;
     private static final int SECONDS_PER_MINUTE = 60;

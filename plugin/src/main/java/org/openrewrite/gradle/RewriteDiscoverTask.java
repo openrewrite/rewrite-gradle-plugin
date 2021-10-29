@@ -21,17 +21,17 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
-import org.openrewrite.gradle.RewriteReflectiveFacade.Environment;
-import org.openrewrite.gradle.RewriteReflectiveFacade.NamedStyles;
-import org.openrewrite.gradle.RewriteReflectiveFacade.OptionDescriptor;
-import org.openrewrite.gradle.RewriteReflectiveFacade.RecipeDescriptor;
+import org.openrewrite.config.Environment;
+import org.openrewrite.config.OptionDescriptor;
+import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.gradle.ui.RecipeDescriptorTreePrompter;
+import org.openrewrite.style.NamedStyles;
 
 import javax.inject.Inject;
 import java.util.Collection;
 import java.util.Set;
 
-public class RewriteDiscoverTask extends AbstractRewriteTask {
+public class RewriteDiscoverTask extends ExampleRewriteTask {
     private static final Logger log = Logging.getLogger(RewriteDiscoverTask.class);
     private static final String LOG_INDENT_INCREMENT = "    ";
     private boolean interactive;
@@ -46,10 +46,6 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
         return this.interactive;
     }
 
-    @Override
-    protected Logger getLog() {
-        return log;
-    }
 
     @Inject
     public RewriteDiscoverTask() {
@@ -67,7 +63,7 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
             UserInputHandler prompter = getServices().get(UserInputHandler.class);
             RecipeDescriptorTreePrompter treePrompter = new RecipeDescriptorTreePrompter(prompter);
             RecipeDescriptor rd = treePrompter.execute(availableRecipeDescriptors);
-            writeRecipeDescriptor(rd, true, 0);
+            writeRecipeDescriptor(rd);
         } else {
             Set<String> activeRecipes = getActiveRecipes();
             Collection<NamedStyles> availableStyles = env.listStyles();
@@ -104,31 +100,22 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     }
 
     @SuppressWarnings("ConstantConditions")
-    private void writeRecipeDescriptor(RecipeDescriptor rd, boolean verbose, int indentLevel) {
-        if (verbose) {
-            log.quiet(indent(indentLevel, rd.getDisplayName()));
-            log.quiet(indent(indentLevel + 1, rd.getName()));
-            if (rd.getDescription() != null && !rd.getDescription().isEmpty()) {
-                log.quiet(indent(indentLevel + 1, rd.getDescription()));
-            }
-
-            if (!rd.getOptions().isEmpty()) {
-                log.quiet(indent(indentLevel, "options: "));
-                for (OptionDescriptor od : rd.getOptions()) {
-                    log.quiet(indent(indentLevel + 1, od.getName() + ": " + od.getType() + (od.isRequired() ? "!" : "")));
-                    if (od.getDescription() != null && !od.getDescription().isEmpty()) {
-                        log.quiet(indent(indentLevel + 2, od.getDescription()));
-                    }
+    private void writeRecipeDescriptor(RecipeDescriptor rd) {
+        log.quiet(indent(0, rd.getDisplayName()));
+        log.quiet(indent(1, rd.getName()));
+        if (rd.getDescription() != null && !rd.getDescription().isEmpty()) {
+            log.quiet(indent(1, rd.getDescription()));
+        }
+        if (!rd.getOptions().isEmpty()) {
+            log.quiet(indent(0, "options: "));
+            for (OptionDescriptor od : rd.getOptions()) {
+                log.quiet(indent(1, od.getName() + ": " + od.getType() + (od.isRequired() ? "!" : "")));
+                if (od.getDescription() != null && !od.getDescription().isEmpty()) {
+                    log.quiet(indent(2, od.getDescription()));
                 }
             }
-        } else {
-            log.quiet(indent(indentLevel, rd.getName()));
         }
-
-        if (verbose) {
-            log.quiet(indent(indentLevel, ""));
-        }
-
+        log.quiet("");
     }
 
     private static String indent(int indent, CharSequence content) {

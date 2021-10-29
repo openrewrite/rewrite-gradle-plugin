@@ -30,22 +30,11 @@ import java.util.stream.Stream;
 
 public class ResolveRewriteDependenciesTask extends DefaultTask {
     private Set<File> resolvedDependencies;
-    private RewriteExtension extension;
     private Configuration configuration;
 
     public ResolveRewriteDependenciesTask setConfiguration(Configuration configuration) {
         this.configuration = configuration;
         return this;
-    }
-
-    public ResolveRewriteDependenciesTask setExtension(RewriteExtension extension) {
-        this.extension = extension;
-        return this;
-    }
-
-    @Internal
-    public String getRewriteVersion() {
-        return extension.getRewriteVersion();
     }
 
     @Internal
@@ -55,21 +44,22 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
 
     @TaskAction
     void run() {
+        RewriteExtension extension = getProject().getRootProject().getExtensions().getByType(RewriteExtension.class);
         String rewriteVersion = extension.getRewriteVersion();
         Project project = getProject();
         DependencyHandler deps = project.getDependencies();
         Dependency[] dependencies = new Dependency[] {
                 deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
-//                dependencies.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
-//                dependencies.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
                 // Some rewrite classes use slf4j loggers (even though they probably shouldn't)
                 // Ideally this would be the same implementation used by Gradle at runtime
                 // But there are reflection and classpath shenanigans that make that one hard to get at

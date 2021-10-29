@@ -15,7 +15,7 @@
  */
 package org.openrewrite.gradle.ui;
 
-import org.openrewrite.gradle.RewriteReflectiveFacade.RecipeDescriptor;
+import org.openrewrite.config.RecipeDescriptor;
 
 import java.util.ArrayList;
 import java.util.List;

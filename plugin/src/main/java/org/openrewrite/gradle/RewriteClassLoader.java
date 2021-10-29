@@ -39,7 +39,11 @@ public class RewriteClassLoader extends URLClassLoader {
             "org.openrewrite.scheduling",
             "org.openrewrite.style",
             "org.openrewrite.template",
-            "org.openrewrite.text"
+            "org.openrewrite.text",
+            "org.openrewrite.gradle.RewriteExtension",
+            "org.openrewrite.gradle.ExampleRewriteTask",
+            "org.openrewrite.gradle.DelegatingProjectParser",
+            "org.gradle"
     );
 
     public RewriteClassLoader(Collection<Path> artifacts) {
@@ -79,10 +83,6 @@ public class RewriteClassLoader extends URLClassLoader {
     }
 
     boolean shouldBeParentLoaded(String name) {
-        if (!name.startsWith("org.openrewrite")) {
-            return false;
-        }
-
         for (String s : neverLoadFromParent) {
             if (name.startsWith(s)) {
                 return false;
@@ -94,6 +94,11 @@ public class RewriteClassLoader extends URLClassLoader {
                 return true;
             }
         }
+
+        if (!name.startsWith("org.openrewrite")) {
+            return false;
+        }
+
         return isTreeType(name) || isStyleType(name);
     }
 

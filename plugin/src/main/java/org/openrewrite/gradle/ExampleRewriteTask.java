@@ -1,64 +1,101 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
-import org.openrewrite.SourceFile;
+import org.openrewrite.Result;
+import org.openrewrite.config.Environment;
+import org.openrewrite.java.tree.J;
+import org.openrewrite.scheduling.ForkJoinScheduler;
+import org.openrewrite.shaded.jgit.api.Git;
 
 import java.io.File;
-import java.net.URI;
-import java.net.URL;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
-public class ExampleRewriteTask extends DefaultTask {
-    private RewriteExtension extension;
+public abstract class ExampleRewriteTask extends DefaultTask {
     private ResolveRewriteDependenciesTask resolveDependenciesTask;
+    protected boolean useAstCache;
+    private DelegatingProjectParser gpp;
 
-    @TaskAction
-    void run() {
-        try {
-            @SuppressWarnings("ConstantConditions")
-            String path = ExampleRewriteTask.class.getResource("/" + ExampleRewriteTask.class.getName().replace('.', '/') + ".class").toString();
-            if(path.startsWith("jar:")) {
-                path = path.substring(4);
-            }
-            int indexOfBang = path.indexOf("!");
-            if(indexOfBang != -1) {
-                path = path.substring(0, indexOfBang);
-            }
-            Path currentJar = Paths.get(new URI(path));
-
-
+    private DelegatingProjectParser getProjectParser() {
+        if(gpp == null) {
             Set<Path> classpath = resolveDependenciesTask.getResolvedDependencies().stream()
                     .map(File::toPath)
                     .collect(Collectors.toSet());
-            classpath.add(currentJar);
-            RewriteClassLoader cl = new RewriteClassLoader(classpath);
-
-            Class<?> gppClass = Class.forName("org.openrewrite.gradle.GradleProjectParser", true, cl);
-            Object gpp = gppClass
-                    .getDeclaredConstructor(Path.class, Collection.class)
-                    .newInstance(getProject().getRootDir().toPath(), classpath);
-
-            List<SourceFile> sources = (List<SourceFile>) gppClass.getMethod("parse")
-                            .invoke(gpp);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            gpp = new DelegatingProjectParser(getProject().getRootProject(), classpath, useAstCache);
         }
+        return gpp;
     }
 
-    public ExampleRewriteTask setExtension(RewriteExtension extension) {
-        this.extension = extension;
-        return this;
+    protected ResultsContainer listResults() {
+        return getProjectParser().listResults();
+    }
+
+    protected Environment environment() {
+        return getProjectParser().environment();
+    }
+
+    @TaskAction
+    void run() {
+        listResults();
+    }
+
+    @Input
+    public Set<String> getActiveRecipes() {
+        return getProjectParser().getActiveRecipes();
+    }
+
+    @Input
+    public Set<String> getActiveStyles() {
+        return getProjectParser().getActiveStyles();
+    }
+
+    protected void shutdownRewrite() {
+        J.clearCaches();
+        Git.shutdown();
+        ForkJoinScheduler.shutdown();
     }
 
     public ExampleRewriteTask setResolveDependenciesTask(ResolveRewriteDependenciesTask resolveDependenciesTask) {
         this.resolveDependenciesTask = resolveDependenciesTask;
         this.dependsOn(resolveDependenciesTask);
         return this;
+    }
+
+    public static class ResultsContainer {
+        final Path projectRoot;
+        final List<Result> generated = new ArrayList<>();
+        final List<Result> deleted = new ArrayList<>();
+        final List<Result> moved = new ArrayList<>();
+        final List<Result> refactoredInPlace = new ArrayList<>();
+
+        public ResultsContainer(Path projectRoot, Collection<Result> results) {
+            this.projectRoot = projectRoot;
+            for (Result result : results) {
+                if (result.getBefore() == null && result.getAfter() == null) {
+                    // This situation shouldn't happen / makes no sense
+                    continue;
+                }
+                if (result.getBefore() == null && result.getAfter() != null) {
+                    generated.add(result);
+                } else if (result.getBefore() != null && result.getAfter() == null) {
+                    deleted.add(result);
+                } else if (result.getBefore() != null && !result.getBefore().getSourcePath().equals(result.getAfter().getSourcePath())) {
+                    moved.add(result);
+                } else {
+                    refactoredInPlace.add(result);
+                }
+            }
+        }
+
+        public Path getProjectRoot() {
+            return projectRoot;
+        }
+
+        public boolean isNotEmpty() {
+            return !generated.isEmpty() || !deleted.isEmpty() || !moved.isEmpty() || !refactoredInPlace.isEmpty();
+        }
     }
 }
