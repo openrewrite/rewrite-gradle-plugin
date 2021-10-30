@@ -22,6 +22,10 @@ import spock.lang.Unroll
 @Unroll
 class RewriteRunTest extends RewriteTestBase {
 
+    // This test doesn't definitively _prove_ that our isolation is sufficient
+    // Gradle provides no control over how it arbitrarily orders its classpath
+    // So even if isolation isn't working at all, this could pass if it happens to put the rewrite's required version
+    // of jackson first on the classpath.
     def "rewrite is isolated from conflicting versions of jackson on the classpath"() {
         given:
         new File(projectDir, "settings.gradle").createNewFile()
@@ -38,6 +42,8 @@ class RewriteRunTest extends RewriteTestBase {
             }
             plugins {
                 id("java")
+                // nebula brings in jackson 2.5.4
+                id("nebula.integtest") version "7.0.9" apply false 
                 id("org.openrewrite.rewrite")
             }
             

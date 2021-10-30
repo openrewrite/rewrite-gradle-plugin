@@ -140,7 +140,6 @@ val testGradle4 = tasks.register<Test>("testGradle4") {
     dependsOn(tasks.named("jar"))
     val jar: Jar = tasks.named<Jar>("jar").get()
     jvmArgs("-DjarLocationForTest=${jar.archiveFile.get().asFile.absolutePath}")
-    classpath = classpath.plus(project.files(tasks.named<Jar>("jar")))
 }
 tasks.named("check").configure {
     dependsOn(testGradle4)

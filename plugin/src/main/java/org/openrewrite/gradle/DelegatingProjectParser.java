@@ -63,9 +63,7 @@ public class DelegatingProjectParser {
             } else if(path.endsWith(".class")) {
                 // This code path only gets taken when running the tests against older versions of Gradle
                 // In all other circumstances, "path" will point at a jar file
-                // Include the trailing slash so that URLClassLoader will interpret it as a directory
                 currentJar = Paths.get(System.getProperty("jarLocationForTest")).toUri().toURL();
-//                currentJar =  new URI(path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1)).toURL();
             }
 
             classpathUrls.add(currentJar);
