@@ -22,9 +22,6 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Adds the RewriteExtension to the current project and registers tasks per-sourceSet.
  * Only needs to be applied to projects with java sources. No point in applying this to any project that does
@@ -53,32 +50,25 @@ public class RewritePlugin implements Plugin<Project> {
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = rootProject.getConfigurations().maybeCreate("rewrite");
-        List<Project> projects = new ArrayList<>();
 
         // We use this method of task creation because it works on old versions of Gradle
         // Don't replace with TaskContainer.register() (introduced in 4.9), or another overload of create() (introduced in 4.7)
         ResolveRewriteDependenciesTask resolveRewriteDependenciesTask = rootProject.getTasks().create("rewriteResolveDependencies", ResolveRewriteDependenciesTask.class)
-                .setConfiguration(rewriteConf)
-                .setExtension(extension);
+                .setConfiguration(rewriteConf);
+
         Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class)
-                .setResolveDependenciesTask(resolveRewriteDependenciesTask)
-                .setExtension(extension)
-                .setProjects(projects);
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+
         Task rewriteDryRun = rootProject.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
-                .setResolveDependenciesTask(resolveRewriteDependenciesTask)
-                .setExtension(extension)
-                .setProjects(projects);
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+
         rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
-                .setResolveDependenciesTask(resolveRewriteDependenciesTask)
-                .setExtension(extension)
-                .setProjects(projects);
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+
         rootProject.getTasks().create("rewriteClearCache", RewriteClearCacheTask.class)
-                .setResolveDependenciesTask(resolveRewriteDependenciesTask)
-                .setExtension(extension)
-                .setProjects(projects);
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
         rootProject.allprojects(project -> {
-            projects.add(project);
 
             // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
             // Do not replace all() with any form of collection iteration which does not share this important property

@@ -20,7 +20,8 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
-import org.openrewrite.gradle.RewriteReflectiveFacade.Result;
+import org.openrewrite.Recipe;
+import org.openrewrite.Result;
 
 import javax.inject.Inject;
 import java.io.BufferedWriter;
@@ -30,7 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class RewriteRunTask extends AbstractRewriteTask {
-    private static final Logger log = Logging.getLogger(RewriteRunTask.class);
+    private static final Logger logger = Logging.getLogger(RewriteRunTask.class);
 
     @Inject
     public RewriteRunTask() {
@@ -48,11 +49,6 @@ public class RewriteRunTask extends AbstractRewriteTask {
         return useAstCache;
     }
 
-    @Override
-    protected Logger getLog() {
-        return log;
-    }
-
     @TaskAction
     public void run() {
         try {
@@ -61,14 +57,14 @@ public class RewriteRunTask extends AbstractRewriteTask {
             if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
-                    getLog().lifecycle("Generated new file " +
+                    logger.lifecycle("Generated new file " +
                             result.getAfter().getSourcePath() +
                             " by:");
                     logRecipesThatMadeChanges(result);
                 }
                 for (Result result : results.deleted) {
                     assert result.getBefore() != null;
-                    getLog().lifecycle("Deleted file " +
+                    logger.lifecycle("Deleted file " +
                             result.getBefore().getSourcePath() +
                             " by:");
                     logRecipesThatMadeChanges(result);
@@ -76,20 +72,20 @@ public class RewriteRunTask extends AbstractRewriteTask {
                 for (Result result : results.moved) {
                     assert result.getAfter() != null;
                     assert result.getBefore() != null;
-                    getLog().lifecycle("File has been moved from " +
+                    logger.lifecycle("File has been moved from " +
                             result.getBefore().getSourcePath() + " to " +
                             result.getAfter().getSourcePath() + " by:");
                     logRecipesThatMadeChanges(result);
                 }
                 for (Result result : results.refactoredInPlace) {
                     assert result.getBefore() != null;
-                    getLog().lifecycle("Changes have been made to " +
+                    logger.lifecycle("Changes have been made to " +
                             result.getBefore().getSourcePath() +
                             " by:");
                     logRecipesThatMadeChanges(result);
                 }
 
-                getLog().lifecycle("Please review and commit the results.");
+                logger.lifecycle("Please review and commit the results.");
 
                 try {
                     for (Result result : results.generated) {
@@ -140,6 +136,12 @@ public class RewriteRunTask extends AbstractRewriteTask {
             }
         } finally {
             shutdownRewrite();
+        }
+    }
+
+    private void logRecipesThatMadeChanges(Result result) {
+        for (Recipe recipe : result.getRecipesThatMadeChanges()) {
+            logger.warn("    " + recipe.getName());
         }
     }
 }

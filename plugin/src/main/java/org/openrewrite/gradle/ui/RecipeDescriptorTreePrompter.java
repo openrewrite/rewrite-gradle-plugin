@@ -16,7 +16,7 @@
 package org.openrewrite.gradle.ui;
 
 import org.gradle.api.internal.tasks.userinput.UserInputHandler;
-import org.openrewrite.gradle.RewriteReflectiveFacade.RecipeDescriptor;
+import org.openrewrite.config.RecipeDescriptor;
 
 import java.util.Collection;
 import java.util.SortedMap;

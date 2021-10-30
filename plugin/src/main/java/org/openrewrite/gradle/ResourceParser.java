@@ -1,5 +1,5 @@
 /*
- * Copyright ${year} the original author or authors.
+ * Copyright 2021 the original author or authors.
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,14 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
-import org.openrewrite.gradle.RewriteReflectiveFacade.InMemoryExecutionContext;
-import org.openrewrite.gradle.RewriteReflectiveFacade.Parser;
-import org.openrewrite.gradle.RewriteReflectiveFacade.SourceFile;
+import org.openrewrite.ExecutionContext;
+import org.openrewrite.Parser;
+import org.openrewrite.SourceFile;
+import org.openrewrite.hcl.HclParser;
+import org.openrewrite.json.JsonParser;
+import org.openrewrite.properties.PropertiesParser;
+import org.openrewrite.xml.XmlParser;
+import org.openrewrite.yaml.YamlParser;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -30,39 +35,35 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
 public class ResourceParser {
     private static final Logger logger = Logging.getLogger(ResourceParser.class);
-    private final RewriteReflectiveFacade rewrite;
 
-    public ResourceParser(RewriteReflectiveFacade rewrite) {
-        this.rewrite = rewrite;
-    }
-
-    public List<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, InMemoryExecutionContext ctx) {
-
+    public List<SourceFile> parse(Path baseDir, Path projectDir, Collection<Path> alreadyParsed, ExecutionContext ctx) {
         List<SourceFile> sourceFiles = new ArrayList<>();
-        sourceFiles.addAll(parseSourceFiles(ctx, rewrite.jsonParser(), projectDir, alreadyParsed));
-        sourceFiles.addAll(parseSourceFiles(ctx, rewrite.xmlParser(), projectDir, alreadyParsed));
-        sourceFiles.addAll(parseSourceFiles(ctx, rewrite.yamlParser(), projectDir, alreadyParsed));
-        sourceFiles.addAll(parseSourceFiles(ctx, rewrite.propertiesParser(), projectDir, alreadyParsed));
-        sourceFiles.addAll(parseSourceFiles(ctx, rewrite.hclParser(), projectDir, alreadyParsed));
-
+        sourceFiles.addAll(parseSourceFiles(new JsonParser(), baseDir, projectDir, alreadyParsed, ctx));
+        sourceFiles.addAll(parseSourceFiles(new XmlParser(), baseDir, projectDir, alreadyParsed, ctx));
+        sourceFiles.addAll(parseSourceFiles(new YamlParser(), baseDir, projectDir, alreadyParsed, ctx));
+        sourceFiles.addAll(parseSourceFiles(new PropertiesParser(), baseDir, projectDir, alreadyParsed, ctx));
+        sourceFiles.addAll(parseSourceFiles(HclParser.builder().build(), baseDir, projectDir, alreadyParsed, ctx));
         return sourceFiles;
     }
 
-    public List<SourceFile> parseSourceFiles(InMemoryExecutionContext ctx,
-                                             Parser parser,
-                                             Path projectDir,
-                                             Collection<Path> alreadyParsed) {
+    public List<? extends SourceFile> parseSourceFiles(
+            Parser<?> parser,
+            Path baseDir,
+            Path projectDir,
+            Collection<Path> alreadyParsed,
+            ExecutionContext ctx) {
+
         try {
             List<Path> resourceFiles = Files.find(projectDir, 16, (path, attrs) -> {
                 try {
-                    if (alreadyParsed.contains(projectDir.relativize(path))) {
+                    if (path.toString().contains("/build/") || path.toString().contains("/out/") || path.toString().contains("/.gradle/")
+                            || path.toString().contains("/node_modules/") || path.toString().contains("/.metadata/")) {
                         return false;
                     }
 
-                    if (path.toString().contains("/build/") || path.toString().contains("/out/") || path.toString().contains("/.gradle/")) {
+                    if (alreadyParsed.contains(projectDir.relativize(path))) {
                         return false;
                     }
 
@@ -76,7 +77,7 @@ public class ResourceParser {
             }).collect(Collectors.toList());
             alreadyParsed.addAll(resourceFiles);
 
-            return parser.parse(resourceFiles, projectDir, ctx);
+            return parser.parse(resourceFiles, baseDir, ctx);
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
             throw new UncheckedIOException(e);

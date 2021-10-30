@@ -22,7 +22,8 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
-import org.openrewrite.gradle.RewriteReflectiveFacade.Result;
+import org.openrewrite.Recipe;
+import org.openrewrite.Result;
 
 import javax.inject.Inject;
 import java.io.BufferedWriter;
@@ -32,7 +33,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 public class RewriteDryRunTask extends AbstractRewriteTask {
-    private static final Logger log = Logging.getLogger(RewriteDryRunTask.class);
+    private static final Logger logger = Logging.getLogger(RewriteDryRunTask.class);
 
     // This @Internal is a lie, the correct annotation here would be @OutputFile
     // On Gradle 4.0 annotating this with @OutputFile triggers a bug that deadlocks Gradle and the task can never begin executing
@@ -58,11 +59,6 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
         return useAstCache;
     }
 
-    @Override
-    protected Logger getLog() {
-        return log;
-    }
-
     @TaskAction
     public void run() {
         try {
@@ -71,23 +67,23 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
             if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
-                    getLog().warn("These recipes would generate new file {}:", result.getAfter().getSourcePath());
+                    logger.warn("These recipes would generate new file {}:", result.getAfter().getSourcePath());
                     logRecipesThatMadeChanges(result);
                 }
                 for (Result result : results.deleted) {
                     assert result.getBefore() != null;
-                    getLog().warn("These recipes would delete file {}:", result.getBefore().getSourcePath());
+                    logger.warn("These recipes would delete file {}:", result.getBefore().getSourcePath());
                     logRecipesThatMadeChanges(result);
                 }
                 for (Result result : results.moved) {
                     assert result.getBefore() != null;
                     assert result.getAfter() != null;
-                    getLog().warn("These recipes would move file from {} to {}:", result.getBefore().getSourcePath(), result.getAfter().getSourcePath());
+                    logger.warn("These recipes would move file from {} to {}:", result.getBefore().getSourcePath(), result.getAfter().getSourcePath());
                     logRecipesThatMadeChanges(result);
                 }
                 for (Result result : results.refactoredInPlace) {
                     assert result.getBefore() != null;
-                    getLog().warn("These recipes would make results to {}:", result.getBefore().getSourcePath());
+                    logger.warn("These recipes would make results to {}:", result.getBefore().getSourcePath());
                     logRecipesThatMadeChanges(result);
                 }
 
@@ -110,18 +106,24 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
                 } catch (Exception e) {
                     throw new RuntimeException("Unable to generate rewrite result file.", e);
                 }
-                getLog().warn("Report available:");
-                getLog().warn("    " + patchFile.normalize());
-                getLog().warn("Run 'gradle rewriteRun' to apply the recipes.");
+                logger.warn("Report available:");
+                logger.warn("    " + patchFile.normalize());
+                logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
-                if (getExtension().getFailOnDryRunResults()) {
+                if (getProject().getRootProject().getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
                     throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
                 }
             } else {
-                getLog().lifecycle("Applying recipes would make no changes. No report generated.");
+                logger.lifecycle("Applying recipes would make no changes. No report generated.");
             }
         } finally {
             shutdownRewrite();
+        }
+    }
+
+    private void logRecipesThatMadeChanges(org.openrewrite.Result result) {
+        for (Recipe recipe : result.getRecipesThatMadeChanges()) {
+            logger.warn("    " + recipe.getName());
         }
     }
 }

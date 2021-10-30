@@ -22,6 +22,66 @@ import spock.lang.Unroll
 @Unroll
 class RewriteRunTest extends RewriteTestBase {
 
+    // This test doesn't definitively _prove_ that our isolation is sufficient
+    // Gradle provides no control over how it arbitrarily orders its classpath
+    // So even if isolation isn't working at all, this could pass if it happens to put the rewrite's required version
+    // of jackson first on the classpath.
+    def "rewrite is isolated from conflicting versions of jackson on the classpath"() {
+        given:
+        new File(projectDir, "settings.gradle").createNewFile()
+        File buildGradleFile = new File(projectDir, "build.gradle")
+
+        buildGradleFile.text = """
+            buildscript {
+                repositories {
+                    mavenCentral()
+                }
+                dependencies {
+                    classpath("com.fasterxml.jackson.core:jackson-core:2.7.9")
+                }
+            }
+            plugins {
+                id("java")
+                // nebula brings in jackson 2.5.4
+                id("nebula.integtest") version "7.0.9" apply false 
+                id("org.openrewrite.rewrite")
+            }
+            
+            repositories {
+                mavenLocal()
+                mavenCentral()
+                maven {
+                   url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                }
+            }
+            
+            rewrite {
+                activeRecipe("org.openrewrite.java.format.AutoFormat")
+            }
+        """.stripIndent()
+
+        File srcDir = new File(projectDir, "src/test/java/com/foo")
+        srcDir.mkdirs()
+        File testClass = new File(srcDir, "ATestClass.java")
+        testClass.text = """\
+                package com.foo;
+                
+                public class ATestClass {
+                public void passes() { }
+                }
+            """.stripIndent()
+
+        when:
+        def buildResult = gradleRunner(gradleVersion, "rewriteRun").build()
+        def taskResult = buildResult.task(":rewriteRun")
+
+        then:
+        taskResult.outcome == TaskOutcome.SUCCESS
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
     def "rewriteRun will alter the source file according to the provided active recipe"() {
         given:
         new File(projectDir, "settings.gradle").createNewFile()

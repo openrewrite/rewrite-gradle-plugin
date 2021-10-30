@@ -39,10 +39,11 @@ gradlePlugin {
 }
 
 repositories {
-    mavenCentral()
+    mavenLocal()
     maven {
         url = uri("https://oss.sonatype.org/content/repositories/snapshots")
     }
+    mavenCentral()
 }
 
 configurations.all {
@@ -86,18 +87,30 @@ dependencies {
     api("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
     api("io.rsocket:rsocket-transport-netty:$nettyVersion")
 
-
     "rewriteDependencies"("org.openrewrite:rewrite-core:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-hcl:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-java:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-java-11:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-java-8:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-json:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-xml:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-yaml:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-properties:$rewriteVersion")
-    "rewriteDependencies"("org.openrewrite:rewrite-maven:$rewriteVersion")
-//    "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
-//    "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:latest.release")
+    implementation("org.openrewrite:rewrite-core:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-hcl:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-java:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-java-11:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-java-8:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-json:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-xml:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-yaml:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-properties:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-groovy:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-gradle:$rewriteVersion")
+    implementation("com.puppycrawl.tools:checkstyle:latest.release")
 
     testImplementation(gradleTestKit())
     testImplementation(localGroovy())
@@ -124,6 +137,9 @@ val testGradle4 = tasks.register<Test>("testGradle4") {
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(8))
     })
+    dependsOn(tasks.named("jar"))
+    val jar: Jar = tasks.named<Jar>("jar").get()
+    jvmArgs("-DjarLocationForTest=${jar.archiveFile.get().asFile.absolutePath}")
 }
 tasks.named("check").configure {
     dependsOn(testGradle4)
@@ -172,7 +188,6 @@ val gVP = tasks.register("generateVersionsProperties") {
 tasks.named("processResources") {
     dependsOn(gVP)
 }
-
 
 configure<LicenseExtension> {
     ext.set("year", Calendar.getInstance().get(Calendar.YEAR))
