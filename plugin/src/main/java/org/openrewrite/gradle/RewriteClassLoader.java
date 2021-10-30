@@ -33,7 +33,9 @@ import java.util.List;
 public class RewriteClassLoader extends URLClassLoader {
     private static final List<String> neverLoadFromParent = Arrays.asList(
             "org.openrewrite.internal.MetricsHelper",
-            "com.fasterxml"
+            "org.openrewrite.gradle.GradleProjectParser",
+            "com.fasterxml",
+            "kotlin"
     );
 
     private static final List<String> loadFromParent = Arrays.asList(
@@ -61,14 +63,8 @@ public class RewriteClassLoader extends URLClassLoader {
             "org.gradle"
     );
 
-    public RewriteClassLoader(Collection<Path> artifacts) {
-        super(artifacts.stream().map(artifact -> {
-            try {
-                return artifact.toUri().toURL();
-            } catch (MalformedURLException e) {
-                throw new UncheckedIOException(e);
-            }
-        }).toArray(URL[]::new), RewriteClassLoader.class.getClassLoader());
+    public RewriteClassLoader(Collection<URL> artifacts) {
+        super(artifacts.toArray(new URL[0]), RewriteClassLoader.class.getClassLoader());
         setDefaultAssertionStatus(true);
     }
 

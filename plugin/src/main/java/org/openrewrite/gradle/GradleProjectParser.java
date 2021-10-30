@@ -113,15 +113,8 @@ public class GradleProjectParser {
             properties.putAll(gradleProps);
 
             Environment.Builder env = Environment.builder();
-            for(Path jar : classpath) {
-                try {
-                    if(!jar.toString().contains("rewrite-core")) {
-                        env.scanJar(jar, GradleProjectParser.class.getClassLoader());
-                    }
-                } catch (Exception e) {
-                    logger.warn("Unable to load recipes from {}. {}", jar, e);
-                }
-            }
+            env.scanClassLoader(this.getClass().getClassLoader());
+
             File rewriteConfig = extension.getConfigFile();
             if (rewriteConfig.exists()) {
                 try (FileInputStream is = new FileInputStream(rewriteConfig)) {

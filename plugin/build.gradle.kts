@@ -39,10 +39,11 @@ gradlePlugin {
 }
 
 repositories {
-    mavenCentral()
+    mavenLocal()
     maven {
         url = uri("https://oss.sonatype.org/content/repositories/snapshots")
     }
+    mavenCentral()
 }
 
 configurations.all {
@@ -136,6 +137,10 @@ val testGradle4 = tasks.register<Test>("testGradle4") {
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(8))
     })
+    dependsOn(tasks.named("jar"))
+    val jar: Jar = tasks.named<Jar>("jar").get()
+    jvmArgs("-DjarLocationForTest=${jar.archiveFile.get().asFile.absolutePath}")
+    classpath = classpath.plus(project.files(tasks.named<Jar>("jar")))
 }
 tasks.named("check").configure {
     dependsOn(testGradle4)

@@ -20,13 +20,16 @@ import org.openrewrite.SourceFile;
 import org.openrewrite.config.Environment;
 import org.openrewrite.gradle.AbstractRewriteTask.ResultsContainer;
 
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
 public class DelegatingProjectParser {
@@ -35,23 +38,41 @@ public class DelegatingProjectParser {
 
     public DelegatingProjectParser(Project rootProject, Set<Path> classpath, boolean useAstCache) {
         try {
+            List<URL> classpathUrls = classpath.stream()
+                    .map(Path::toUri)
+                    .map(uri -> {
+                        try {
+                            return uri.toURL();
+                        } catch (MalformedURLException e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .collect(Collectors.toList());
             @SuppressWarnings("ConstantConditions")
-            String path = DelegatingProjectParser.class
-                    .getResource("/" + DelegatingProjectParser.class.getName().replace('.', '/') + ".class")
+            String path = getClass()
+                    .getResource("/org/openrewrite/gradle/GradleProjectParser.class")
                     .toString();
+            URL currentJar = null;
             if(path.startsWith("jar:")) {
                 path = path.substring(4);
+                int indexOfBang = path.indexOf("!");
+                if(indexOfBang != -1) {
+                    path = path.substring(0, indexOfBang);
+                }
+                currentJar = new URI(path).toURL();
+            } else if(path.endsWith(".class")) {
+                // This code path only gets taken when running the tests against older versions of Gradle
+                // In all other circumstances, "path" will point at a jar file
+                // Include the trailing slash so that URLClassLoader will interpret it as a directory
+                currentJar = Paths.get(System.getProperty("jarLocationForTest")).toUri().toURL();
+//                currentJar =  new URI(path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1)).toURL();
             }
-            int indexOfBang = path.indexOf("!");
-            if(indexOfBang != -1) {
-                path = path.substring(0, indexOfBang);
-            }
-            Path currentJar = Paths.get(new URI(path));
 
-            classpath.add(currentJar);
-            RewriteClassLoader cl = new RewriteClassLoader(classpath);
+            classpathUrls.add(currentJar);
+            RewriteClassLoader cl = new RewriteClassLoader(classpathUrls);
 
             gppClass = Class.forName("org.openrewrite.gradle.GradleProjectParser", true, cl);
+            assert (gppClass.getClassLoader() == cl) : "GradleProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's own classpath";
             gpp = gppClass.getDeclaredConstructor(Project.class, Boolean.class, Collection.class)
                     .newInstance(rootProject, useAstCache, classpath);
 
@@ -84,6 +105,7 @@ public class DelegatingProjectParser {
         }
     }
 
+    @SuppressWarnings("unused")
     public List<SourceFile> parse() {
         try {
             return (List<SourceFile>) gppClass.getMethod("parse").invoke(gpp);
