@@ -28,6 +28,7 @@ import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.marker.JavaProject;
+import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.marker.BuildTool;
@@ -207,6 +208,7 @@ public class GradleProjectParser {
                         .map(Path::normalize)
                         .collect(toList());
 
+                JavaSourceSet sourceSetProvenance = null;
                 if(javaPaths.size() > 0) {
                     JavaParser jp = JavaParser.fromJavaVersion()
                             .styles(styles)
@@ -214,17 +216,22 @@ public class GradleProjectParser {
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
                     jp.setSourceSet(sourceSet.getName());
-                    sourceFiles.addAll(map(jp.parse(javaPaths, baseDir, ctx), addProvenance(projectProvenance)));
+                    sourceFiles.addAll(map(jp.parse(javaPaths, baseDir, ctx), addProvenance(projectProvenance, null)));
+                    sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
                 }
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
+                    if(sourceSetProvenance == null) {
+                        // Just in case there are no java source files, but there _are_ resource files
+                        sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, ctx);
+                    }
                     if(resourcesDir.exists()) {
-                        sourceFiles.addAll(map(rp.parse(baseDir, resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance)));
+                        sourceFiles.addAll(map(rp.parse(baseDir, resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, sourceSetProvenance)));
                     }
                 }
             }
 
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-            sourceFiles.addAll(map(rp.parse(baseDir, subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance)));
+            sourceFiles.addAll(map(rp.parse(baseDir, subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
 
             return sourceFiles;
         } catch (Exception e) {
@@ -270,11 +277,14 @@ public class GradleProjectParser {
         astCache.clear();
     }
 
-    private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance) {
+    private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {
         return s -> {
             Markers m = s.getMarkers();
             for(Marker marker : projectProvenance) {
                 m = m.add(marker);
+            }
+            if(sourceSet != null) {
+                m = m.add(sourceSet);
             }
             return s.withMarkers(m);
         };

@@ -21,7 +21,6 @@ import org.gradle.api.tasks.TaskAction;
 import org.openrewrite.Result;
 import org.openrewrite.config.Environment;
 import org.openrewrite.java.tree.J;
-import org.openrewrite.scheduling.ForkJoinScheduler;
 import org.openrewrite.shaded.jgit.api.Git;
 
 import java.io.File;
