@@ -22,7 +22,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 8
+      - run: ls -lR
       - uses: gradle/gradle-build-action@v2
         with:
           build-root-directory: spring-petclinic-migration
-          arguments: --init-script ${{env.GITHUB_WORKSPACE}}/rewrite-gradle-plugin/scripts/test.init.gradle
+          arguments: --init-script rewrite-gradle-plugin/scripts/test.init.gradle
