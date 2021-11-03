@@ -70,7 +70,6 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     protected void shutdownRewrite() {
         J.clearCaches();
         Git.shutdown();
-        ForkJoinScheduler.shutdown();
     }
 
     protected void clearAstCache() {
