@@ -34,13 +34,14 @@ projectsEvaluated {
         }
 
         tasks.create("validateRewrite") {
-            dependsOn(tasks.getByName("rewriteDryRun"))
-            doLast {
-                File patchFile = file("build/reports/rewrite/rewrite.patch")
-                if(!patchFile.exists()) {
-                    throw new RuntimeException("Running rewrite dryRun failed to produce a patch report at " + patchFile.absolutePath);
-                }
-            }
+            dependsOn(tasks.getByName("rewriteRun")) // todo
+            // dependsOn(tasks.getByName("rewriteDryRun"))
+            // doLast {
+            //     File patchFile = file("build/reports/rewrite/rewrite.patch")
+            //     if(!patchFile.exists()) {
+            //         throw new RuntimeException("Running rewrite dryRun failed to produce a patch report at " + patchFile.absolutePath);
+            //     }
+            // }
         }
     }
 }
