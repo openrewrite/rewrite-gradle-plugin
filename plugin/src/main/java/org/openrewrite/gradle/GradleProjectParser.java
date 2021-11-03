@@ -28,7 +28,6 @@ import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.marker.JavaProject;
-import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.marker.BuildTool;
@@ -52,10 +51,10 @@ import static java.util.stream.Collectors.toMap;
 import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.internal.ListUtils.map;
 
+@SuppressWarnings("unused")
 public class GradleProjectParser {
     private final Logger logger = Logging.getLogger(GradleProjectParser.class);
     private final Path baseDir;
-    private final Collection<Path> classpath;
     private final RewriteExtension extension;
     private final Project rootProject;
     private final List<Marker> sharedProvenance;
@@ -64,9 +63,8 @@ public class GradleProjectParser {
 
     private Environment environment = null;
 
-    public GradleProjectParser(Project rootProject, Boolean useAstCache, Collection<Path> recipeClasspath) {
+    public GradleProjectParser(Project rootProject, Boolean useAstCache) {
         this.baseDir = rootProject.getRootDir().toPath();
-        this.classpath = recipeClasspath;
         this.extension = rootProject.getExtensions().getByType(RewriteExtension.class);
         this.rootProject = rootProject;
         this.useAstCache = useAstCache;
@@ -132,7 +130,6 @@ public class GradleProjectParser {
         return environment;
     }
 
-    @SuppressWarnings("unused")
     public List<SourceFile> parse() {
         Environment env = environment();
         ExecutionContext ctx = new InMemoryExecutionContext(t -> logger.warn(t.getMessage(), t));
@@ -210,26 +207,24 @@ public class GradleProjectParser {
                         .map(Path::normalize)
                         .collect(toList());
 
-                Marker javaSourceSet = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, ctx);
                 if(javaPaths.size() > 0) {
-                    sourceFiles.addAll(map(JavaParser.fromJavaVersion()
-                                    .relaxedClassTypeMatching(true)
-                                    .styles(styles)
-                                    .classpath(dependencyPaths)
-                                    .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                                    .build()
-                                    .parse(javaPaths, baseDir, ctx),
-                            addProvenance(projectProvenance, javaSourceSet)));
+                    JavaParser jp = JavaParser.fromJavaVersion()
+                            .styles(styles)
+                            .classpath(dependencyPaths)
+                            .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                            .build();
+                    jp.setSourceSet(sourceSet.getName());
+                    sourceFiles.addAll(map(jp.parse(javaPaths, baseDir, ctx), addProvenance(projectProvenance)));
                 }
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if(resourcesDir.exists()) {
-                        sourceFiles.addAll(map(rp.parse(baseDir, resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, javaSourceSet)));
+                        sourceFiles.addAll(map(rp.parse(baseDir, resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance)));
                     }
                 }
             }
 
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-            sourceFiles.addAll(map(rp.parse(baseDir, subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
+            sourceFiles.addAll(map(rp.parse(baseDir, subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance)));
 
             return sourceFiles;
         } catch (Exception e) {
@@ -275,14 +270,11 @@ public class GradleProjectParser {
         astCache.clear();
     }
 
-    private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {
+    private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance) {
         return s -> {
             Markers m = s.getMarkers();
             for(Marker marker : projectProvenance) {
                 m = m.add(marker);
-            }
-            if(sourceSet != null) {
-                m = m.add(sourceSet);
             }
             return s.withMarkers(m);
         };

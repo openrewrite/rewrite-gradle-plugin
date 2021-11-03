@@ -54,6 +54,7 @@ public class RewriteClassLoader extends URLClassLoader {
             "org.openrewrite.style",
             "org.openrewrite.template",
             "org.openrewrite.text",
+            "org.openrewrite.java.internal.TypesInUse",
             "org.openrewrite.gradle.RewriteExtension",
             "org.openrewrite.gradle.AbstractRewriteTask",
             "org.openrewrite.gradle.DelegatingProjectParser",
