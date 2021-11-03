@@ -1,0 +1,28 @@
+---
+name: integration-tests
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: integration-tests
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          path: rewrite-gradle-plugin
+      - uses: actions/checkout@v2
+        with:
+          repository: openrewrite/spring-petclinic-migration
+          fetch-depth: 0
+          path: spring-petclinic-migration
+      - uses: actions/setup-java@v2
+        with:
+          distribution: temurin
+          java-version: 8
+      - uses: gradle/gradle-build-action@v2
+        with:
+          build-root-directory: spring-petclinic-migration
+          arguments: --init-script ${{env.GITHUB_WORKSPACE}}/rewrite-gradle-plugin/scripts/test.init.gradle
