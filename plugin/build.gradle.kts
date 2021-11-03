@@ -66,10 +66,14 @@ tasks.named<JavaCompile>("compileJava") {
 
 val plugin: Configuration by configurations.creating
 
+// Resolving dependency configurations during the configuration phase is a Gradle performance anti-pattern
+// But I don't know a better way than this to keep com.gradle.plugin-publish from publishing the requested version rather than the resolved version
 val rewriteVersion = if(project.hasProperty("releasing")) {
-    "latest.release"
+    configurations.detachedConfiguration(dependencies.create("org.openrewrite:rewrite-core:latest.release"))
+        .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
 } else {
-    "latest.integration"
+    configurations.detachedConfiguration(dependencies.create("org.openrewrite:rewrite-core:latest.integration"))
+        .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
 }
 val rewriteConfName = "rewriteDependencies"
 val rewriteDependencies = configurations.create("rewriteDependencies")
