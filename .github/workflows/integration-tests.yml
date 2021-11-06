@@ -41,7 +41,6 @@ jobs:
             --info
             --stacktrace
             --no-daemon
-            --init-script=/home/runner/work/rewrite-gradle-plugin/rewrite-gradle-plugin/rewrite-gradle-plugin/scripts/test.init.gradle
+            --init-script /home/runner/work/rewrite-gradle-plugin/rewrite-gradle-plugin/rewrite-gradle-plugin/scripts/spring-petclinic-test.init.gradle
             validateRewrite
           gradle-version: current
-      - run: git --no-pager diff --color=always

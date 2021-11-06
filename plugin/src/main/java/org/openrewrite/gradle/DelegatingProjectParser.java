@@ -20,15 +20,16 @@ import org.openrewrite.SourceFile;
 import org.openrewrite.config.Environment;
 import org.openrewrite.gradle.AbstractRewriteTask.ResultsContainer;
 
+import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
@@ -80,49 +81,45 @@ public class DelegatingProjectParser {
     }
 
     public SortedSet<String> getActiveRecipes() {
-        try {
-            return (SortedSet<String>) gppClass.getMethod("getActiveRecipes").invoke(gpp);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getActiveRecipes").invoke(gpp));
     }
 
     public SortedSet<String> getActiveStyles() {
-        try {
-            return (SortedSet<String>) gppClass.getMethod("getActiveStyles").invoke(gpp);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getActiveStyles").invoke(gpp));
     }
 
     public Environment environment() {
-        try {
-            return (Environment) gppClass.getMethod("environment").invoke(gpp);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return unwrapInvocationException(() -> (Environment) gppClass.getMethod("environment").invoke(gpp));
     }
 
     @SuppressWarnings("unused")
     public List<SourceFile> parse() {
-        try {
-            return (List<SourceFile>) gppClass.getMethod("parse").invoke(gpp);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return unwrapInvocationException(() -> (List<SourceFile>) gppClass.getMethod("parse").invoke(gpp));
     }
 
     public ResultsContainer listResults() {
-        try {
-            return (ResultsContainer) gppClass.getMethod("listResults").invoke(gpp);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return unwrapInvocationException(() -> (ResultsContainer) gppClass.getMethod("listResults").invoke(gpp));
     }
 
     public void clearAstCache() {
+        unwrapInvocationException(() -> gppClass.getMethod("clearAstCache").invoke(gpp));
+    }
+
+    /**
+     * Bloating stacktraces with reflection errors isn't generally helpful for understanding what went wrong.
+     *
+     * This highlights the actual cause of a problem, allowing Gradle's console to display something useful like
+     * "Recipe validation errors detected ..." rather than only "InvocationTargetException ..."
+     */
+    private <T> T unwrapInvocationException(Callable<T> supplier) {
         try {
-            gppClass.getMethod("clearAstCache").invoke(gpp);
+            return supplier.call();
+        } catch (InvocationTargetException e) {
+            if(e.getTargetException() instanceof RuntimeException) {
+                throw (RuntimeException) e.getTargetException();
+            } else {
+                throw new RuntimeException(e.getTargetException());
+            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
