@@ -68,13 +68,16 @@ val plugin: Configuration by configurations.creating
 
 // Resolving dependency configurations during the configuration phase is a Gradle performance anti-pattern
 // But I don't know a better way than this to keep com.gradle.plugin-publish from publishing the requested version rather than the resolved version
-val rewriteVersion = if(project.hasProperty("releasing")) {
-    configurations.detachedConfiguration(dependencies.create("org.openrewrite:rewrite-core:latest.release"))
-        .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
+val latest = if(project.hasProperty("releasing")) {
+    "latest.release"
 } else {
-    configurations.detachedConfiguration(dependencies.create("org.openrewrite:rewrite-core:latest.integration"))
-        .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
+    "latest.integration"
 }
+val rewriteVersion = configurations.detachedConfiguration(dependencies.create("org.openrewrite:rewrite-core:$latest"))
+    .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
+val checkstyleVersion = configurations.detachedConfiguration(dependencies.create("com.puppycrawl.tools:checkstyle:latest.release"))
+    .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
+
 val rewriteConfName = "rewriteDependencies"
 val rewriteDependencies = configurations.create("rewriteDependencies")
 
@@ -102,7 +105,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-properties:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
-    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:latest.release")
+    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:$checkstyleVersion")
     implementation("org.openrewrite:rewrite-core:$rewriteVersion")
     implementation("org.openrewrite:rewrite-hcl:$rewriteVersion")
     implementation("org.openrewrite:rewrite-java:$rewriteVersion")
