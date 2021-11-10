@@ -16,6 +16,7 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.JavaPluginConvention;
@@ -202,11 +203,20 @@ public class GradleProjectParser {
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
                         .collect(toList());
+                // The compile classpath doesn't include the transitive dependencies of the implementation configuration
+                // These aren't needed for compilation, but we want them so recipes have access to comprehensive type information
+                // The implementation configuration isn't resolvable, so we need a new configuration that extends from it
+                Configuration implementation = subproject.getConfigurations().getByName(sourceSet.getImplementationConfigurationName());
+                Configuration rewriteImplementation = subproject.getConfigurations().maybeCreate("rewrite" + sourceSet.getImplementationConfigurationName());
+                rewriteImplementation.extendsFrom(implementation);
 
-                List<Path> dependencyPaths = sourceSet.getCompileClasspath().getFiles().stream()
+                // The implementation configuration doesn't include build/source directories from project dependencies
+                // So mash it and our rewriteImplementation together to get everything
+                List<Path> dependencyPaths = Stream.concat(rewriteImplementation.resolve().stream(), sourceSet.getCompileClasspath().getFiles().stream())
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
+                        .distinct()
                         .collect(toList());
 
                 JavaSourceSet sourceSetProvenance = null;
