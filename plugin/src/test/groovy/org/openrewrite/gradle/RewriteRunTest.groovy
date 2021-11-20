@@ -348,7 +348,7 @@ class RewriteRunTest extends RewriteTestBase {
                 public class ATestClass {
                 
                     @Test
-                    public void passes() {
+                    void passes() {
                     }
                 }
         """.stripIndent()
@@ -360,7 +360,7 @@ class RewriteRunTest extends RewriteTestBase {
                 public class BTestClass {
                 
                     @Test
-                    public void passes() {
+                    void passes() {
                     }
                 }
         """.stripIndent()

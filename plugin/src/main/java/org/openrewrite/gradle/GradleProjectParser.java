@@ -177,7 +177,7 @@ public class GradleProjectParser {
                 sourceSets = javaConvention.getSourceSets();
             }
 
-            ResourceParser rp = new ResourceParser();
+            ResourceParser rp = new ResourceParser(extension.getExclusions(), extension.getSizeThresholdMb());
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             if(extension.isEnableExperimentalGradleBuildScriptParsing()) {

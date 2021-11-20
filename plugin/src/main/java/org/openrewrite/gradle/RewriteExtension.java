@@ -44,6 +44,8 @@ public class RewriteExtension extends CodeQualityExtension {
     private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
     private boolean enableExperimentalGradleBuildScriptParsing;
+    private final List<String> exclusions = new ArrayList<>();
+    private int sizeThresholdMb = 10;
 
     @Nullable
     private String rewriteVersion;
@@ -243,5 +245,21 @@ public class RewriteExtension extends CodeQualityExtension {
 
     public void setEnableExperimentalGradleBuildScriptParsing(boolean enableExperimentalGradleBuildScriptParsing) {
         this.enableExperimentalGradleBuildScriptParsing = enableExperimentalGradleBuildScriptParsing;
+    }
+
+    public List<String> getExclusions() {
+        return exclusions;
+    }
+
+    public void exclusion(String exclusion) {
+        exclusions.add(exclusion);
+    }
+
+    public int getSizeThresholdMb() {
+        return sizeThresholdMb;
+    }
+
+    public void setSizeThresholdMb(int thresholdMb) {
+        this.sizeThresholdMb = thresholdMb;
     }
 }
