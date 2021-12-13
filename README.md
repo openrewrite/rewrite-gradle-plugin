@@ -21,6 +21,35 @@ rewrite {
 }
 ```
 
+### Consuming latest snapshots from OSSRH
+
+To use the latest `-SNAPSHOT` of the `rewrite-gradle-plugin`, update your project's `settings.gradle.kts`:
+
+```kts
+pluginManagement {
+    repositories {
+        // ...
+        maven {
+            url = uri("https://oss.sonatype.org/content/repositories/snapshots/")
+        }
+        // ...
+        // you'll likely also need this if you don't have a pluginManagement section already:
+        gradlePluginPortal()
+        // ...
+    }
+}
+```
+
+The plugin can be consumed in your `build.gradle.kts`:
+
+```kts
+plugins {
+    id("org.openrewrite.rewrite") version "X.Y.Z-SNAPSHOT"
+    // or resolved dynamically to absolute latest:
+    id("org.openrewrite.rewrite") version "latest.integration"
+}
+```
+
 ## Documentation
 
 - [OpenRewrite Quickstart Guide](https://docs.openrewrite.org/getting-started/getting-started)

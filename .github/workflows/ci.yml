@@ -23,5 +23,7 @@ jobs:
     uses: openrewrite/gh-automation/.github/workflows/ci-gradle.yml@main
     secrets:
       gradle_enterprise_access_key: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
-    with:
-      publish_snapshots: false
+      ossrh_username: ${{ secrets.OSSRH_USERNAME }}
+      ossrh_token: ${{ secrets.OSSRH_TOKEN }}
+      ossrh_signing_key: ${{ secrets.OSSRH_SIGNING_KEY }}
+      ossrh_signing_password: ${{ secrets.OSSRH_SIGNING_PASSWORD }}
