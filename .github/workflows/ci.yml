@@ -35,12 +35,12 @@ jobs:
       - name: build
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: ${{ env.GRADLE_SWITCHES }} build -x check
+          arguments: ${{ env.GRADLE_SWITCHES }} build
       - name: publish-snapshots
         if: github.event_name != 'pull_request'
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: ${{ env.GRADLE_SWITCHES }} snapshot :plugin:publishPluginMavenPublicationToSonatypeRepository -x check -x publishPlugins
+          arguments: ${{ env.GRADLE_SWITCHES }} snapshot :plugin:publishPluginMavenPublicationToSonatypeRepository -x test -x publishPlugins
         env:
           GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
           ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.OSSRH_USERNAME }}
