@@ -12,7 +12,7 @@ This project provides a Gradle plugin that applies [Rewrite](https://github.com/
 ```groovy
 plugins {
     id("java")
-    id("org.openrewrite.rewrite").version("latest_version_here") 
+    id("org.openrewrite.rewrite").version("latest_version_here")
 }
 
 rewrite {
@@ -27,6 +27,14 @@ To use the latest `-SNAPSHOT` of the `rewrite-gradle-plugin`, update your projec
 
 ```kts
 pluginManagement {
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.namespace == "org.openrewrite") {
+                useModule("org.openrewrite:plugin:${requested.version}")
+            }
+        }
+    }
+
     repositories {
         // ...
         maven {
