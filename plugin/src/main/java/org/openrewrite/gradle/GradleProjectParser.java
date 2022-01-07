@@ -233,7 +233,7 @@ public class GradleProjectParser {
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if(sourceSetProvenance == null) {
                         // Just in case there are no java source files, but there _are_ resource files
-                        sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, ctx);
+                        sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, new HashMap<>(), ctx);
                     }
                     if(resourcesDir.exists()) {
                         sourceFiles.addAll(map(rp.parse(baseDir, resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, sourceSetProvenance)));
