@@ -157,6 +157,7 @@ public class GradleProjectParser {
 
     public List<SourceFile> parse(Project subproject, List<NamedStyles> styles, Set<Path> alreadyParsed, ExecutionContext ctx) {
         try {
+            logger.lifecycle("Parsing sources from project {}", subproject.getName());
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
             Set<SourceSet> sourceSets;
@@ -280,6 +281,7 @@ public class GradleProjectParser {
                 astCache.put(rootProject.getProjectDir().toPath(), sourceFiles);
             }
         }
+        logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         List<Result> results = recipe.run(sourceFiles);
         return new ResultsContainer(baseDir, results);
     }
