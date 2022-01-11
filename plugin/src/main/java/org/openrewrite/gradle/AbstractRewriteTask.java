@@ -32,19 +32,32 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     private ResolveRewriteDependenciesTask resolveDependenciesTask;
     protected boolean useAstCache;
     private DelegatingProjectParser gpp;
+    private RewriteExtension extension;
 
-    @Internal
-    protected RewriteExtension getExtension() {
-        return getProject().getRootProject().getExtensions().getByType(RewriteExtension.class);
+    public AbstractRewriteTask setExtension(RewriteExtension extension) {
+        this.extension = extension;
+        return this;
+    }
+
+    public AbstractRewriteTask setResolveDependenciesTask(ResolveRewriteDependenciesTask resolveDependenciesTask) {
+        this.resolveDependenciesTask = resolveDependenciesTask;
+        this.dependsOn(resolveDependenciesTask);
+        return this;
     }
 
     @Internal
     protected DelegatingProjectParser getProjectParser() {
         if(gpp == null) {
+            if(extension == null) {
+                throw new IllegalArgumentException("Must configure extension");
+            }
+            if (resolveDependenciesTask == null) {
+                throw new IllegalArgumentException("Must configure resolveDependenciesTask");
+            }
             Set<Path> classpath = resolveDependenciesTask.getResolvedDependencies().stream()
                     .map(File::toPath)
                     .collect(Collectors.toSet());
-            gpp = new DelegatingProjectParser(getProject().getRootProject(), getExtension(), classpath, useAstCache);
+            gpp = new DelegatingProjectParser(getProject().getRootProject(), extension, classpath, useAstCache);
         }
         return gpp;
     }
@@ -74,12 +87,6 @@ public abstract class AbstractRewriteTask extends DefaultTask {
 
     protected void clearAstCache() {
         getProjectParser().clearAstCache();
-    }
-
-    public AbstractRewriteTask setResolveDependenciesTask(ResolveRewriteDependenciesTask resolveDependenciesTask) {
-        this.resolveDependenciesTask = resolveDependenciesTask;
-        this.dependsOn(resolveDependenciesTask);
-        return this;
     }
 
     public static class ResultsContainer {

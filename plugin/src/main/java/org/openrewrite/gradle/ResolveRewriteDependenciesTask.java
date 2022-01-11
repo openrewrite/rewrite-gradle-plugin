@@ -44,7 +44,7 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
 
     @TaskAction
     void run() {
-        RewriteExtension extension = getProject().getRootProject().getExtensions().getByType(RewriteExtension.class);
+        RewriteExtension extension = getProject().getRootProject().getExtensions().getByType(DefaultRewriteExtension.class);
         String rewriteVersion = extension.getRewriteVersion();
         Project project = getProject();
         DependencyHandler deps = project.getDependencies();

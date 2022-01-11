@@ -110,7 +110,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
                 logger.warn("    " + patchFile.normalize());
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
-                if (getProject().getRootProject().getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
+                if (getProject().getRootProject().getExtensions().getByType(DefaultRewriteExtension.class).getFailOnDryRunResults()) {
                     throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
                 }
             } else {

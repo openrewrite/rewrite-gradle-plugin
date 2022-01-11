@@ -41,12 +41,11 @@ public class RewritePlugin implements Plugin<Project> {
         if(!rootProject.getPath().equals(":")) {
             return;
         }
-        RewriteExtension maybeExtension = rootProject.getExtensions().findByType(RewriteExtension.class);
+        DefaultRewriteExtension maybeExtension = rootProject.getExtensions().findByType(DefaultRewriteExtension.class);
         if (maybeExtension == null) {
-            maybeExtension = rootProject.getExtensions().create("rewrite", RewriteExtension.class, rootProject);
-            maybeExtension.setToolVersion("2.x");
+            maybeExtension = rootProject.getExtensions().create("rewrite", DefaultRewriteExtension.class, rootProject);
         }
-        final RewriteExtension extension = maybeExtension;
+        final DefaultRewriteExtension extension = maybeExtension;
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = rootProject.getConfigurations().maybeCreate("rewrite");
@@ -57,15 +56,19 @@ public class RewritePlugin implements Plugin<Project> {
                 .setConfiguration(rewriteConf);
 
         Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class)
+                .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
         Task rewriteDryRun = rootProject.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
+                .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
         rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
+                .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
         rootProject.getTasks().create("rewriteClearCache", RewriteClearCacheTask.class)
+                .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
         rootProject.allprojects(project -> {
