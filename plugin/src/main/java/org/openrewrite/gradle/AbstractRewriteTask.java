@@ -34,12 +34,17 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     private DelegatingProjectParser gpp;
 
     @Internal
+    protected RewriteExtension getExtension() {
+        return getProject().getRootProject().getExtensions().getByType(RewriteExtension.class);
+    }
+
+    @Internal
     protected DelegatingProjectParser getProjectParser() {
         if(gpp == null) {
             Set<Path> classpath = resolveDependenciesTask.getResolvedDependencies().stream()
                     .map(File::toPath)
                     .collect(Collectors.toSet());
-            gpp = new DelegatingProjectParser(getProject().getRootProject(), classpath, useAstCache);
+            gpp = new DelegatingProjectParser(getProject().getRootProject(), getExtension(), classpath, useAstCache);
         }
         return gpp;
     }

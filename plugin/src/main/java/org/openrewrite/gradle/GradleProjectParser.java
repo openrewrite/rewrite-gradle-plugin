@@ -65,9 +65,9 @@ public class GradleProjectParser {
 
     private Environment environment = null;
 
-    public GradleProjectParser(Project rootProject, Boolean useAstCache) {
+    public GradleProjectParser(Project rootProject, RewriteExtension extension, Boolean useAstCache) {
         this.baseDir = rootProject.getRootDir().toPath();
-        this.extension = rootProject.getExtensions().getByType(RewriteExtension.class);
+        this.extension = extension;
         this.rootProject = rootProject;
         this.useAstCache = useAstCache;
 

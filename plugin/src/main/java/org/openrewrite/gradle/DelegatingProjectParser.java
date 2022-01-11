@@ -37,7 +37,7 @@ public class DelegatingProjectParser {
     private final Class<?> gppClass;
     private final Object gpp;
 
-    public DelegatingProjectParser(Project rootProject, Set<Path> classpath, boolean useAstCache) {
+    public DelegatingProjectParser(Project rootProject, RewriteExtension extension, Set<Path> classpath, boolean useAstCache) {
         try {
             List<URL> classpathUrls = classpath.stream()
                     .map(Path::toUri)
@@ -72,8 +72,8 @@ public class DelegatingProjectParser {
 
             gppClass = Class.forName("org.openrewrite.gradle.GradleProjectParser", true, cl);
             assert (gppClass.getClassLoader() == cl) : "GradleProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's own classpath";
-            gpp = gppClass.getDeclaredConstructor(Project.class, Boolean.class)
-                    .newInstance(rootProject, useAstCache);
+            gpp = gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class, Boolean.class)
+                    .newInstance(rootProject, extension, useAstCache);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
