@@ -17,7 +17,7 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.Internal;
 import org.openrewrite.Result;
 import org.openrewrite.config.Environment;
 import org.openrewrite.java.tree.J;
@@ -33,7 +33,8 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     protected boolean useAstCache;
     private DelegatingProjectParser gpp;
 
-    private DelegatingProjectParser getProjectParser() {
+    @Internal
+    protected DelegatingProjectParser getProjectParser() {
         if(gpp == null) {
             Set<Path> classpath = resolveDependenciesTask.getResolvedDependencies().stream()
                     .map(File::toPath)
@@ -49,11 +50,6 @@ public abstract class AbstractRewriteTask extends DefaultTask {
 
     protected Environment environment() {
         return getProjectParser().environment();
-    }
-
-    @TaskAction
-    void run() {
-        listResults();
     }
 
     @Input

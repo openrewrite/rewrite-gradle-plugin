@@ -23,10 +23,7 @@ import javax.inject.Provider;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
@@ -251,8 +248,12 @@ public class RewriteExtension extends CodeQualityExtension {
         return exclusions;
     }
 
-    public void exclusion(String exclusion) {
-        exclusions.add(exclusion);
+    public void exclusion(String... exclusions) {
+        this.exclusions.addAll(asList(exclusions));
+    }
+
+    public void exclusion(Collection<String> exclusions) {
+        this.exclusions.addAll(exclusions);
     }
 
     public int getSizeThresholdMb() {

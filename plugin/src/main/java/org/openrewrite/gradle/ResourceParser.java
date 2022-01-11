@@ -76,7 +76,8 @@ public class ResourceParser {
                     return false;
                 }
 
-                if (attrs.isDirectory() || attrs.size() == 0) {
+                long fileSize = attrs.size();
+                if (attrs.isDirectory() || fileSize == 0) {
                     return false;
                 }
 
@@ -92,10 +93,9 @@ public class ResourceParser {
                     }
                 }
 
-                long fileSize = attrs.size();
                 if ((sizeThresholdMb > 0 && fileSize > sizeThresholdMb * 1024L * 1024L)) {
                     alreadyParsed.add(path);
-                    logger.info("Skipping parsing " + path + " as its size + " + fileSize / (1024L * 1024L) +
+                    logger.lifecycle("Skipping parsing " + path + " as its size + " + fileSize / (1024L * 1024L) +
                             "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
                     return false;
                 }
