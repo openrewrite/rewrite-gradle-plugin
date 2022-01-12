@@ -25,9 +25,9 @@ import org.openrewrite.*;
 import org.openrewrite.config.Environment;
 import org.openrewrite.config.YamlResourceLoader;
 import org.openrewrite.gradle.AbstractRewriteTask.ResultsContainer;
-import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaParser;
+import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.java.marker.JavaProject;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
@@ -47,7 +47,6 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.openrewrite.Tree.randomId;
@@ -182,19 +181,20 @@ public class GradleProjectParser {
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             if(extension.isEnableExperimentalGradleBuildScriptParsing()) {
-                File buildScriptFile = subproject.getBuildFile();
-                try {
-                    if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists()) {
-                        GradleParser gradleParser = new GradleParser(
-                                GroovyParser.builder()
-                                        .styles(styles)
-                                        .logCompilationWarningsAndErrors(true));
-
-                        sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
-                    }
-                } catch (Exception e) {
-                    logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath()  + "\" : ", e);
-                }
+                logger.warn("Rewrite of Gradle files is an incubating feature which has been disabled in this release because it needs a bit more time to bake.");
+//                File buildScriptFile = subproject.getBuildFile();
+//                try {
+//                    if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists()) {
+//                        GradleParser gradleParser = new GradleParser(
+//                                GroovyParser.builder()
+//                                        .styles(styles)
+//                                        .logCompilationWarningsAndErrors(true));
+//
+//                        sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
+//                    }
+//                } catch (Exception e) {
+//                    logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath()  + "\" : ", e);
+//                }
             }
 
             for(SourceSet sourceSet : sourceSets) {
@@ -234,7 +234,7 @@ public class GradleProjectParser {
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if(sourceSetProvenance == null) {
                         // Just in case there are no java source files, but there _are_ resource files
-                        sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, new HashMap<>(), ctx);
+                        sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, new JavaTypeCache(), ctx);
                     }
                     if(resourcesDir.exists()) {
                         sourceFiles.addAll(map(rp.parse(baseDir, resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, sourceSetProvenance)));
