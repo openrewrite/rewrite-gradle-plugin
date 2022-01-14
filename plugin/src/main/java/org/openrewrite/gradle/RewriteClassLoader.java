@@ -34,6 +34,7 @@ public class RewriteClassLoader extends URLClassLoader {
         "org.openrewrite.config.RecipeDescriptor",
         "org.openrewrite.gradle.DefaultRewriteExtension",
         "org.openrewrite.gradle.RewriteExtension",
+        "org.slf4j",
         "org.gradle"
     );
 
