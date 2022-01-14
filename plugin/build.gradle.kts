@@ -81,7 +81,7 @@ val plugin: Configuration by configurations.creating
 val latest = if(project.hasProperty("releasing")) {
     "latest.release"
 } else {
-    "latest.release"
+    "latest.integration"
 }
 val rewriteVersion = configurations.detachedConfiguration(dependencies.create("org.openrewrite:rewrite-core:$latest"))
     .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
