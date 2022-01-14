@@ -277,12 +277,12 @@ public class GradleProjectParser {
             GradlePropertiesHelper.checkAndLogMissingJvmModuleExports((String) gradleProps.getOrDefault("org.gradle.jvmargs", ""));
 
             Environment.Builder env = Environment.builder();
-            env.scanClassLoader(this.getClass().getClassLoader());
+            env.scanClassLoader(getClass().getClassLoader());
 
             File rewriteConfig = extension.getConfigFile();
             if (rewriteConfig.exists()) {
                 try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                    YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties);
+                    YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties, getClass().getClassLoader());
                     env.load(resourceLoader);
                 } catch (IOException e) {
                     throw new RuntimeException("Unable to load rewrite configuration", e);
