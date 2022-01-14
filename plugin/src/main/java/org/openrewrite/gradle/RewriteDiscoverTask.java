@@ -21,11 +21,9 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
-import org.openrewrite.config.Environment;
 import org.openrewrite.config.OptionDescriptor;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.gradle.ui.RecipeDescriptorTreePrompter;
-import org.openrewrite.style.NamedStyles;
 
 import javax.inject.Inject;
 import java.util.Collection;
@@ -55,8 +53,7 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        Environment env = environment();
-        Collection<RecipeDescriptor> availableRecipeDescriptors = env.listRecipeDescriptors();
+        Collection<RecipeDescriptor> availableRecipeDescriptors = getProjectParser().listRecipeDescriptors();
 
         if (interactive) {
             log.quiet("Entering interactive mode, Ctrl-C to exit...");
@@ -66,7 +63,7 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
             writeRecipeDescriptor(rd);
         } else {
             Set<String> activeRecipes = getActiveRecipes();
-            Collection<NamedStyles> availableStyles = env.listStyles();
+            Set<String> availableStyles = getProjectParser().getAvailableStyles();
             Set<String> activeStyles = getActiveStyles();
 
             log.quiet("Available Recipes:");
@@ -76,8 +73,8 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
 
             log.quiet(indent(0, ""));
             log.quiet("Available Styles:");
-            for (NamedStyles style : availableStyles) {
-                log.quiet(indent(1, style.getName()));
+            for (String style : availableStyles) {
+                log.quiet(indent(1, style));
             }
 
             log.quiet(indent(0, ""));
