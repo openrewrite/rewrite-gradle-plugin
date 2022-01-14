@@ -77,17 +77,4 @@ public class RewriteClassLoader extends URLClassLoader {
         }
         return false;
     }
-
-    boolean isTreeType(String name) {
-        String[] parts = name.split("\\.");
-        return parts.length >= 4 && (parts[3].equals("tree") ||
-                // org.openrewrite.java.JavaVisitor has a package tangle with org.openrewrite.java.tree.J
-                (parts[3].endsWith("Visitor") && (parts[2] + "visitor").equals(parts[3].toLowerCase()))
-        );
-    }
-
-    boolean isStyleType(String name) {
-        String[] parts = name.split("\\.");
-        return parts.length >= 4 && parts[3].equals("style");
-    }
 }
