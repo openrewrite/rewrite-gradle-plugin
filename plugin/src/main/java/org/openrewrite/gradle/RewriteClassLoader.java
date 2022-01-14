@@ -28,37 +28,14 @@ import java.util.List;
  * This classloader exists to isolate rewrite's use of jackson from the rest of the build.
  */
 public class RewriteClassLoader extends URLClassLoader {
-    private static final List<String> neverLoadFromParent = Arrays.asList(
-            "org.openrewrite.internal.MetricsHelper",
-            "org.openrewrite.gradle.GradleProjectParser",
-            "com.fasterxml",
-            "kotlin"
-    );
 
     private static final List<String> loadFromParent = Arrays.asList(
-            "org.openrewrite.Cursor",
-            "org.openrewrite.DelegatingExecutionContext",
-            "org.openrewrite.ExecutionContext",
-            "org.openrewrite.InMemoryExecutionContext",
-            "org.openrewrite.Option",
-            "org.openrewrite.Recipe",
-            "org.openrewrite.Result",
-            "org.openrewrite.SourceFile",
-            "org.openrewrite.Tree", // and therefore TreePrinter (because it has the same prefix)
-            "org.openrewrite.Validated",
-            "org.openrewrite.ValidationException",
-            "org.openrewrite.config",
-            "org.openrewrite.internal",
-            "org.openrewrite.marker",
-            "org.openrewrite.scheduling",
-            "org.openrewrite.style",
-            "org.openrewrite.template",
-            "org.openrewrite.text",
-            "org.openrewrite.java.internal.TypesInUse",
-            "org.openrewrite.gradle.RewriteExtension",
-            "org.openrewrite.gradle.AbstractRewriteTask",
-            "org.openrewrite.gradle.DelegatingProjectParser",
-            "org.gradle"
+        "org.openrewrite.config.OptionDescriptor",
+        "org.openrewrite.config.RecipeDescriptor",
+        "org.openrewrite.gradle.DefaultRewriteExtension",
+        "org.openrewrite.gradle.RewriteExtension",
+        "org.slf4j",
+        "org.gradle"
     );
 
     public RewriteClassLoader(Collection<URL> artifacts) {
@@ -92,35 +69,12 @@ public class RewriteClassLoader extends URLClassLoader {
     }
 
     boolean shouldBeParentLoaded(String name) {
-        for (String s : neverLoadFromParent) {
-            if (name.startsWith(s)) {
-                return false;
-            }
-        }
 
         for (String s : loadFromParent) {
             if (name.startsWith(s)) {
                 return true;
             }
         }
-
-        if (!name.startsWith("org.openrewrite")) {
-            return false;
-        }
-
-        return isTreeType(name) || isStyleType(name);
-    }
-
-    boolean isTreeType(String name) {
-        String[] parts = name.split("\\.");
-        return parts.length >= 4 && (parts[3].equals("tree") ||
-                // org.openrewrite.java.JavaVisitor has a package tangle with org.openrewrite.java.tree.J
-                (parts[3].endsWith("Visitor") && (parts[2] + "visitor").equals(parts[3].toLowerCase()))
-        );
-    }
-
-    boolean isStyleType(String name) {
-        String[] parts = name.split("\\.");
-        return parts.length >= 4 && parts[3].equals("style");
+        return false;
     }
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.openrewrite.gradle;
+package org.openrewrite.gradle.isolated;
 
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -23,8 +23,11 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
 import org.openrewrite.*;
 import org.openrewrite.config.Environment;
+import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
-import org.openrewrite.gradle.AbstractRewriteTask.ResultsContainer;
+
+import org.openrewrite.gradle.DefaultRewriteExtension;
+import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.internal.JavaTypeCache;
@@ -32,15 +35,19 @@ import org.openrewrite.java.marker.JavaProject;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
+import org.openrewrite.java.tree.J;
 import org.openrewrite.marker.BuildTool;
 import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
+import org.openrewrite.shaded.jgit.api.Git;
 import org.openrewrite.style.NamedStyles;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.UnaryOperator;
@@ -100,6 +107,163 @@ public class GradleProjectParser {
         return new TreeSet<>(extension.getActiveStyles());
     }
 
+    public SortedSet<String> getAvailableStyles() {
+        return environment().listStyles().stream().map(NamedStyles::getName).collect(Collectors.toCollection(TreeSet::new));
+    }
+
+    public Collection<RecipeDescriptor> listRecipeDescriptors() {
+        return environment().listRecipeDescriptors();
+    }
+
+    public void dryRun(Path reportPath) {
+        try {
+            ResultsContainer results = listResults();
+
+            if (results.isNotEmpty()) {
+                for (Result result : results.generated) {
+                    assert result.getAfter() != null;
+                    logger.warn("These recipes would generate new file {}:", result.getAfter().getSourcePath());
+                    logRecipesThatMadeChanges(result);
+                }
+                for (Result result : results.deleted) {
+                    assert result.getBefore() != null;
+                    logger.warn("These recipes would delete file {}:", result.getBefore().getSourcePath());
+                    logRecipesThatMadeChanges(result);
+                }
+                for (Result result : results.moved) {
+                    assert result.getBefore() != null;
+                    assert result.getAfter() != null;
+                    logger.warn("These recipes would move file from {} to {}:", result.getBefore().getSourcePath(), result.getAfter().getSourcePath());
+                    logRecipesThatMadeChanges(result);
+                }
+                for (Result result : results.refactoredInPlace) {
+                    assert result.getBefore() != null;
+                    logger.warn("These recipes would make results to {}:", result.getBefore().getSourcePath());
+                    logRecipesThatMadeChanges(result);
+                }
+
+                //noinspection ResultOfMethodCallIgnored
+                reportPath.getParent().toFile().mkdirs();
+                try (BufferedWriter writer = Files.newBufferedWriter(reportPath)) {
+                    Stream.concat(
+                                    Stream.concat(results.generated.stream(), results.deleted.stream()),
+                                    Stream.concat(results.moved.stream(), results.refactoredInPlace.stream())
+                            )
+                            .map(Result::diff)
+                            .forEach(diff -> {
+                                try {
+                                    writer.write(diff + "\n");
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            });
+                } catch (Exception e) {
+                    throw new RuntimeException("Unable to generate rewrite result file.", e);
+                }
+                logger.warn("Report available:");
+                logger.warn("    " + reportPath.normalize());
+                logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
+
+                if (rootProject.getExtensions().getByType(DefaultRewriteExtension.class).getFailOnDryRunResults()) {
+                    throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
+                }
+            } else {
+                logger.lifecycle("Applying recipes would make no changes. No report generated.");
+            }
+        } finally {
+            shutdownRewrite();
+        }
+    }
+
+    public void run() {
+        try {
+            ResultsContainer results = listResults();
+
+            if (results.isNotEmpty()) {
+                for (Result result : results.generated) {
+                    assert result.getAfter() != null;
+                    logger.lifecycle("Generated new file " +
+                            result.getAfter().getSourcePath() +
+                            " by:");
+                    logRecipesThatMadeChanges(result);
+                }
+                for (Result result : results.deleted) {
+                    assert result.getBefore() != null;
+                    logger.lifecycle("Deleted file " +
+                            result.getBefore().getSourcePath() +
+                            " by:");
+                    logRecipesThatMadeChanges(result);
+                }
+                for (Result result : results.moved) {
+                    assert result.getAfter() != null;
+                    assert result.getBefore() != null;
+                    logger.lifecycle("File has been moved from " +
+                            result.getBefore().getSourcePath() + " to " +
+                            result.getAfter().getSourcePath() + " by:");
+                    logRecipesThatMadeChanges(result);
+                }
+                for (Result result : results.refactoredInPlace) {
+                    assert result.getBefore() != null;
+                    logger.lifecycle("Changes have been made to " +
+                            result.getBefore().getSourcePath() +
+                            " by:");
+                    logRecipesThatMadeChanges(result);
+                }
+
+                logger.lifecycle("Please review and commit the results.");
+
+                try {
+                    for (Result result : results.generated) {
+                        assert result.getAfter() != null;
+                        try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
+                                results.getProjectRoot().resolve(result.getAfter().getSourcePath()))) {
+                            sourceFileWriter.write(result.getAfter().printAll());
+                        }
+                    }
+                    for (Result result : results.deleted) {
+                        assert result.getBefore() != null;
+                        Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
+                        boolean deleteSucceeded = originalLocation.toFile().delete();
+                        if (!deleteSucceeded) {
+                            throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
+                        }
+                    }
+                    for (Result result : results.moved) {
+                        // Should we try to use git to move the file first, and only if that fails fall back to this?
+                        assert result.getBefore() != null;
+                        Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
+
+                        // On Mac this can return "false" even when the file was deleted, so skip the check
+                        //noinspection ResultOfMethodCallIgnored
+                        originalLocation.toFile().delete();
+
+                        assert result.getAfter() != null;
+                        // Ensure directories exist in case something was moved into a hitherto non-existent package
+                        Path afterLocation = results.getProjectRoot().resolve(result.getAfter().getSourcePath());
+                        File parentDir = afterLocation.toFile().getParentFile();
+                        //noinspection ResultOfMethodCallIgnored
+                        parentDir.mkdirs();
+                        try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(afterLocation)) {
+                            sourceFileWriter.write(result.getAfter().printAll());
+                        }
+                    }
+                    for (Result result : results.refactoredInPlace) {
+                        assert result.getBefore() != null;
+                        try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
+                                results.getProjectRoot().resolve(result.getBefore().getSourcePath()))) {
+                            assert result.getAfter() != null;
+                            sourceFileWriter.write(result.getAfter().printAll());
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException("Unable to rewrite source files", e);
+                }
+            }
+        } finally {
+            shutdownRewrite();
+        }
+    }
+
     public Environment environment() {
         if(environment == null) {
             Map<Object, Object> gradleProps = rootProject.getProperties().entrySet().stream()
@@ -113,12 +277,12 @@ public class GradleProjectParser {
             GradlePropertiesHelper.checkAndLogMissingJvmModuleExports((String) gradleProps.getOrDefault("org.gradle.jvmargs", ""));
 
             Environment.Builder env = Environment.builder();
-            env.scanClassLoader(this.getClass().getClassLoader());
+            env.scanClassLoader(getClass().getClassLoader());
 
             File rewriteConfig = extension.getConfigFile();
             if (rewriteConfig.exists()) {
                 try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                    YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties);
+                    YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties, getClass().getClassLoader());
                     env.load(resourceLoader);
                 } catch (IOException e) {
                     throw new RuntimeException("Unable to load rewrite configuration", e);
@@ -251,6 +415,7 @@ public class GradleProjectParser {
         }
     }
 
+
     @SuppressWarnings("unused")
     public ResultsContainer listResults() {
         Environment env = environment();
@@ -290,6 +455,11 @@ public class GradleProjectParser {
         astCache.clear();
     }
 
+    protected void shutdownRewrite() {
+        J.clearCaches();
+        Git.shutdown();
+    }
+
     private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {
         return s -> {
             Markers m = s.getMarkers();
@@ -302,4 +472,46 @@ public class GradleProjectParser {
             return s.withMarkers(m);
         };
     }
+
+    private void logRecipesThatMadeChanges(org.openrewrite.Result result) {
+        for (Recipe recipe : result.getRecipesThatMadeChanges()) {
+            logger.warn("    " + recipe.getName());
+        }
+    }
+
+    private static class ResultsContainer {
+        final Path projectRoot;
+        final List<Result> generated = new ArrayList<>();
+        final List<Result> deleted = new ArrayList<>();
+        final List<Result> moved = new ArrayList<>();
+        final List<Result> refactoredInPlace = new ArrayList<>();
+
+        public ResultsContainer(Path projectRoot, Collection<Result> results) {
+            this.projectRoot = projectRoot;
+            for (Result result : results) {
+                if (result.getBefore() == null && result.getAfter() == null) {
+                    // This situation shouldn't happen / makes no sense
+                    continue;
+                }
+                if (result.getBefore() == null && result.getAfter() != null) {
+                    generated.add(result);
+                } else if (result.getBefore() != null && result.getAfter() == null) {
+                    deleted.add(result);
+                } else if (result.getBefore() != null && !result.getBefore().getSourcePath().equals(result.getAfter().getSourcePath())) {
+                    moved.add(result);
+                } else {
+                    refactoredInPlace.add(result);
+                }
+            }
+        }
+
+        public Path getProjectRoot() {
+            return projectRoot;
+        }
+
+        public boolean isNotEmpty() {
+            return !generated.isEmpty() || !deleted.isEmpty() || !moved.isEmpty() || !refactoredInPlace.isEmpty();
+        }
+    }
+
 }

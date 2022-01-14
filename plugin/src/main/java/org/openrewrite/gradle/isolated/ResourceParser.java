@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.openrewrite.gradle;
+package org.openrewrite.gradle.isolated;
 
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;

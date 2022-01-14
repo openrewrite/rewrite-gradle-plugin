@@ -16,9 +16,7 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.Project;
-import org.openrewrite.SourceFile;
-import org.openrewrite.config.Environment;
-import org.openrewrite.gradle.AbstractRewriteTask.ResultsContainer;
+import org.openrewrite.config.RecipeDescriptor;
 
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
@@ -26,6 +24,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
@@ -51,7 +50,7 @@ public class DelegatingProjectParser {
                     .collect(Collectors.toList());
             @SuppressWarnings("ConstantConditions")
             String path = getClass()
-                    .getResource("/org/openrewrite/gradle/GradleProjectParser.class")
+                    .getResource("/org/openrewrite/gradle/isolated/GradleProjectParser.class")
                     .toString();
             URL currentJar = null;
             if(path.startsWith("jar:")) {
@@ -70,7 +69,7 @@ public class DelegatingProjectParser {
             classpathUrls.add(currentJar);
             RewriteClassLoader cl = new RewriteClassLoader(classpathUrls);
 
-            gppClass = Class.forName("org.openrewrite.gradle.GradleProjectParser", true, cl);
+            gppClass = Class.forName("org.openrewrite.gradle.isolated.GradleProjectParser", true, cl);
             assert (gppClass.getClassLoader() == cl) : "GradleProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's own classpath";
             gpp = gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class, Boolean.class)
                     .newInstance(rootProject, extension, useAstCache);
@@ -88,21 +87,28 @@ public class DelegatingProjectParser {
         return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getActiveStyles").invoke(gpp));
     }
 
-    public Environment environment() {
-        return unwrapInvocationException(() -> (Environment) gppClass.getMethod("environment").invoke(gpp));
+    public SortedSet<String> getAvailableStyles() {
+        return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getAvailableStyles").invoke(gpp));
     }
 
-    @SuppressWarnings("unused")
-    public List<SourceFile> parse() {
-        return unwrapInvocationException(() -> (List<SourceFile>) gppClass.getMethod("parse").invoke(gpp));
+    public Collection<RecipeDescriptor> listRecipeDescriptors() {
+        return unwrapInvocationException(() -> (Collection<RecipeDescriptor>) gppClass.getMethod("listRecipeDescriptors").invoke(gpp));
     }
 
-    public ResultsContainer listResults() {
-        return unwrapInvocationException(() -> (ResultsContainer) gppClass.getMethod("listResults").invoke(gpp));
+    public void rewriteRun() {
+        unwrapInvocationException(() -> gppClass.getMethod("run").invoke(gpp));
+    }
+
+    public void rewriteDryRun(Path reportPath) {
+        unwrapInvocationException(() -> gppClass.getMethod("dryRun", Path.class).invoke(gpp, reportPath));
     }
 
     public void clearAstCache() {
         unwrapInvocationException(() -> gppClass.getMethod("clearAstCache").invoke(gpp));
+    }
+
+    protected void shutdownRewrite() {
+        unwrapInvocationException(() -> gppClass.getMethod("shutdownRewrite").invoke(gpp));
     }
 
     /**
