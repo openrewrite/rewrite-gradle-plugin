@@ -60,10 +60,6 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
                 deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
-                // Some rewrite classes use slf4j loggers (even though they probably shouldn't)
-                // Ideally this would be the same implementation used by Gradle at runtime
-                // But there are reflection and classpath shenanigans that make that one hard to get at
-                deps.create("org.slf4j:slf4j-simple:1.7.30"),
 
                 // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
                 deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion())

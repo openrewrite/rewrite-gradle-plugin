@@ -127,7 +127,7 @@ dependencies {
     implementation("org.openrewrite:rewrite-properties:$rewriteVersion")
     implementation("org.openrewrite:rewrite-groovy:$rewriteVersion")
     implementation("org.openrewrite:rewrite-gradle:$rewriteVersion")
-    implementation("com.puppycrawl.tools:checkstyle:latest.release")
+    implementation("com.puppycrawl.tools:checkstyle:$checkstyleVersion")
 
     testImplementation(gradleTestKit())
     testImplementation(localGroovy())
