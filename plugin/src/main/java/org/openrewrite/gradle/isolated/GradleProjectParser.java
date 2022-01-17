@@ -296,9 +296,8 @@ public class GradleProjectParser {
         return environment;
     }
 
-    public List<SourceFile> parse() {
+    public List<SourceFile> parse(ExecutionContext ctx) {
         Environment env = environment();
-        ExecutionContext ctx = new InMemoryExecutionContext(t -> logger.warn(t.getMessage(), t));
         List<NamedStyles> styles = env.activateStyles(getActiveStyles());
         File checkstyleConfig = extension.getCheckstyleConfigFile();
         if (checkstyleConfig != null && checkstyleConfig.exists()) {
@@ -436,18 +435,20 @@ public class GradleProjectParser {
             }
         }
 
+        ExecutionContext ctx = new InMemoryExecutionContext(t -> logger.warn(t.getMessage(), t));
+
         List<SourceFile> sourceFiles;
         if(useAstCache && astCache.containsKey(rootProject.getProjectDir().toPath())) {
             logger.lifecycle("Using cached in-memory ASTs");
             sourceFiles = astCache.get(rootProject.getProjectDir().toPath());
         } else {
-            sourceFiles = parse();
+            sourceFiles = parse(ctx);
             if(useAstCache) {
                 astCache.put(rootProject.getProjectDir().toPath(), sourceFiles);
             }
         }
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
-        List<Result> results = recipe.run(sourceFiles);
+        List<Result> results = recipe.run(sourceFiles, ctx);
         return new ResultsContainer(baseDir, results);
     }
 
