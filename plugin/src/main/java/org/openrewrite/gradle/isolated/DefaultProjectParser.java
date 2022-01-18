@@ -67,15 +67,16 @@ public class DefaultProjectParser implements GradleProjectParser {
     private final RewriteExtension extension;
     private final Project rootProject;
     private final List<Marker> sharedProvenance;
-    private static final Map<String, List<SourceFile>> astCache = new HashMap<>();
+    private final Map<String, Object> astCache;
 
     private List<NamedStyles> styles = null;
     private Environment environment = null;
 
-    public DefaultProjectParser(Project rootProject, RewriteExtension extension) {
+    public DefaultProjectParser(Project rootProject, RewriteExtension extension, Map<String, Object> astCache) {
         this.baseDir = rootProject.getRootDir().toPath();
         this.extension = extension;
         this.rootProject = rootProject;
+        this.astCache = astCache;
 
         sharedProvenance = Stream.of(gitProvenance(baseDir),
                         new BuildTool(randomId(), BuildTool.Type.Gradle, rootProject.getGradle().getGradleVersion()))
@@ -473,7 +474,8 @@ public class DefaultProjectParser implements GradleProjectParser {
         List<SourceFile> sourceFiles;
         if(useAstCache && astCache.containsKey(rootProject.getProjectDir().toPath().toString())) {
             logger.lifecycle("Using cached in-memory ASTs");
-            sourceFiles = astCache.get(rootProject.getProjectDir().toPath().toString());
+            //noinspection unchecked
+            sourceFiles = (List<SourceFile>) astCache.get(rootProject.getProjectDir().toPath().toString());
         } else {
             sourceFiles = parse();
             if(useAstCache) {

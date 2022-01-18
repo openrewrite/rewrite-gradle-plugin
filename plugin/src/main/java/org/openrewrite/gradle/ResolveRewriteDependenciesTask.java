@@ -32,6 +32,7 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
     private Set<File> resolvedDependencies;
     private Configuration configuration;
 
+
     public ResolveRewriteDependenciesTask setConfiguration(Configuration configuration) {
         this.configuration = configuration;
         return this;

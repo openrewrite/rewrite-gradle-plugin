@@ -24,10 +24,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
-import java.util.SortedSet;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
@@ -35,6 +32,9 @@ import java.util.stream.Collectors;
 public class DelegatingProjectParser implements GradleProjectParser {
     protected final Class<?> gppClass;
     protected final Object gpp;
+    protected static List<URL> rewriteClasspath;
+    protected static RewriteClassLoader rewriteClassLoader;
+    protected static final Map<String, Object> astCache = new HashMap<>();
 
     public DelegatingProjectParser(Project rootProject, RewriteExtension extension, Set<Path> classpath) {
         try {
@@ -67,12 +67,16 @@ public class DelegatingProjectParser implements GradleProjectParser {
             }
 
             classpathUrls.add(currentJar);
-            RewriteClassLoader cl = new RewriteClassLoader(classpathUrls);
+            if(rewriteClassLoader == null || !classpathUrls.equals(rewriteClasspath)) {
+                rewriteClassLoader = new RewriteClassLoader(classpathUrls);
+                rewriteClasspath = classpathUrls;
+                astCache.clear();
+            }
 
-            gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, cl);
-            assert (gppClass.getClassLoader() == cl) : "DefaultProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's classpath";
-            gpp = gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class)
-                    .newInstance(rootProject, extension);
+            gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, rewriteClassLoader);
+            assert (gppClass.getClassLoader() == rewriteClassLoader) : "DefaultProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's classpath";
+            gpp = gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class, Map.class)
+                    .newInstance(rootProject, extension, astCache);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
