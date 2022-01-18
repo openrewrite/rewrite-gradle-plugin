@@ -39,39 +39,42 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
 
     @Internal
     public Set<File> getResolvedDependencies() {
+        if(resolvedDependencies == null) {
+            RewriteExtension extension = getProject().getRootProject().getExtensions().getByType(DefaultRewriteExtension.class);
+            String rewriteVersion = extension.getRewriteVersion();
+            Project project = getProject();
+            DependencyHandler deps = project.getDependencies();
+            Dependency[] dependencies = new Dependency[] {
+                    deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
+
+                    // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
+                    deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion())
+            };
+            if(configuration != null) {
+                dependencies = Stream.concat(
+                        Arrays.stream(dependencies),
+                        configuration.getDependencies().stream()
+                ).toArray(Dependency[]::new);
+            }
+
+            Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
+            resolvedDependencies = detachedConf.resolve();
+        }
         return resolvedDependencies;
     }
 
     @TaskAction
     void run() {
-        RewriteExtension extension = getProject().getRootProject().getExtensions().getByType(DefaultRewriteExtension.class);
-        String rewriteVersion = extension.getRewriteVersion();
-        Project project = getProject();
-        DependencyHandler deps = project.getDependencies();
-        Dependency[] dependencies = new Dependency[] {
-                deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
-
-                // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
-                deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion())
-        };
-        if(configuration != null) {
-            dependencies = Stream.concat(
-                    Arrays.stream(dependencies),
-                    configuration.getDependencies().stream()
-            ).toArray(Dependency[]::new);
-        }
-
-        Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
-        resolvedDependencies = detachedConf.resolve();
+        getResolvedDependencies();
     }
 }
