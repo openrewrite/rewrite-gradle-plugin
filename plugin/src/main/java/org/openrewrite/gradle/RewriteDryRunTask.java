@@ -40,18 +40,8 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
         getOutputs().upToDateWhen(Specs.SATISFIES_NONE);
     }
 
-    @Option(description = "Cache the AST results in-memory when using the Gradle daemon.", option = "useAstCache")
-    public void setUseAstCache(boolean useAstCache) {
-        this.useAstCache = useAstCache;
-    }
-
-    @Input
-    public boolean isUseAstCache() {
-        return useAstCache;
-    }
-
     @TaskAction
     public void run() {
-        getProjectParser().rewriteDryRun(getReportPath());
+        getProjectParser().dryRun(getReportPath(), useAstCache);
     }
 }

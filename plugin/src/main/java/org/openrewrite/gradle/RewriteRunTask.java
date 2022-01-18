@@ -41,7 +41,7 @@ public class RewriteRunTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        getProjectParser().rewriteRun();
+        getProjectParser().run(useAstCache);
     }
 
 }

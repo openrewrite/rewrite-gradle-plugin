@@ -18,6 +18,7 @@ package org.openrewrite.gradle;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.options.Option;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -25,10 +26,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public abstract class AbstractRewriteTask extends DefaultTask {
-    private ResolveRewriteDependenciesTask resolveDependenciesTask;
+    protected ResolveRewriteDependenciesTask resolveDependenciesTask;
     protected boolean useAstCache;
-    private DelegatingProjectParser gpp;
-    private RewriteExtension extension;
+    protected GradleProjectParser gpp;
+    protected RewriteExtension extension;
 
     public AbstractRewriteTask setExtension(RewriteExtension extension) {
         this.extension = extension;
@@ -41,8 +42,18 @@ public abstract class AbstractRewriteTask extends DefaultTask {
         return this;
     }
 
+    @Option(description = "Cache the AST results in-memory when using the Gradle daemon.", option = "useAstCache")
+    public void setUseAstCache(boolean useAstCache) {
+        this.useAstCache = useAstCache;
+    }
+
+    @Input
+    public boolean isUseAstCache() {
+        return useAstCache;
+    }
+
     @Internal
-    protected DelegatingProjectParser getProjectParser() {
+    protected GradleProjectParser getProjectParser() {
         if(gpp == null) {
             if(extension == null) {
                 throw new IllegalArgumentException("Must configure extension");
@@ -53,7 +64,7 @@ public abstract class AbstractRewriteTask extends DefaultTask {
             Set<Path> classpath = resolveDependenciesTask.getResolvedDependencies().stream()
                     .map(File::toPath)
                     .collect(Collectors.toSet());
-            gpp = new DelegatingProjectParser(getProject().getRootProject(), extension, classpath, useAstCache);
+            gpp = new DelegatingProjectParser(getProject().getRootProject(), extension, classpath);
         }
         return gpp;
     }

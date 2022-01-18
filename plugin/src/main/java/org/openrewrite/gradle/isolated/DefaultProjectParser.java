@@ -27,6 +27,7 @@ import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
 
 import org.openrewrite.gradle.DefaultRewriteExtension;
+import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaParser;
@@ -60,22 +61,21 @@ import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.internal.ListUtils.map;
 
 @SuppressWarnings("unused")
-public class GradleProjectParser {
-    private final Logger logger = Logging.getLogger(GradleProjectParser.class);
+public class DefaultProjectParser implements GradleProjectParser {
+    private final Logger logger = Logging.getLogger(DefaultProjectParser.class);
     private final Path baseDir;
     private final RewriteExtension extension;
     private final Project rootProject;
     private final List<Marker> sharedProvenance;
-    private final Boolean useAstCache;
     private static final Map<Path, List<SourceFile>> astCache = new HashMap<>();
 
+    private List<NamedStyles> styles = null;
     private Environment environment = null;
 
-    public GradleProjectParser(Project rootProject, RewriteExtension extension, Boolean useAstCache) {
+    public DefaultProjectParser(Project rootProject, RewriteExtension extension) {
         this.baseDir = rootProject.getRootDir().toPath();
         this.extension = extension;
         this.rootProject = rootProject;
-        this.useAstCache = useAstCache;
 
         sharedProvenance = Stream.of(gitProvenance(baseDir),
                         new BuildTool(randomId(), BuildTool.Type.Gradle, rootProject.getGradle().getGradleVersion()))
@@ -115,9 +115,34 @@ public class GradleProjectParser {
         return environment().listRecipeDescriptors();
     }
 
-    public void dryRun(Path reportPath) {
+    @Override
+    public Collection<Path> listSources(Project project) {
+        // Use a sorted collection so that gradle input detection isn't thrown off by ordering
+        Set<Path> result = new TreeSet<>();
+        ResourceParser rp = new ResourceParser(extension.getExclusions(), extension.getSizeThresholdMb());
+        rp.listSources(baseDir, project.getProjectDir().toPath());
+        //noinspection deprecation
+        JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
+        if (javaConvention != null) {
+            for (SourceSet sourceSet : javaConvention.getSourceSets()) {
+                sourceSet.getAllJava().getFiles().stream()
+                        .filter(it -> it.isFile() && it.getName().endsWith(".java"))
+                        .map(File::toPath)
+                        .map(Path::toAbsolutePath)
+                        .map(Path::normalize)
+                        .forEach(result::add);
+            }
+        }
+        for(Project subproject : project.getSubprojects()) {
+            result.addAll(listSources(subproject));
+        }
+        return result;
+    }
+
+    @Override
+    public void dryRun(Path reportPath, boolean useAstCache) {
         try {
-            ResultsContainer results = listResults();
+            ResultsContainer results = listResults(useAstCache);
 
             if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
@@ -175,9 +200,10 @@ public class GradleProjectParser {
         }
     }
 
-    public void run() {
+    @Override
+    public void run(boolean useAstCache) {
         try {
-            ResultsContainer results = listResults();
+            ResultsContainer results = listResults(useAstCache);
 
             if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
@@ -264,7 +290,7 @@ public class GradleProjectParser {
         }
     }
 
-    public Environment environment() {
+    private Environment environment() {
         if(environment == null) {
             Map<Object, Object> gradleProps = rootProject.getProperties().entrySet().stream()
                     .filter(entry -> entry.getKey() != null && entry.getValue() != null)
@@ -296,30 +322,23 @@ public class GradleProjectParser {
         return environment;
     }
 
-    public List<SourceFile> parse(ExecutionContext ctx) {
+    public List<SourceFile> parse() {
         Environment env = environment();
-        List<NamedStyles> styles = env.activateStyles(getActiveStyles());
-        File checkstyleConfig = extension.getCheckstyleConfigFile();
-        if (checkstyleConfig != null && checkstyleConfig.exists()) {
-            try {
-                styles.add(CheckstyleConfigLoader.loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties()));
-            } catch (Exception e) {
-                logger.warn("Unable to parse checkstyle configuration", e);
-            }
-        }
+        ExecutionContext ctx = new InMemoryExecutionContext(t -> logger.warn(t.getMessage(), t));
         List<SourceFile> sourceFiles = new ArrayList<>();
         Set<Path> alreadyParsed = new HashSet<>();
         for(Project subProject : rootProject.getSubprojects()) {
-            sourceFiles.addAll(parse(subProject, styles, alreadyParsed, ctx));
+            sourceFiles.addAll(parse(subProject, alreadyParsed, ctx));
         }
-        sourceFiles.addAll(parse(rootProject, styles, alreadyParsed, ctx));
+        sourceFiles.addAll(parse(rootProject, alreadyParsed, ctx));
 
         return sourceFiles;
     }
 
-    public List<SourceFile> parse(Project subproject, List<NamedStyles> styles, Set<Path> alreadyParsed, ExecutionContext ctx) {
+    public List<SourceFile> parse(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
         try {
             logger.lifecycle("Parsing sources from project {}", subproject.getName());
+            List<NamedStyles> styles = getStyles();
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
             Set<SourceSet> sourceSets;
@@ -414,9 +433,23 @@ public class GradleProjectParser {
         }
     }
 
+    private List<NamedStyles> getStyles() {
+        if(styles == null) {
+            styles = environment().activateStyles(getActiveStyles());
+            File checkstyleConfig = extension.getCheckstyleConfigFile();
+            if (checkstyleConfig != null && checkstyleConfig.exists()) {
+                try {
+                    styles.add(CheckstyleConfigLoader.loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties()));
+                } catch (Exception e) {
+                    logger.warn("Unable to parse checkstyle configuration", e);
+                }
+            }
+        }
+        return styles;
+    }
 
     @SuppressWarnings("unused")
-    public ResultsContainer listResults() {
+    public ResultsContainer listResults(boolean useAstCache) {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
 
@@ -435,20 +468,18 @@ public class GradleProjectParser {
             }
         }
 
-        ExecutionContext ctx = new InMemoryExecutionContext(t -> logger.warn(t.getMessage(), t));
-
         List<SourceFile> sourceFiles;
         if(useAstCache && astCache.containsKey(rootProject.getProjectDir().toPath())) {
             logger.lifecycle("Using cached in-memory ASTs");
             sourceFiles = astCache.get(rootProject.getProjectDir().toPath());
         } else {
-            sourceFiles = parse(ctx);
+            sourceFiles = parse();
             if(useAstCache) {
                 astCache.put(rootProject.getProjectDir().toPath(), sourceFiles);
             }
         }
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
-        List<Result> results = recipe.run(sourceFiles, ctx);
+        List<Result> results = recipe.run(sourceFiles);
         return new ResultsContainer(baseDir, results);
     }
 
@@ -456,7 +487,8 @@ public class GradleProjectParser {
         astCache.clear();
     }
 
-    protected void shutdownRewrite() {
+    @Override
+    public void shutdownRewrite() {
         J.clearCaches();
         Git.shutdown();
     }
@@ -479,40 +511,4 @@ public class GradleProjectParser {
             logger.warn("    " + recipe.getName());
         }
     }
-
-    private static class ResultsContainer {
-        final Path projectRoot;
-        final List<Result> generated = new ArrayList<>();
-        final List<Result> deleted = new ArrayList<>();
-        final List<Result> moved = new ArrayList<>();
-        final List<Result> refactoredInPlace = new ArrayList<>();
-
-        public ResultsContainer(Path projectRoot, Collection<Result> results) {
-            this.projectRoot = projectRoot;
-            for (Result result : results) {
-                if (result.getBefore() == null && result.getAfter() == null) {
-                    // This situation shouldn't happen / makes no sense
-                    continue;
-                }
-                if (result.getBefore() == null && result.getAfter() != null) {
-                    generated.add(result);
-                } else if (result.getBefore() != null && result.getAfter() == null) {
-                    deleted.add(result);
-                } else if (result.getBefore() != null && !result.getBefore().getSourcePath().equals(result.getAfter().getSourcePath())) {
-                    moved.add(result);
-                } else {
-                    refactoredInPlace.add(result);
-                }
-            }
-        }
-
-        public Path getProjectRoot() {
-            return projectRoot;
-        }
-
-        public boolean isNotEmpty() {
-            return !generated.isEmpty() || !deleted.isEmpty() || !moved.isEmpty() || !refactoredInPlace.isEmpty();
-        }
-    }
-
 }

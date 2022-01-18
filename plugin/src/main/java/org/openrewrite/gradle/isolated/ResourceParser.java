@@ -22,6 +22,7 @@ import org.openrewrite.Parser;
 import org.openrewrite.SourceFile;
 import org.openrewrite.hcl.HclParser;
 import org.openrewrite.json.JsonParser;
+import org.openrewrite.json.tree.Json;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.xml.XmlParser;
 import org.openrewrite.yaml.YamlParser;
@@ -41,11 +42,10 @@ public class ResourceParser {
     private final List<String> exclusions;
     private final int sizeThresholdMb;
 
-    public ResourceParser(List<String> exclusions, int thresholdMb) {
+    public ResourceParser(List<String> exclusions, int sizeThresholdMb) {
         this.exclusions = exclusions;
-        sizeThresholdMb = thresholdMb;
+        this.sizeThresholdMb = sizeThresholdMb;
     }
-
 
     public List<SourceFile> parse(Path baseDir, Path projectDir, Collection<Path> alreadyParsed, ExecutionContext ctx) {
         List<SourceFile> sourceFiles = new ArrayList<>();
@@ -55,6 +55,50 @@ public class ResourceParser {
         sourceFiles.addAll(parseSourceFiles(new PropertiesParser(), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(HclParser.builder().build(), baseDir, projectDir, alreadyParsed, ctx));
         return sourceFiles;
+    }
+
+    // Used for calculating task inputs
+    public List<Path> listSources(Path baseDir, Path searchDir) {
+        List<Path> sources = new ArrayList<>();
+        sources.addAll(listSources(new JsonParser(), baseDir, searchDir));
+        sources.addAll(listSources(new XmlParser(), baseDir, searchDir));
+        sources.addAll(listSources(new YamlParser(), baseDir, searchDir));
+        sources.addAll(listSources(new PropertiesParser(), baseDir, searchDir));
+        sources.addAll(listSources(HclParser.builder().build(), baseDir, searchDir));
+        return sources;
+    }
+
+    public List<Path> listSources(Parser<?> parser, Path baseDir, Path searchDir) {
+        try {
+            return Files.find(searchDir, 16, (path, attrs) -> {
+                        if (!parser.accept(path)) {
+                            return false;
+                        }
+
+                        String pathStr = path.toString();
+                        if (pathStr.contains("/target/") || pathStr.contains("/build/") || pathStr.contains("/out/") ||
+                                pathStr.contains("/.gradle/") || pathStr.contains("/node_modules/") || pathStr.contains("/.metadata/")) {
+                            return false;
+                        }
+
+                        long fileSize = attrs.size();
+                        if (attrs.isDirectory() || fileSize == 0) {
+                            return false;
+                        }
+
+                        for (String exclusion : exclusions) {
+                            PathMatcher matcher = baseDir.getFileSystem().getPathMatcher("glob:" + exclusion);
+                            if (matcher.matches(baseDir.relativize(path))) {
+                                return false;
+                            }
+                        }
+
+                        return sizeThresholdMb <= 0 || fileSize <= sizeThresholdMb * 1024L * 1024L;
+                    })
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     public List<? extends SourceFile> parseSourceFiles(
@@ -81,7 +125,7 @@ public class ResourceParser {
                     return false;
                 }
 
-                if(alreadyParsed.contains(path)) {
+                if (alreadyParsed.contains(path)) {
                     return false;
                 }
 

@@ -32,11 +32,11 @@ import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
-public class DelegatingProjectParser {
-    private final Class<?> gppClass;
-    private final Object gpp;
+public class DelegatingProjectParser implements GradleProjectParser {
+    protected final Class<?> gppClass;
+    protected final Object gpp;
 
-    public DelegatingProjectParser(Project rootProject, RewriteExtension extension, Set<Path> classpath, boolean useAstCache) {
+    public DelegatingProjectParser(Project rootProject, RewriteExtension extension, Set<Path> classpath) {
         try {
             List<URL> classpathUrls = classpath.stream()
                     .map(Path::toUri)
@@ -50,7 +50,7 @@ public class DelegatingProjectParser {
                     .collect(Collectors.toList());
             @SuppressWarnings("ConstantConditions")
             String path = getClass()
-                    .getResource("/org/openrewrite/gradle/isolated/GradleProjectParser.class")
+                    .getResource("/org/openrewrite/gradle/isolated/DefaultProjectParser.class")
                     .toString();
             URL currentJar = null;
             if(path.startsWith("jar:")) {
@@ -69,45 +69,58 @@ public class DelegatingProjectParser {
             classpathUrls.add(currentJar);
             RewriteClassLoader cl = new RewriteClassLoader(classpathUrls);
 
-            gppClass = Class.forName("org.openrewrite.gradle.isolated.GradleProjectParser", true, cl);
-            assert (gppClass.getClassLoader() == cl) : "GradleProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's own classpath";
-            gpp = gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class, Boolean.class)
-                    .newInstance(rootProject, extension, useAstCache);
+            gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, cl);
+            assert (gppClass.getClassLoader() == cl) : "DefaultProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's classpath";
+            gpp = gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class)
+                    .newInstance(rootProject, extension);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
+    @Override
     public SortedSet<String> getActiveRecipes() {
         return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getActiveRecipes").invoke(gpp));
     }
 
+    @Override
     public SortedSet<String> getActiveStyles() {
         return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getActiveStyles").invoke(gpp));
     }
 
+    @Override
     public SortedSet<String> getAvailableStyles() {
         return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getAvailableStyles").invoke(gpp));
     }
 
+    @Override
     public Collection<RecipeDescriptor> listRecipeDescriptors() {
         return unwrapInvocationException(() -> (Collection<RecipeDescriptor>) gppClass.getMethod("listRecipeDescriptors").invoke(gpp));
     }
 
-    public void rewriteRun() {
-        unwrapInvocationException(() -> gppClass.getMethod("run").invoke(gpp));
+    @Override
+    public Collection<Path> listSources(Project project) {
+        return unwrapInvocationException(() -> (Collection<Path>) gppClass.getMethod("listSources").invoke(gpp));
     }
 
-    public void rewriteDryRun(Path reportPath) {
-        unwrapInvocationException(() -> gppClass.getMethod("dryRun", Path.class).invoke(gpp, reportPath));
+    @Override
+    public void run(boolean useAstCache) {
+        unwrapInvocationException(() -> gppClass.getMethod("run", boolean.class).invoke(gpp, useAstCache));
     }
 
+    @Override
+    public void dryRun(Path reportPath, boolean useAstCache) {
+        unwrapInvocationException(() -> gppClass.getMethod("dryRun", Path.class, boolean.class).invoke(gpp, reportPath, useAstCache));
+    }
+
+    @Override
     public void clearAstCache() {
         unwrapInvocationException(() -> gppClass.getMethod("clearAstCache").invoke(gpp));
     }
 
-    protected void shutdownRewrite() {
+    @Override
+    public void shutdownRewrite() {
         unwrapInvocationException(() -> gppClass.getMethod("shutdownRewrite").invoke(gpp));
     }
 
