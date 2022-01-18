@@ -15,6 +15,8 @@
  */
 package org.openrewrite.gradle;
 
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
@@ -22,6 +24,8 @@ import org.gradle.api.tasks.options.Option;
 import javax.inject.Inject;
 
 public class RewriteRunTask extends AbstractRewriteTask {
+
+    private static final Logger logger = Logging.getLogger(RewriteRunTask.class);
 
     @Inject
     public RewriteRunTask() {
@@ -36,7 +40,7 @@ public class RewriteRunTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        getProjectParser().run(useAstCache);
+        getProjectParser().run(useAstCache, throwable -> logger.warn("Error during rewrite run", throwable));
     }
 
 }

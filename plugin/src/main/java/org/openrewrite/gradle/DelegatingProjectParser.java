@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
@@ -109,13 +110,13 @@ public class DelegatingProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void run(boolean useAstCache) {
-        unwrapInvocationException(() -> gppClass.getMethod("run", boolean.class).invoke(gpp, useAstCache));
+    public void run(boolean useAstCache, Consumer<Throwable> onError) {
+        unwrapInvocationException(() -> gppClass.getMethod("run", boolean.class, Consumer.class).invoke(gpp, useAstCache, onError));
     }
 
     @Override
-    public void dryRun(Path reportPath, boolean useAstCache) {
-        unwrapInvocationException(() -> gppClass.getMethod("dryRun", Path.class, boolean.class).invoke(gpp, reportPath, useAstCache));
+    public void dryRun(Path reportPath, boolean useAstCache, Consumer<Throwable> onError) {
+        unwrapInvocationException(() -> gppClass.getMethod("dryRun", Path.class, boolean.class, Consumer.class).invoke(gpp, reportPath, useAstCache, onError));
     }
 
     @Override

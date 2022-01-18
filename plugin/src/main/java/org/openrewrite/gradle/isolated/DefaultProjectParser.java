@@ -20,6 +20,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.tasks.Exec;
 import org.gradle.api.tasks.SourceSet;
 import org.openrewrite.*;
 import org.openrewrite.config.Environment;
@@ -50,6 +51,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -88,7 +90,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     private GitProvenance gitProvenance(Path baseDir) {
         try {
             return GitProvenance.fromProjectDirectory(baseDir);
-        } catch(Exception e) {
+        } catch (Exception e) {
             // Logging at a low level as this is unlikely to happen except in non-git projects, where it is expected
             logger.debug("Unable to determine git provenance", e);
         }
@@ -97,7 +99,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public SortedSet<String> getActiveRecipes() {
         String activeRecipeProp = System.getProperty("activeRecipe");
-        if(activeRecipeProp == null) {
+        if (activeRecipeProp == null) {
             return new TreeSet<>(extension.getActiveRecipes());
         } else {
             return new TreeSet<>(Collections.singleton(activeRecipeProp));
@@ -134,16 +136,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .forEach(result::add);
             }
         }
-        for(Project subproject : project.getSubprojects()) {
-            result.addAll(listSources(subproject));
-        }
         return result;
     }
 
     @Override
-    public void dryRun(Path reportPath, boolean useAstCache) {
+    public void dryRun(Path reportPath, boolean useAstCache, Consumer<Throwable> onError) {
         try {
-            ResultsContainer results = listResults(useAstCache);
+            ResultsContainer results = listResults(useAstCache, new InMemoryExecutionContext(onError));
 
             if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
@@ -202,9 +201,9 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void run(boolean useAstCache) {
+    public void run(boolean useAstCache, Consumer<Throwable> onError) {
         try {
-            ResultsContainer results = listResults(useAstCache);
+            ResultsContainer results = listResults(useAstCache, new InMemoryExecutionContext(onError));
 
             if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
@@ -292,7 +291,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private Environment environment() {
-        if(environment == null) {
+        if (environment == null) {
             Map<Object, Object> gradleProps = rootProject.getProperties().entrySet().stream()
                     .filter(entry -> entry.getKey() != null && entry.getValue() != null)
                     .collect(toMap(
@@ -323,12 +322,11 @@ public class DefaultProjectParser implements GradleProjectParser {
         return environment;
     }
 
-    public List<SourceFile> parse() {
+    public List<SourceFile> parse(ExecutionContext ctx) {
         Environment env = environment();
-        ExecutionContext ctx = new InMemoryExecutionContext(t -> logger.warn(t.getMessage(), t));
         List<SourceFile> sourceFiles = new ArrayList<>();
         Set<Path> alreadyParsed = new HashSet<>();
-        for(Project subProject : rootProject.getSubprojects()) {
+        for (Project subProject : rootProject.getSubprojects()) {
             sourceFiles.addAll(parse(subProject, alreadyParsed, ctx));
         }
         sourceFiles.addAll(parse(rootProject, alreadyParsed, ctx));
@@ -344,7 +342,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
             Set<SourceSet> sourceSets;
             List<Marker> projectProvenance;
-            if(javaConvention == null) {
+            if (javaConvention == null) {
                 projectProvenance = sharedProvenance;
                 sourceSets = Collections.emptySet();
             } else {
@@ -363,7 +361,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             ResourceParser rp = new ResourceParser(extension.getExclusions(), extension.getSizeThresholdMb());
 
             List<SourceFile> sourceFiles = new ArrayList<>();
-            if(extension.isEnableExperimentalGradleBuildScriptParsing()) {
+            if (extension.isEnableExperimentalGradleBuildScriptParsing()) {
                 logger.warn("Rewrite of Gradle files is an incubating feature which has been disabled in this release because it needs a bit more time to bake.");
 //                File buildScriptFile = subproject.getBuildFile();
 //                try {
@@ -380,7 +378,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 //                }
             }
 
-            for(SourceSet sourceSet : sourceSets) {
+            for (SourceSet sourceSet : sourceSets) {
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
                         .map(File::toPath)
@@ -404,7 +402,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .collect(toList());
 
                 JavaSourceSet sourceSetProvenance = null;
-                if(javaPaths.size() > 0) {
+                if (javaPaths.size() > 0) {
                     JavaParser jp = JavaParser.fromJavaVersion()
                             .styles(styles)
                             .classpath(dependencyPaths)
@@ -416,8 +414,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
-                    if(resourcesDir.exists()) {
-                        if(sourceSetProvenance == null) {
+                    if (resourcesDir.exists()) {
+                        if (sourceSetProvenance == null) {
                             // Just in case there are no java source files, but there _are_ resource files
                             // Skip providing a classpath because it's time-consuming and non-Java sources have no concept of java type information
                             sourceSetProvenance = new JavaSourceSet(randomId(), sourceSet.getName(), emptyList());
@@ -437,7 +435,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private List<NamedStyles> getStyles() {
-        if(styles == null) {
+        if (styles == null) {
             styles = environment().activateStyles(getActiveStyles());
             File checkstyleConfig = extension.getCheckstyleConfigFile();
             if (checkstyleConfig != null && checkstyleConfig.exists()) {
@@ -452,7 +450,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @SuppressWarnings("unused")
-    public ResultsContainer listResults(boolean useAstCache) {
+    public ResultsContainer listResults(boolean useAstCache, ExecutionContext ctx) {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
 
@@ -472,18 +470,18 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
 
         List<SourceFile> sourceFiles;
-        if(useAstCache && astCache.containsKey(rootProject.getProjectDir().toPath().toString())) {
+        if (useAstCache && astCache.containsKey(rootProject.getProjectDir().toPath().toString())) {
             logger.lifecycle("Using cached in-memory ASTs");
             //noinspection unchecked
             sourceFiles = (List<SourceFile>) astCache.get(rootProject.getProjectDir().toPath().toString());
         } else {
-            sourceFiles = parse();
-            if(useAstCache) {
+            sourceFiles = parse(ctx);
+            if (useAstCache) {
                 astCache.put(rootProject.getProjectDir().toPath().toString(), sourceFiles);
             }
         }
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
-        List<Result> results = recipe.run(sourceFiles);
+        List<Result> results = recipe.run(sourceFiles, ctx);
         return new ResultsContainer(baseDir, results);
     }
 
@@ -500,10 +498,10 @@ public class DefaultProjectParser implements GradleProjectParser {
     private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {
         return s -> {
             Markers m = s.getMarkers();
-            for(Marker marker : projectProvenance) {
+            for (Marker marker : projectProvenance) {
                 m = m.add(marker);
             }
-            if(sourceSet != null) {
+            if (sourceSet != null) {
                 m = m.add(sourceSet);
             }
             return s.withMarkers(m);

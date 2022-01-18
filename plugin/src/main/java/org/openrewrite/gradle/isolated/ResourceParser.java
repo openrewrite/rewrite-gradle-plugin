@@ -36,6 +36,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
 
 public class ResourceParser {
     private static final Logger logger = Logging.getLogger(ResourceParser.class);
@@ -69,33 +72,32 @@ public class ResourceParser {
     }
 
     public List<Path> listSources(Parser<?> parser, Path baseDir, Path searchDir) {
-        try {
-            return Files.find(searchDir, 16, (path, attrs) -> {
-                        if (!parser.accept(path)) {
-                            return false;
-                        }
+        try (Stream<Path> paths = Files.find(searchDir, 16, (path, attrs) -> {
+            if (!parser.accept(path)) {
+                return false;
+            }
 
-                        String pathStr = path.toString();
-                        if (pathStr.contains("/target/") || pathStr.contains("/build/") || pathStr.contains("/out/") ||
-                                pathStr.contains("/.gradle/") || pathStr.contains("/node_modules/") || pathStr.contains("/.metadata/")) {
-                            return false;
-                        }
+            String pathStr = path.toString();
+            if (pathStr.contains("/target/") || pathStr.contains("/build/") || pathStr.contains("/out/") ||
+                    pathStr.contains("/.gradle/") || pathStr.contains("/node_modules/") || pathStr.contains("/.metadata/")) {
+                return false;
+            }
 
-                        long fileSize = attrs.size();
-                        if (attrs.isDirectory() || fileSize == 0) {
-                            return false;
-                        }
+            long fileSize = attrs.size();
+            if (attrs.isDirectory() || fileSize == 0) {
+                return false;
+            }
 
-                        for (String exclusion : exclusions) {
-                            PathMatcher matcher = baseDir.getFileSystem().getPathMatcher("glob:" + exclusion);
-                            if (matcher.matches(baseDir.relativize(path))) {
-                                return false;
-                            }
-                        }
+            for (String exclusion : exclusions) {
+                PathMatcher matcher = baseDir.getFileSystem().getPathMatcher("glob:" + exclusion);
+                if (matcher.matches(baseDir.relativize(path))) {
+                    return false;
+                }
+            }
 
-                        return sizeThresholdMb <= 0 || fileSize <= sizeThresholdMb * 1024L * 1024L;
-                    })
-                    .collect(Collectors.toList());
+            return sizeThresholdMb <= 0 || fileSize <= sizeThresholdMb * 1024L * 1024L;
+        })) {
+            return paths.collect(toList());
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -108,46 +110,45 @@ public class ResourceParser {
             Collection<Path> alreadyParsed,
             ExecutionContext ctx) {
 
-        try {
-            List<Path> resourceFiles = Files.find(searchDir, 16, (path, attrs) -> {
-                if (!parser.accept(path)) {
-                    return false;
-                }
+        try (Stream<Path> paths = Files.find(searchDir, 16, (path, attrs) -> {
+            if (!parser.accept(path)) {
+                return false;
+            }
 
-                String pathStr = path.toString();
-                if (pathStr.contains("/target/") || pathStr.contains("/build/") || pathStr.contains("/out/") ||
-                        pathStr.contains("/.gradle/") || pathStr.contains("/node_modules/") || pathStr.contains("/.metadata/")) {
-                    return false;
-                }
+            String pathStr = path.toString();
+            if (pathStr.contains("/target/") || pathStr.contains("/build/") || pathStr.contains("/out/") ||
+                    pathStr.contains("/.gradle/") || pathStr.contains("/node_modules/") || pathStr.contains("/.metadata/")) {
+                return false;
+            }
 
-                long fileSize = attrs.size();
-                if (attrs.isDirectory() || fileSize == 0) {
-                    return false;
-                }
+            long fileSize = attrs.size();
+            if (attrs.isDirectory() || fileSize == 0) {
+                return false;
+            }
 
-                if (alreadyParsed.contains(path)) {
-                    return false;
-                }
+            if (alreadyParsed.contains(path)) {
+                return false;
+            }
 
-                for (String exclusion : exclusions) {
-                    PathMatcher matcher = baseDir.getFileSystem().getPathMatcher("glob:" + exclusion);
-                    if (matcher.matches(baseDir.relativize(path))) {
-                        alreadyParsed.add(path);
-                        return false;
-                    }
-                }
-
-                if ((sizeThresholdMb > 0 && fileSize > sizeThresholdMb * 1024L * 1024L)) {
+            for (String exclusion : exclusions) {
+                PathMatcher matcher = baseDir.getFileSystem().getPathMatcher("glob:" + exclusion);
+                if (matcher.matches(baseDir.relativize(path))) {
                     alreadyParsed.add(path);
-                    logger.lifecycle("Skipping parsing " + path + " as its size + " + fileSize / (1024L * 1024L) +
-                            "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
                     return false;
                 }
+            }
 
-                return true;
-            }).collect(Collectors.toList());
+            if ((sizeThresholdMb > 0 && fileSize > sizeThresholdMb * 1024L * 1024L)) {
+                alreadyParsed.add(path);
+                logger.lifecycle("Skipping parsing " + path + " as its size + " + fileSize / (1024L * 1024L) +
+                        "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
+                return false;
+            }
+
+            return true;
+        })) {
+            List<Path> resourceFiles = paths.collect(toList());
             alreadyParsed.addAll(resourceFiles);
-
             return parser.parse(resourceFiles, baseDir, ctx);
         } catch (IOException e) {
             logger.error(e.getMessage(), e);

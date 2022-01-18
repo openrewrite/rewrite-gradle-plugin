@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 public interface GradleProjectParser {
     SortedSet<String> getActiveRecipes();
@@ -36,9 +37,9 @@ public interface GradleProjectParser {
 
     Collection<Path> listSources(Project project);
 
-    void run(boolean useAstCache);
+    void run(boolean useAstCache, Consumer<Throwable> onError);
 
-    void dryRun(Path reportPath, boolean useAstCache);
+    void dryRun(Path reportPath, boolean useAstCache, Consumer<Throwable> onError);
 
     void clearAstCache();
 
