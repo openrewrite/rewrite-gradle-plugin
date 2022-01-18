@@ -31,7 +31,6 @@ import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaParser;
-import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.java.marker.JavaProject;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
@@ -55,6 +54,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.openrewrite.Tree.randomId;
@@ -67,7 +67,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     private final RewriteExtension extension;
     private final Project rootProject;
     private final List<Marker> sharedProvenance;
-    private static final Map<Path, List<SourceFile>> astCache = new HashMap<>();
+    private static final Map<String, List<SourceFile>> astCache = new HashMap<>();
 
     private List<NamedStyles> styles = null;
     private Environment environment = null;
@@ -413,12 +413,14 @@ public class DefaultProjectParser implements GradleProjectParser {
                     sourceFiles.addAll(map(jp.parse(javaPaths, baseDir, ctx), addProvenance(projectProvenance, null)));
                     sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
                 }
+
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
-                    if(sourceSetProvenance == null) {
-                        // Just in case there are no java source files, but there _are_ resource files
-                        sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, new JavaTypeCache(), ctx);
-                    }
                     if(resourcesDir.exists()) {
+                        if(sourceSetProvenance == null) {
+                            // Just in case there are no java source files, but there _are_ resource files
+                            // Skip providing a classpath because it's time-consuming and non-Java sources have no concept of java type information
+                            sourceSetProvenance = new JavaSourceSet(randomId(), sourceSet.getName(), emptyList());
+                        }
                         sourceFiles.addAll(map(rp.parse(baseDir, resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, sourceSetProvenance)));
                     }
                 }
@@ -469,13 +471,13 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
 
         List<SourceFile> sourceFiles;
-        if(useAstCache && astCache.containsKey(rootProject.getProjectDir().toPath())) {
+        if(useAstCache && astCache.containsKey(rootProject.getProjectDir().toPath().toString())) {
             logger.lifecycle("Using cached in-memory ASTs");
-            sourceFiles = astCache.get(rootProject.getProjectDir().toPath());
+            sourceFiles = astCache.get(rootProject.getProjectDir().toPath().toString());
         } else {
             sourceFiles = parse();
             if(useAstCache) {
-                astCache.put(rootProject.getProjectDir().toPath(), sourceFiles);
+                astCache.put(rootProject.getProjectDir().toPath().toString(), sourceFiles);
             }
         }
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
