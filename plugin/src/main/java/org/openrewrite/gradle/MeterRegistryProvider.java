@@ -60,7 +60,7 @@ public class MeterRegistryProvider implements AutoCloseable {
     private MeterRegistry buildRegistry() {
         if (uriString == null) {
             return new CompositeMeterRegistry();
-        } else if (uriString.equals("LOG")) {
+        } else if ("LOG".equals(uriString)) {
             return new GradleLoggingMeterRegistry(log);
         } else {
             try {

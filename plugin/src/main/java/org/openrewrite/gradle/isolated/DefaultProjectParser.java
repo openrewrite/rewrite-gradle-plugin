@@ -71,8 +71,8 @@ public class DefaultProjectParser implements GradleProjectParser {
     private final List<Marker> sharedProvenance;
     private final Map<String, Object> astCache;
 
-    private List<NamedStyles> styles = null;
-    private Environment environment = null;
+    private List<NamedStyles> styles;
+    private Environment environment;
 
     public DefaultProjectParser(Project rootProject, RewriteExtension extension, Map<String, Object> astCache) {
         this.baseDir = rootProject.getRootDir().toPath();
@@ -323,7 +323,6 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     public List<SourceFile> parse(ExecutionContext ctx) {
-        Environment env = environment();
         List<SourceFile> sourceFiles = new ArrayList<>();
         Set<Path> alreadyParsed = new HashSet<>();
         for (Project subProject : rootProject.getSubprojects()) {

@@ -38,7 +38,7 @@ public class RewritePlugin implements Plugin<Project> {
     @Override
     public void apply(Project rootProject) {
         // Only apply to the root project
-        if(!rootProject.getPath().equals(":")) {
+        if(!":".equals(rootProject.getPath())) {
             return;
         }
         DefaultRewriteExtension maybeExtension = rootProject.getExtensions().findByType(DefaultRewriteExtension.class);

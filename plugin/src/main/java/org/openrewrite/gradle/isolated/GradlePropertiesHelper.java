@@ -66,4 +66,7 @@ public class GradlePropertiesHelper {
             LOGGER.error("Error checking JVM protected module exports", e);
         }
     }
+
+    private GradlePropertiesHelper() {
+    }
 }
