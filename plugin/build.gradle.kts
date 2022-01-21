@@ -51,15 +51,6 @@ configurations.all {
     resolutionStrategy {
         cacheChangingModulesFor(0, TimeUnit.SECONDS)
         cacheDynamicVersionsFor(0, TimeUnit.SECONDS)
-        if(isTestConfiguration) {
-            eachDependency {
-                if (requested.group == "org.codehaus.groovy" && requested.version == "3.0.9") {
-                    useVersion("3.0.8")
-                    because("spock-bom:2.0-groovy-3.0 requires 3.0.8, rewrite-groovy pulls in 3.0.9. " +
-                        "Using groovy to run this project's tests is a headache and we should migrate them to Java.")
-                }
-            }
-        }
     }
 }
 
