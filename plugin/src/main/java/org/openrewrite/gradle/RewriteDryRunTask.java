@@ -18,10 +18,8 @@ package org.openrewrite.gradle;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.specs.Specs;
-import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.api.tasks.options.Option;
 
 import javax.inject.Inject;
 import java.nio.file.Path;
@@ -33,7 +31,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
     // This @Internal is a lie, the correct annotation here would be @OutputFile
     // On Gradle 4.0 annotating this with @OutputFile triggers a bug that deadlocks Gradle and the task can never begin executing
     @Internal
-    Path getReportPath() {
+    public Path getReportPath() {
         return getProject().getBuildDir().toPath().resolve("reports").resolve("rewrite").resolve("rewrite.patch");
     }
 

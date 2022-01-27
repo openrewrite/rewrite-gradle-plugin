@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-class ResultsContainer {
+public class ResultsContainer {
     final Path projectRoot;
     final List<Result> generated = new ArrayList<>();
     final List<Result> deleted = new ArrayList<>();

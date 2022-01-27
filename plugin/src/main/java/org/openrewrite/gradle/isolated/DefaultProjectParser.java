@@ -65,9 +65,9 @@ import static org.openrewrite.internal.ListUtils.map;
 @SuppressWarnings("unused")
 public class DefaultProjectParser implements GradleProjectParser {
     private final Logger logger = Logging.getLogger(DefaultProjectParser.class);
-    private final Path baseDir;
-    private final RewriteExtension extension;
-    private final Project rootProject;
+    protected final Path baseDir;
+    protected final RewriteExtension extension;
+    protected final Project rootProject;
     private final List<Marker> sharedProvenance;
     private final Map<String, Object> astCache;
 
@@ -141,9 +141,11 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     @Override
     public void dryRun(Path reportPath, boolean useAstCache, Consumer<Throwable> onError) {
-        try {
-            ResultsContainer results = listResults(useAstCache, new InMemoryExecutionContext(onError));
+        dryRun(reportPath, listResults(useAstCache, new InMemoryExecutionContext(onError)));
+    }
 
+    public void dryRun(Path reportPath, ResultsContainer results) {
+        try {
             if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
@@ -202,9 +204,11 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     @Override
     public void run(boolean useAstCache, Consumer<Throwable> onError) {
-        try {
-            ResultsContainer results = listResults(useAstCache, new InMemoryExecutionContext(onError));
+        run(listResults(useAstCache, new InMemoryExecutionContext(onError)));
+    }
 
+    public void run(ResultsContainer results) {
+        try {
             if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
@@ -290,7 +294,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
-    private Environment environment() {
+    protected Environment environment() {
         if (environment == null) {
             Map<Object, Object> gradleProps = rootProject.getProperties().entrySet().stream()
                     .filter(entry -> entry.getKey() != null && entry.getValue() != null)

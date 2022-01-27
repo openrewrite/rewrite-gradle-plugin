@@ -33,7 +33,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
     private final List<String> activeRecipes = new ArrayList<>();
     private final List<String> activeStyles = new ArrayList<>();
     private boolean configFileSetDeliberately;
-    private final Project project;
+    protected final Project project;
     private File configFile;
     Provider<File> checkstyleConfigProvider;
     Provider<Map<String,Object>> checkstylePropertiesProvider;
