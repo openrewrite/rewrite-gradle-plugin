@@ -132,10 +132,10 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
 
     private String scrapeFromEachProject(Project rootProject) {
         throw new RuntimeException("Not implemented. Put this back in once metrics have been wired back in to RewritePlugin");
-//        return rootProject.getAllprojects().stream()
-//                .flatMap(p -> p.getPlugins().withType(RewritePlugin.class).stream()
-//                        .map(plugin -> plugin.getMeterRegistry().scrape()))
-//                .collect(Collectors.joining(""));
+        //        return rootProject.getAllprojects().stream()
+        //                .flatMap(p -> p.getPlugins().withType(RewritePlugin.class).stream()
+        //                        .map(plugin -> plugin.getMeterRegistry().scrape()))
+        //                .collect(Collectors.joining(""));
     }
 
     private ClientTransport websocketClientTransport(TcpClient tcpClient) {

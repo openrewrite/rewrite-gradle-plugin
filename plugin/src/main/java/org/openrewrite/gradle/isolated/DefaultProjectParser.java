@@ -81,7 +81,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         this.astCache = astCache;
 
         sharedProvenance = Stream.of(gitProvenance(baseDir),
-                        new BuildTool(randomId(), BuildTool.Type.Gradle, rootProject.getGradle().getGradleVersion()))
+                new BuildTool(randomId(), BuildTool.Type.Gradle, rootProject.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
@@ -171,9 +171,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 reportPath.getParent().toFile().mkdirs();
                 try (BufferedWriter writer = Files.newBufferedWriter(reportPath)) {
                     Stream.concat(
-                                    Stream.concat(results.generated.stream(), results.deleted.stream()),
-                                    Stream.concat(results.moved.stream(), results.refactoredInPlace.stream())
-                            )
+                            Stream.concat(results.generated.stream(), results.deleted.stream()),
+                            Stream.concat(results.moved.stream(), results.refactoredInPlace.stream())
+                    )
                             .map(Result::diff)
                             .forEach(diff -> {
                                 try {
@@ -363,19 +363,19 @@ public class DefaultProjectParser implements GradleProjectParser {
             List<SourceFile> sourceFiles = new ArrayList<>();
             if (extension.isEnableExperimentalGradleBuildScriptParsing()) {
                 logger.warn("Rewrite of Gradle files is an incubating feature which has been disabled in this release because it needs a bit more time to bake.");
-//                File buildScriptFile = subproject.getBuildFile();
-//                try {
-//                    if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists()) {
-//                        GradleParser gradleParser = new GradleParser(
-//                                GroovyParser.builder()
-//                                        .styles(styles)
-//                                        .logCompilationWarningsAndErrors(true));
-//
-//                        sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
-//                    }
-//                } catch (Exception e) {
-//                    logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath()  + "\" : ", e);
-//                }
+                //                File buildScriptFile = subproject.getBuildFile();
+                //                try {
+                //                    if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists()) {
+                //                        GradleParser gradleParser = new GradleParser(
+                //                                GroovyParser.builder()
+                //                                        .styles(styles)
+                //                                        .logCompilationWarningsAndErrors(true));
+                //
+                //                        sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
+                //                    }
+                //                } catch (Exception e) {
+                //                    logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath()  + "\" : ", e);
+                //                }
             }
 
             for (SourceSet sourceSet : sourceSets) {

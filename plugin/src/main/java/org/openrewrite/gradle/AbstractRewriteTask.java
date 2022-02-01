@@ -54,8 +54,8 @@ public abstract class AbstractRewriteTask extends DefaultTask {
 
     @Internal
     protected GradleProjectParser getProjectParser() {
-        if(gpp == null) {
-            if(extension == null) {
+        if (gpp == null) {
+            if (extension == null) {
                 throw new IllegalArgumentException("Must configure extension");
             }
             if (resolveDependenciesTask == null) {

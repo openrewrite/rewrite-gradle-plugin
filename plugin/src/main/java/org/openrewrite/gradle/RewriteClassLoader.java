@@ -30,13 +30,13 @@ import java.util.List;
 public class RewriteClassLoader extends URLClassLoader {
 
     private static final List<String> loadFromParent = Arrays.asList(
-        "org.openrewrite.config.OptionDescriptor",
-        "org.openrewrite.config.RecipeDescriptor",
-        "org.openrewrite.gradle.DefaultRewriteExtension",
-        "org.openrewrite.gradle.RewriteExtension",
-        "io.moderne.gradle.ModerneExtension",
-        "org.slf4j",
-        "org.gradle"
+            "org.openrewrite.config.OptionDescriptor",
+            "org.openrewrite.config.RecipeDescriptor",
+            "org.openrewrite.gradle.DefaultRewriteExtension",
+            "org.openrewrite.gradle.RewriteExtension",
+            "io.moderne.gradle.ModerneExtension",
+            "org.slf4j",
+            "org.gradle"
     );
 
     public RewriteClassLoader(Collection<URL> artifacts) {

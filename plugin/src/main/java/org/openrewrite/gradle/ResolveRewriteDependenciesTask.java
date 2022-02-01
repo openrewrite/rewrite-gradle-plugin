@@ -40,12 +40,12 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
 
     @Internal
     public Set<File> getResolvedDependencies() {
-        if(resolvedDependencies == null) {
+        if (resolvedDependencies == null) {
             RewriteExtension extension = getProject().getRootProject().getExtensions().getByType(DefaultRewriteExtension.class);
             String rewriteVersion = extension.getRewriteVersion();
             Project project = getProject();
             DependencyHandler deps = project.getDependencies();
-            Dependency[] dependencies = new Dependency[] {
+            Dependency[] dependencies = new Dependency[]{
                     deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
@@ -61,7 +61,7 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
                     // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
                     deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion())
             };
-            if(configuration != null) {
+            if (configuration != null) {
                 dependencies = Stream.concat(
                         Arrays.stream(dependencies),
                         configuration.getDependencies().stream()
