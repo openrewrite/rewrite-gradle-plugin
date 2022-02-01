@@ -340,7 +340,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     public List<SourceFile> parse(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
         try {
             // Disable classpath type scanning until we can do it more efficiently
-            ctx.putMessage(JavaParser.SKIP_SOURCE_SET_MARKER, true);
+            ctx.putMessage(JavaParser.SKIP_SOURCE_SET_TYPE_GENERATION, true);
 
             logger.lifecycle("Parsing sources from project {}", subproject.getName());
             List<NamedStyles> styles = getStyles();
