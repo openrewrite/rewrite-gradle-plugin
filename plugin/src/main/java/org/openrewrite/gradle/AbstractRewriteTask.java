@@ -31,15 +31,17 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     protected GradleProjectParser gpp;
     protected RewriteExtension extension;
 
-    public AbstractRewriteTask setExtension(RewriteExtension extension) {
+    public <T extends AbstractRewriteTask> T setExtension(RewriteExtension extension) {
         this.extension = extension;
-        return this;
+        //noinspection unchecked
+        return (T) this;
     }
 
-    public AbstractRewriteTask setResolveDependenciesTask(ResolveRewriteDependenciesTask resolveDependenciesTask) {
+    public <T extends AbstractRewriteTask> T setResolveDependenciesTask(ResolveRewriteDependenciesTask resolveDependenciesTask) {
         this.resolveDependenciesTask = resolveDependenciesTask;
         this.dependsOn(resolveDependenciesTask);
-        return this;
+        //noinspection unchecked
+        return (T) this;
     }
 
     @Option(description = "Cache the AST results in-memory when using the Gradle daemon.", option = "useAstCache")
