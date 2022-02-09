@@ -55,7 +55,7 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     }
 
     @Internal
-    protected GradleProjectParser getProjectParser() {
+    protected <T extends GradleProjectParser> T getProjectParser() {
         if(gpp == null) {
             if(extension == null) {
                 throw new IllegalArgumentException("Must configure extension");
@@ -68,7 +68,8 @@ public abstract class AbstractRewriteTask extends DefaultTask {
                     .collect(Collectors.toSet());
             gpp = new DelegatingProjectParser(getProject().getRootProject(), extension, classpath);
         }
-        return gpp;
+        //noinspection unchecked
+        return (T) gpp;
     }
 
     @Input
