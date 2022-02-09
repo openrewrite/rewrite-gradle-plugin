@@ -106,7 +106,10 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-properties:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
-    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:$checkstyleVersion")
+    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:$checkstyleVersion") {
+        isTransitive = false
+    }
+
     implementation("org.openrewrite:rewrite-core:$rewriteVersion")
     implementation("org.openrewrite:rewrite-hcl:$rewriteVersion")
     implementation("org.openrewrite:rewrite-java:$rewriteVersion")
@@ -118,7 +121,9 @@ dependencies {
     implementation("org.openrewrite:rewrite-properties:$rewriteVersion")
     implementation("org.openrewrite:rewrite-groovy:$rewriteVersion")
     implementation("org.openrewrite:rewrite-gradle:$rewriteVersion")
-    implementation("com.puppycrawl.tools:checkstyle:$checkstyleVersion")
+    implementation("com.puppycrawl.tools:checkstyle:$checkstyleVersion") {
+        isTransitive = false
+    }
 
     testImplementation(gradleTestKit())
     testImplementation(localGroovy())

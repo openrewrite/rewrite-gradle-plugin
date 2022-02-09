@@ -53,6 +53,7 @@ public class RewritePlugin implements Plugin<Project> {
         // We use this method of task creation because it works on old versions of Gradle
         // Don't replace with TaskContainer.register() (introduced in 4.9), or another overload of create() (introduced in 4.7)
         ResolveRewriteDependenciesTask resolveRewriteDependenciesTask = rootProject.getTasks().create("rewriteResolveDependencies", ResolveRewriteDependenciesTask.class)
+                .setExtension(extension)
                 .setConfiguration(rewriteConf);
 
         Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class)

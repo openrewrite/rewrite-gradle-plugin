@@ -31,17 +31,21 @@ import java.util.stream.Stream;
 public class ResolveRewriteDependenciesTask extends DefaultTask {
     private Set<File> resolvedDependencies;
     private Configuration configuration;
-
+    protected RewriteExtension extension;
 
     public ResolveRewriteDependenciesTask setConfiguration(Configuration configuration) {
         this.configuration = configuration;
         return this;
     }
 
+    public ResolveRewriteDependenciesTask setExtension(RewriteExtension extension) {
+        this.extension = extension;
+        return this;
+    }
+
     @Internal
     public Set<File> getResolvedDependencies() {
         if(resolvedDependencies == null) {
-            RewriteExtension extension = getProject().getRootProject().getExtensions().getByType(DefaultRewriteExtension.class);
             String rewriteVersion = extension.getRewriteVersion();
             Project project = getProject();
             DependencyHandler deps = project.getDependencies();
