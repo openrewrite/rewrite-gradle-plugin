@@ -20,22 +20,21 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.JavaPluginConvention;
-import org.gradle.api.tasks.Exec;
 import org.gradle.api.tasks.SourceSet;
 import org.openrewrite.*;
 import org.openrewrite.config.Environment;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
-
 import org.openrewrite.gradle.DefaultRewriteExtension;
 import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
+import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.marker.JavaProject;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
-import org.openrewrite.java.style.CheckstyleConfigLoader;
+import org.openrewrite.java.style.*;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.marker.BuildTool;
 import org.openrewrite.marker.GitProvenance;
@@ -415,7 +414,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
                     jp.setSourceSet(sourceSet.getName());
-                    sourceFiles.addAll(map(jp.parse(javaPaths, baseDir, ctx), addProvenance(projectProvenance, null)));
+                    List<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx);
+                    sourceFiles.addAll(map(maybeAutodetectStyles(cus, styles), addProvenance(projectProvenance, null)));
                     sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
                 }
 
@@ -499,6 +499,31 @@ public class DefaultProjectParser implements GradleProjectParser {
     public void shutdownRewrite() {
         J.clearCaches();
         Git.shutdown();
+    }
+
+    private List<J.CompilationUnit> maybeAutodetectStyles(List<J.CompilationUnit> sourceFiles, @Nullable Collection<NamedStyles> styles) {
+        if (styles != null) {
+            return sourceFiles;
+        }
+
+        Autodetect autodetect = Autodetect.detect(sourceFiles);
+
+        Collection<NamedStyles> namedStyles;
+        namedStyles = Collections.singletonList(autodetect);
+
+        ImportLayoutStyle importLayout = NamedStyles.merge(ImportLayoutStyle.class, namedStyles);
+        logger.debug("Auto-detected import layout:\n{}", importLayout);
+
+        SpacesStyle spacesStyle = NamedStyles.merge(SpacesStyle.class, namedStyles);
+        logger.debug("Auto-detected spaces style:\n{}", spacesStyle);
+
+        TabsAndIndentsStyle tabsStyle = NamedStyles.merge(TabsAndIndentsStyle.class, namedStyles);
+        logger.debug("Auto-detected tabs and indents:\n{}", tabsStyle);
+
+        return map(sourceFiles, cu -> {
+            List<Marker> markers = ListUtils.concat(map(cu.getMarkers().getMarkers(), m -> m instanceof NamedStyles ? null : m), autodetect);
+            return cu.withMarkers(cu.getMarkers().withMarkers(markers));
+        });
     }
 
     private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {
