@@ -25,6 +25,8 @@ import org.gradle.api.tasks.TaskAction;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -45,11 +47,11 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
 
     @Internal
     public Set<File> getResolvedDependencies() {
-        if(resolvedDependencies == null) {
+        if (resolvedDependencies == null) {
             String rewriteVersion = extension.getRewriteVersion();
             Project project = getProject();
             DependencyHandler deps = project.getDependencies();
-            Dependency[] dependencies = new Dependency[] {
+            Dependency[] dependencies = new Dependency[]{
                     deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
@@ -65,7 +67,7 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
                     // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
                     deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion())
             };
-            if(configuration != null) {
+            if (configuration != null) {
                 dependencies = Stream.concat(
                         Arrays.stream(dependencies),
                         configuration.getDependencies().stream()
@@ -73,6 +75,14 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
             }
 
             Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
+            // Recent versions of Gradle throw up variant selection errors relating to the Caffeine library
+            // Caffeine can be brought in by rewrite-spring's dependency on rewrite-maven
+            // But this is a Gradle plugin, so we won't be parsing or refactoring Maven poms in this context
+            // Temporarily work around this issue by excluding caffeine
+            Map<String, String> exclusion = new HashMap<>();
+            exclusion.put("group", "com.github.ben-manes.caffeine");
+            exclusion.put("module", "caffeine");
+            detachedConf.exclude(exclusion);
             resolvedDependencies = detachedConf.resolve();
         }
         return resolvedDependencies;
