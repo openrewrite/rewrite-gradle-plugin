@@ -165,14 +165,17 @@ public class DefaultProjectParser implements GradleProjectParser {
                             throw new UncheckedIOException(e);
                         }
                     });
+                    dryRun(reportPath, listResults(useAstCache, ctx));
                     logWriter.flush();
+                    logger.lifecycle("Wrote rewrite GC log: {}", rewriteGcLog.getAbsolutePath());
                 } catch (IOException e) {
                     logger.error("Unable to write rewrite GC log", e);
                     throw new UncheckedIOException(e);
                 }
             }
+        } else {
+            dryRun(reportPath, listResults(useAstCache, ctx));
         }
-        dryRun(reportPath, listResults(useAstCache, ctx));
     }
 
     public void dryRun(Path reportPath, ResultsContainer results) {
