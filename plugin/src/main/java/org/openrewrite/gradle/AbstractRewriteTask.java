@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 public abstract class AbstractRewriteTask extends DefaultTask {
     protected ResolveRewriteDependenciesTask resolveDependenciesTask;
+    protected boolean dumpGcActivity;
     protected boolean useAstCache;
     protected GradleProjectParser gpp;
     protected RewriteExtension extension;
@@ -52,6 +53,16 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     @Input
     public boolean isUseAstCache() {
         return useAstCache;
+    }
+
+    @Option(description = "Dump GC activity related to parsing.", option = "dumpGcActivity")
+    public void setDumpGcActivity(boolean dumpGcActivity) {
+        this.dumpGcActivity = dumpGcActivity;
+    }
+
+    @Input
+    public boolean isDumpGcActivity() {
+        return dumpGcActivity;
     }
 
     @Internal

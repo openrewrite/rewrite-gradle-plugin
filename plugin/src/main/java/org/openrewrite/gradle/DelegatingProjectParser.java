@@ -115,8 +115,8 @@ public class DelegatingProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void dryRun(Path reportPath, boolean useAstCache, Consumer<Throwable> onError) {
-        unwrapInvocationException(() -> gppClass.getMethod("dryRun", Path.class, boolean.class, Consumer.class).invoke(gpp, reportPath, useAstCache, onError));
+    public void dryRun(Path reportPath, boolean dumpGcActivity, boolean useAstCache, Consumer<Throwable> onError) {
+        unwrapInvocationException(() -> gppClass.getMethod("dryRun", Path.class, boolean.class, boolean.class, Consumer.class).invoke(gpp, reportPath, dumpGcActivity, useAstCache, onError));
     }
 
     @Override
