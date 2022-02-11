@@ -36,70 +36,71 @@ public class RewritePlugin implements Plugin<Project> {
      */
 
     @Override
-    public void apply(Project rootProject) {
-        // Only apply to the root project
-        if(!":".equals(rootProject.getPath())) {
+    public void apply(Project project) {
+        boolean isRootProject = project == project.getRootProject();
+        if (!isRootProject && project.getRootProject().getPluginManager().hasPlugin("org.openrewrite.rewrite")) {
             return;
         }
-        DefaultRewriteExtension maybeExtension = rootProject.getExtensions().findByType(DefaultRewriteExtension.class);
-        if (maybeExtension == null) {
-            maybeExtension = rootProject.getExtensions().create("rewrite", DefaultRewriteExtension.class, rootProject);
-        }
-        final DefaultRewriteExtension extension = maybeExtension;
+        DefaultRewriteExtension extension = project.getExtensions().create("rewrite", DefaultRewriteExtension.class, project);
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
-        Configuration rewriteConf = rootProject.getConfigurations().maybeCreate("rewrite");
+        Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
 
         // We use this method of task creation because it works on old versions of Gradle
         // Don't replace with TaskContainer.register() (introduced in 4.9), or another overload of create() (introduced in 4.7)
-        ResolveRewriteDependenciesTask resolveRewriteDependenciesTask = rootProject.getTasks().create("rewriteResolveDependencies", ResolveRewriteDependenciesTask.class)
+        ResolveRewriteDependenciesTask resolveRewriteDependenciesTask = project.getTasks().create("rewriteResolveDependencies", ResolveRewriteDependenciesTask.class)
                 .setExtension(extension)
                 .setConfiguration(rewriteConf);
 
-        Task rewriteRun = rootProject.getTasks().create("rewriteRun", RewriteRunTask.class)
+        RewriteRunTask rewriteRun = project.getTasks().create("rewriteRun", RewriteRunTask.class)
                 .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
-        Task rewriteDryRun = rootProject.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
+        RewriteDryRunTask rewriteDryRun = project.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
                 .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
-        rootProject.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
+        project.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
                 .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
-        rootProject.getTasks().create("rewriteClearCache", RewriteClearCacheTask.class)
+        project.getTasks().create("rewriteClearCache", RewriteClearCacheTask.class)
                 .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
-        rootProject.allprojects(project -> {
+        if(isRootProject) {
+            project.allprojects(subproject -> configureProject(subproject, extension, rewriteDryRun, rewriteRun));
+        } else {
+            configureProject(project, extension, rewriteDryRun, rewriteRun);
+        }
+    }
 
-            // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
-            // Do not replace all() with any form of collection iteration which does not share this important property
-            project.getPlugins().all(plugin -> {
-                if(plugin instanceof CheckstylePlugin) {
-                    // A multi-project build could hypothetically have different checkstyle configuration per-project
-                    // In practice all projects tend to have the same configuration
-                    CheckstyleExtension checkstyleExtension = project.getExtensions().getByType(CheckstyleExtension.class);
-                    extension.checkstyleConfigProvider = checkstyleExtension::getConfigFile;
-                    extension.checkstylePropertiesProvider = checkstyleExtension::getConfigProperties;
-                }
-                if(!(plugin instanceof JavaBasePlugin)) {
-                    return;
-                }
+    private static void configureProject(Project project, DefaultRewriteExtension extension, RewriteDryRunTask rewriteDryRun, RewriteRunTask rewriteRun) {
+        // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
+        // Do not replace all() with any form of collection iteration which does not share this important property
+        project.getPlugins().all(plugin -> {
+            if(plugin instanceof CheckstylePlugin) {
+                // A multi-project build could hypothetically have different checkstyle configuration per-project
+                // In practice all projects tend to have the same configuration
+                CheckstyleExtension checkstyleExtension = project.getExtensions().getByType(CheckstyleExtension.class);
+                extension.checkstyleConfigProvider = checkstyleExtension::getConfigFile;
+                extension.checkstylePropertiesProvider = checkstyleExtension::getConfigProperties;
+            }
+            if(!(plugin instanceof JavaBasePlugin)) {
+                return;
+            }
 
-                //Collect Java metadata for each project (used for Java Provenance)
-                //Using the older javaConvention because we need to support older versions of gradle.
-                @SuppressWarnings("deprecation")
-                JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+            //Collect Java metadata for each project (used for Java Provenance)
+            //Using the older javaConvention because we need to support older versions of gradle.
+            @SuppressWarnings("deprecation")
+            JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
 
-                javaConvention.getSourceSets().all(sourceSet -> {
-                    // This is intended to ensure that any Groovy/Kotlin/etc. sources are available for type attribution during parsing
-                    // This may not be necessary if sourceSet.getCompileClasspath() guarantees that such sources will have been compiled
-                    Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());
-                    rewriteRun.dependsOn(compileTask);
-                    rewriteDryRun.dependsOn(compileTask);
-                });
+            javaConvention.getSourceSets().all(sourceSet -> {
+                // This is intended to ensure that any Groovy/Kotlin/etc. sources are available for type attribution during parsing
+                // This may not be necessary if sourceSet.getCompileClasspath() guarantees that such sources will have been compiled
+                Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());
+                rewriteRun.dependsOn(compileTask);
+                rewriteDryRun.dependsOn(compileTask);
             });
         });
     }
