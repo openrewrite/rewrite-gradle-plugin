@@ -15,6 +15,10 @@
  */
 package org.openrewrite.gradle.isolated;
 
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.logging.Logger;
@@ -42,11 +46,9 @@ import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.shaded.jgit.api.Git;
 import org.openrewrite.style.NamedStyles;
+import org.openrewrite.tree.ParsingExecutionContextView;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -139,8 +141,38 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void dryRun(Path reportPath, boolean useAstCache, Consumer<Throwable> onError) {
-        dryRun(reportPath, listResults(useAstCache, new InMemoryExecutionContext(onError)));
+    public void dryRun(Path reportPath, boolean dumpGcActivity, boolean useAstCache, Consumer<Throwable> onError) {
+        ParsingExecutionContextView ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(onError));
+        if (dumpGcActivity) {
+            SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+            new JvmHeapPressureMetrics().bindTo(meterRegistry);
+            new JvmMemoryMetrics().bindTo(meterRegistry);
+
+            File rewriteBuildDir = new File(rootProject.getBuildDir(), "/rewrite");
+            if (rewriteBuildDir.exists() || rewriteBuildDir.mkdirs()) {
+                File rewriteGcLog = new File(rewriteBuildDir, "rewrite-gc.csv");
+                try (FileOutputStream fos = new FileOutputStream(rewriteGcLog, false);
+                     BufferedWriter logWriter = new BufferedWriter(new PrintWriter(fos))) {
+                    logWriter.write("file,jvm.gc.overhead,g1.old.gen.size\n");
+                    ctx.setParsingListener((input, sourceFile) -> {
+                        try {
+                            logWriter.write(input.getPath() + ",");
+                            logWriter.write(meterRegistry.get("jvm.gc.overhead").gauge().value() + ",");
+                            Gauge g1Used = meterRegistry.find("jvm.memory.used").tag("id", "G1 Old Gen").gauge();
+                            logWriter.write((g1Used == null ? "" : Double.toString(g1Used.value())) + "\n");
+                        } catch (IOException e) {
+                            logger.error("Unable to write rewrite GC log");
+                            throw new UncheckedIOException(e);
+                        }
+                    });
+                    logWriter.flush();
+                } catch (IOException e) {
+                    logger.error("Unable to write rewrite GC log", e);
+                    throw new UncheckedIOException(e);
+                }
+            }
+        }
+        dryRun(reportPath, listResults(useAstCache, ctx));
     }
 
     public void dryRun(Path reportPath, ResultsContainer results) {

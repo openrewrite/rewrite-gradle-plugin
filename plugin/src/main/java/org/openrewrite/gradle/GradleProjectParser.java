@@ -39,7 +39,7 @@ public interface GradleProjectParser {
 
     void run(boolean useAstCache, Consumer<Throwable> onError);
 
-    void dryRun(Path reportPath, boolean useAstCache, Consumer<Throwable> onError);
+    void dryRun(Path reportPath, boolean dumpGcActivity, boolean useAstCache, Consumer<Throwable> onError);
 
     void clearAstCache();
 
