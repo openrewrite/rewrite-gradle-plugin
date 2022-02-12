@@ -77,7 +77,7 @@ public abstract class AbstractRewriteTask extends DefaultTask {
             Set<Path> classpath = resolveDependenciesTask.getResolvedDependencies().stream()
                     .map(File::toPath)
                     .collect(Collectors.toSet());
-            gpp = new DelegatingProjectParser(getProject().getRootProject(), extension, classpath);
+            gpp = new DelegatingProjectParser(getProject(), extension, classpath);
         }
         //noinspection unchecked
         return (T) gpp;

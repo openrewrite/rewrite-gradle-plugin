@@ -37,7 +37,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
     protected static RewriteClassLoader rewriteClassLoader;
     protected static final Map<String, Object> astCache = new HashMap<>();
 
-    public DelegatingProjectParser(Project rootProject, RewriteExtension extension, Set<Path> classpath) {
+    public DelegatingProjectParser(Project project, RewriteExtension extension, Set<Path> classpath) {
         try {
             List<URL> classpathUrls = classpath.stream()
                     .map(Path::toUri)
@@ -77,7 +77,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
             gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, rewriteClassLoader);
             assert (gppClass.getClassLoader() == rewriteClassLoader) : "DefaultProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's classpath";
             gpp = gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class, Map.class)
-                    .newInstance(rootProject, extension, astCache);
+                    .newInstance(project, extension, astCache);
 
         } catch (Exception e) {
             throw new RuntimeException(e);

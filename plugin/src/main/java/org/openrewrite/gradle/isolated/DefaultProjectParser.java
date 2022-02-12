@@ -68,21 +68,21 @@ public class DefaultProjectParser implements GradleProjectParser {
     private final Logger logger = Logging.getLogger(DefaultProjectParser.class);
     protected final Path baseDir;
     protected final RewriteExtension extension;
-    protected final Project rootProject;
+    protected final Project project;
     private final List<Marker> sharedProvenance;
     private final Map<String, Object> astCache;
 
     private List<NamedStyles> styles;
     private Environment environment;
 
-    public DefaultProjectParser(Project rootProject, RewriteExtension extension, Map<String, Object> astCache) {
-        this.baseDir = rootProject.getRootDir().toPath();
+    public DefaultProjectParser(Project project, RewriteExtension extension, Map<String, Object> astCache) {
+        this.baseDir = project.getProjectDir().toPath();
         this.extension = extension;
-        this.rootProject = rootProject;
+        this.project = project;
         this.astCache = astCache;
 
         sharedProvenance = Stream.of(gitProvenance(baseDir),
-                        new BuildTool(randomId(), BuildTool.Type.Gradle, rootProject.getGradle().getGradleVersion()))
+                        new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
@@ -148,7 +148,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             new JvmHeapPressureMetrics().bindTo(meterRegistry);
             new JvmMemoryMetrics().bindTo(meterRegistry);
 
-            File rewriteBuildDir = new File(rootProject.getBuildDir(), "/rewrite");
+            File rewriteBuildDir = new File(project.getBuildDir(), "/rewrite");
             if (rewriteBuildDir.exists() || rewriteBuildDir.mkdirs()) {
                 File rewriteGcLog = new File(rewriteBuildDir, "rewrite-gc.csv");
                 try (FileOutputStream fos = new FileOutputStream(rewriteGcLog, false);
@@ -225,7 +225,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 logger.warn("    " + reportPath.normalize());
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
-                if (rootProject.getExtensions().getByType(DefaultRewriteExtension.class).getFailOnDryRunResults()) {
+                if (project.getExtensions().getByType(DefaultRewriteExtension.class).getFailOnDryRunResults()) {
                     throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
                 }
             } else {
@@ -330,7 +330,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     protected Environment environment() {
         if (environment == null) {
-            Map<Object, Object> gradleProps = rootProject.getProperties().entrySet().stream()
+            Map<Object, Object> gradleProps = project.getProperties().entrySet().stream()
                     .filter(entry -> entry.getKey() != null && entry.getValue() != null)
                     .collect(toMap(
                             Map.Entry::getKey,
@@ -363,10 +363,12 @@ public class DefaultProjectParser implements GradleProjectParser {
     public List<SourceFile> parse(ExecutionContext ctx) {
         List<SourceFile> sourceFiles = new ArrayList<>();
         Set<Path> alreadyParsed = new HashSet<>();
-        for (Project subProject : rootProject.getSubprojects()) {
-            sourceFiles.addAll(parse(subProject, alreadyParsed, ctx));
+        if(project == project.getRootProject()) {
+            for (Project subProject : project.getSubprojects()) {
+                sourceFiles.addAll(parse(subProject, alreadyParsed, ctx));
+            }
         }
-        sourceFiles.addAll(parse(rootProject, alreadyParsed, ctx));
+        sourceFiles.addAll(parse(project, alreadyParsed, ctx));
 
         return sourceFiles;
     }
@@ -511,14 +513,14 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
 
         List<SourceFile> sourceFiles;
-        if (useAstCache && astCache.containsKey(rootProject.getProjectDir().toPath().toString())) {
+        if (useAstCache && astCache.containsKey(project.getProjectDir().toPath().toString())) {
             logger.lifecycle("Using cached in-memory ASTs");
             //noinspection unchecked
-            sourceFiles = (List<SourceFile>) astCache.get(rootProject.getProjectDir().toPath().toString());
+            sourceFiles = (List<SourceFile>) astCache.get(project.getProjectDir().toPath().toString());
         } else {
             sourceFiles = parse(ctx);
             if (useAstCache) {
-                astCache.put(rootProject.getProjectDir().toPath().toString(), sourceFiles);
+                astCache.put(project.getProjectDir().toPath().toString(), sourceFiles);
             }
         }
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));

@@ -65,7 +65,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
     @SuppressWarnings("unused")
     public DefaultRewriteExtension(Project project) {
         this.project = project;
-        configFile = project.getRootProject().file("rewrite.yml");
+        configFile = project.file("rewrite.yml");
     }
 
     @Override
