@@ -35,6 +35,7 @@ import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -77,10 +78,12 @@ public class ResourceParser {
                 return false;
             }
 
-            String pathStr = path.toString();
-            if (pathStr.contains("/target/") || pathStr.contains("/build/") || pathStr.contains("/out/") ||
-                    pathStr.contains("/.gradle/") || pathStr.contains("/node_modules/") || pathStr.contains("/.metadata/")) {
-                return false;
+            for(Path pathSegment : searchDir.relativize(path)) {
+                String pathStr = pathSegment.toString();
+                if("target".equals(pathStr) || "build".equals(pathStr) || "out".equals(pathStr) ||
+                        ".gradle".equals(pathStr) || "node_modules".equals(pathStr) || ".metadata".equals(pathStr)) {
+                    return false;
+                }
             }
 
             long fileSize = attrs.size();
@@ -115,10 +118,12 @@ public class ResourceParser {
                 return false;
             }
 
-            String pathStr = path.toString();
-            if (pathStr.contains("/target/") || pathStr.contains("/build/") || pathStr.contains("/out/") ||
-                    pathStr.contains("/.gradle/") || pathStr.contains("/node_modules/") || pathStr.contains("/.metadata/")) {
-                return false;
+            for(Path pathSegment : searchDir.relativize(path)) {
+                String pathStr = pathSegment.toString();
+                if("target".equals(pathStr) || "build".equals(pathStr) || "out".equals(pathStr) ||
+                        ".gradle".equals(pathStr) || "node_modules".equals(pathStr) || ".metadata".equals(pathStr)) {
+                    return false;
+                }
             }
 
             long fileSize = attrs.size();
