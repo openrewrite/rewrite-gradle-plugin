@@ -20,15 +20,20 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.attributes.Bundling;
+import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.LibraryElements;
+import org.gradle.api.attributes.Usage;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+
+import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
 
 public class ResolveRewriteDependenciesTask extends DefaultTask {
     private Set<File> resolvedDependencies;
@@ -73,16 +78,20 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
                         configuration.getDependencies().stream()
                 ).toArray(Dependency[]::new);
             }
-
+            // By using a detached configuration, we separate this dependency resolution from the rest of the project's
+            // configuration. This also means that Gradle has no criteria with which to select between variants of
+            // dependencies which expose differing capabilities. So those must be manually configured
             Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
-            // Recent versions of Gradle throw up variant selection errors relating to the Caffeine library
-            // Caffeine can be brought in by rewrite-spring's dependency on rewrite-maven
-            // But this is a Gradle plugin, so we won't be parsing or refactoring Maven poms in this context
-            // Temporarily work around this issue by excluding caffeine
-            Map<String, String> exclusion = new HashMap<>();
-            exclusion.put("group", "com.github.ben-manes.caffeine");
-            exclusion.put("module", "caffeine");
-            detachedConf.exclude(exclusion);
+
+            ObjectFactory objectFactory = project.getObjects();
+            detachedConf.attributes(attributes -> {
+                // Taken from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+                attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+            });
+
             resolvedDependencies = detachedConf.resolve();
         }
         return resolvedDependencies;
