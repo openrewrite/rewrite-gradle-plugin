@@ -35,6 +35,7 @@ import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaParser;
+import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.java.marker.JavaProject;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
@@ -425,7 +426,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 //                    logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath()  + "\" : ", e);
 //                }
             }
-
+            JavaTypeCache javaTypeCache = new JavaTypeCache();
             for (SourceSet sourceSet : sourceSets) {
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
@@ -454,6 +455,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     JavaParser jp = JavaParser.fromJavaVersion()
                             .styles(styles)
                             .classpath(dependencyPaths)
+                            .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
                     jp.setSourceSet(sourceSet.getName());
