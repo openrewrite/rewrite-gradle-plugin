@@ -106,6 +106,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-properties:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-maven:$rewriteVersion")
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:$checkstyleVersion") {
         isTransitive = false
     }

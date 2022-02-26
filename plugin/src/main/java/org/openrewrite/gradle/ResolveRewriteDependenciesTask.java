@@ -65,6 +65,7 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
                     deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-maven:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
