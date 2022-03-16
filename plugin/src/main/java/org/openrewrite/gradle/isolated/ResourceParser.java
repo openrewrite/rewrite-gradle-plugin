@@ -24,6 +24,8 @@ import org.openrewrite.hcl.HclParser;
 import org.openrewrite.json.JsonParser;
 import org.openrewrite.json.tree.Json;
 import org.openrewrite.properties.PropertiesParser;
+import org.openrewrite.protobuf.ProtoParser;
+import org.openrewrite.protobuf.tree.Proto;
 import org.openrewrite.xml.XmlParser;
 import org.openrewrite.yaml.YamlParser;
 
@@ -57,6 +59,7 @@ public class ResourceParser {
         sourceFiles.addAll(parseSourceFiles(new XmlParser(), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(new YamlParser(), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(new PropertiesParser(), baseDir, projectDir, alreadyParsed, ctx));
+        sourceFiles.addAll(parseSourceFiles(new ProtoParser(), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(HclParser.builder().build(), baseDir, projectDir, alreadyParsed, ctx));
         return sourceFiles;
     }
@@ -68,6 +71,7 @@ public class ResourceParser {
         sources.addAll(listSources(new XmlParser(), baseDir, searchDir));
         sources.addAll(listSources(new YamlParser(), baseDir, searchDir));
         sources.addAll(listSources(new PropertiesParser(), baseDir, searchDir));
+        sources.addAll(listSources(new ProtoParser(), baseDir, searchDir));
         sources.addAll(listSources(HclParser.builder().build(), baseDir, searchDir));
         return sources;
     }

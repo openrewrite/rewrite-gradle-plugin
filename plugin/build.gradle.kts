@@ -104,6 +104,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-xml:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-yaml:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-properties:$rewriteVersion")
+    "rewriteDependencies"("org.openrewrite:rewrite-protobuf:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-maven:$rewriteVersion")
@@ -120,6 +121,7 @@ dependencies {
     implementation("org.openrewrite:rewrite-xml:$rewriteVersion")
     implementation("org.openrewrite:rewrite-yaml:$rewriteVersion")
     implementation("org.openrewrite:rewrite-properties:$rewriteVersion")
+    implementation("org.openrewrite:rewrite-protobuf:$rewriteVersion")
     implementation("org.openrewrite:rewrite-groovy:$rewriteVersion")
     implementation("org.openrewrite:rewrite-gradle:$rewriteVersion")
     implementation("com.puppycrawl.tools:checkstyle:$checkstyleVersion") {
