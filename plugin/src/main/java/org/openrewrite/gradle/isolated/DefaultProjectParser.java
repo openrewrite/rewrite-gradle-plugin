@@ -123,9 +123,8 @@ public class DefaultProjectParser implements GradleProjectParser {
     @Override
     public Collection<Path> listSources(Project project) {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
-        Set<Path> result = new TreeSet<>();
-        ResourceParser rp = new ResourceParser(extension.getExclusions(), extension.getSizeThresholdMb());
-        rp.listSources(baseDir, project.getProjectDir().toPath());
+        ResourceParser rp = new ResourceParser(project, extension);
+        Set<Path> result = new TreeSet<>(rp.listSources(baseDir, project.getProjectDir().toPath()));
         //noinspection deprecation
         JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
         if (javaConvention != null) {
@@ -407,7 +406,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceSets = javaConvention.getSourceSets();
             }
 
-            ResourceParser rp = new ResourceParser(extension.getExclusions(), extension.getSizeThresholdMb());
+            ResourceParser rp = new ResourceParser(project, extension);
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             if (extension.isEnableExperimentalGradleBuildScriptParsing()) {

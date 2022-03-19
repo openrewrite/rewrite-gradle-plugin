@@ -15,17 +15,17 @@
  */
 package org.openrewrite.gradle.isolated;
 
+import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.Parser;
 import org.openrewrite.SourceFile;
+import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.hcl.HclParser;
 import org.openrewrite.json.JsonParser;
-import org.openrewrite.json.tree.Json;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.protobuf.ProtoParser;
-import org.openrewrite.protobuf.tree.Proto;
 import org.openrewrite.xml.XmlParser;
 import org.openrewrite.yaml.YamlParser;
 
@@ -37,8 +37,6 @@ import java.nio.file.PathMatcher;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -48,9 +46,17 @@ public class ResourceParser {
     private final List<String> exclusions;
     private final int sizeThresholdMb;
 
-    public ResourceParser(List<String> exclusions, int sizeThresholdMb) {
-        this.exclusions = exclusions;
-        this.sizeThresholdMb = sizeThresholdMb;
+    public ResourceParser(Project project, RewriteExtension extension) {
+        this.exclusions = mergeExclusions(project, extension);
+        this.sizeThresholdMb = extension.getSizeThresholdMb();
+    }
+
+    private static List<String> mergeExclusions(Project project, RewriteExtension extension) {
+        return Stream.concat(
+                project.getSubprojects().stream()
+                        .map(subproject -> project.getProjectDir().toPath().relativize(subproject.getProjectDir().toPath()) + "/**"),
+                extension.getExclusions().stream()
+        ).collect(toList());
     }
 
     public List<SourceFile> parse(Path baseDir, Path projectDir, Collection<Path> alreadyParsed, ExecutionContext ctx) {
@@ -82,9 +88,9 @@ public class ResourceParser {
                 return false;
             }
 
-            for(Path pathSegment : searchDir.relativize(path)) {
+            for (Path pathSegment : searchDir.relativize(path)) {
                 String pathStr = pathSegment.toString();
-                if("target".equals(pathStr) || "build".equals(pathStr) || "out".equals(pathStr) ||
+                if ("target".equals(pathStr) || "build".equals(pathStr) || "out".equals(pathStr) ||
                         ".gradle".equals(pathStr) || "node_modules".equals(pathStr) || ".metadata".equals(pathStr)) {
                     return false;
                 }
@@ -122,9 +128,9 @@ public class ResourceParser {
                 return false;
             }
 
-            for(Path pathSegment : searchDir.relativize(path)) {
+            for (Path pathSegment : searchDir.relativize(path)) {
                 String pathStr = pathSegment.toString();
-                if("target".equals(pathStr) || "build".equals(pathStr) || "out".equals(pathStr) ||
+                if ("target".equals(pathStr) || "build".equals(pathStr) || "out".equals(pathStr) ||
                         ".gradle".equals(pathStr) || "node_modules".equals(pathStr) || ".metadata".equals(pathStr)) {
                     return false;
                 }

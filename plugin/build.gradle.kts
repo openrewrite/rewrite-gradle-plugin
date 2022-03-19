@@ -47,10 +47,16 @@ repositories {
 }
 
 configurations.all {
-    val isTestConfiguration = name.startsWith("test")
     resolutionStrategy {
         cacheChangingModulesFor(0, TimeUnit.SECONDS)
         cacheDynamicVersionsFor(0, TimeUnit.SECONDS)
+        if(name.startsWith("test")) {
+            eachDependency {
+                if(requested.name == "groovy-xml") {
+                    useVersion("3.0.9")
+                }
+            }
+        }
     }
 }
 
