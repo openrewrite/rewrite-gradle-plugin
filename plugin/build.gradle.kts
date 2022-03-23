@@ -1,6 +1,7 @@
 import nl.javadude.gradle.plugins.license.LicenseExtension
 import org.gradle.rewrite.build.GradleVersionData
 import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
+import java.awt.PageAttributes.MediaType.NOTE
 import java.util.*
 
 plugins {
@@ -82,7 +83,9 @@ val latest = if(project.hasProperty("releasing")) {
 }
 val rewriteVersion = configurations.detachedConfiguration(dependencies.create("org.openrewrite:rewrite-core:$latest"))
     .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
-val checkstyleVersion = configurations.detachedConfiguration(dependencies.create("com.puppycrawl.tools:checkstyle:latest.release"))
+// Cannot use latest release of checkstyle because 10 is compiled with a newer version of Java that is not supported
+// with gradle 4.x
+val checkstyleVersion = configurations.detachedConfiguration(dependencies.create("com.puppycrawl.tools:checkstyle:9.3"))
     .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
 
 val rewriteConfName = "rewriteDependencies"
