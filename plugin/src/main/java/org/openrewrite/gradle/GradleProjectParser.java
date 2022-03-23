@@ -18,12 +18,9 @@ package org.openrewrite.gradle;
 import org.gradle.api.Project;
 import org.openrewrite.config.RecipeDescriptor;
 
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.List;
 import java.util.SortedSet;
-import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 public interface GradleProjectParser {
