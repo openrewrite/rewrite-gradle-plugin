@@ -82,10 +82,12 @@ val latest = if(project.hasProperty("releasing")) {
     "latest.integration"
 }
 val rewriteVersion = configurations.detachedConfiguration(dependencies.create("org.openrewrite:rewrite-core:$latest"))
-    .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
-// Cannot use latest release of checkstyle because 10 is compiled with a newer version of Java that is not supported
-// with gradle 4.x
-val checkstyleVersion = configurations.detachedConfiguration(dependencies.create("com.puppycrawl.tools:checkstyle:9.3"))
+    .apply {
+        resolutionStrategy {
+            cacheChangingModulesFor(0, TimeUnit.SECONDS)
+            cacheDynamicVersionsFor(0, TimeUnit.SECONDS)
+        }
+    }
     .resolvedConfiguration.firstLevelModuleDependencies.iterator().next().moduleVersion
 
 val rewriteConfName = "rewriteDependencies"
@@ -117,7 +119,8 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-groovy:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-maven:$rewriteVersion")
-    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:$checkstyleVersion") {
+    // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
+    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3") {
         isTransitive = false
     }
 
@@ -133,7 +136,7 @@ dependencies {
     implementation("org.openrewrite:rewrite-protobuf:$rewriteVersion")
     implementation("org.openrewrite:rewrite-groovy:$rewriteVersion")
     implementation("org.openrewrite:rewrite-gradle:$rewriteVersion")
-    implementation("com.puppycrawl.tools:checkstyle:$checkstyleVersion") {
+    implementation("com.puppycrawl.tools:checkstyle:9.3") {
         isTransitive = false
     }
 
