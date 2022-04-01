@@ -47,6 +47,7 @@ import org.openrewrite.marker.BuildTool;
 import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
+import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.shaded.jgit.api.Git;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.tree.ParsingExecutionContextView;
@@ -85,7 +86,10 @@ public class DefaultProjectParser implements GradleProjectParser {
         this.project = project;
         this.astCache = astCache;
 
-        sharedProvenance = Stream.of(gitProvenance(baseDir),
+        BuildEnvironment buildEnvironment = BuildEnvironment.build(System::getenv);
+        sharedProvenance = Stream.of(
+                        buildEnvironment,
+                        gitProvenance(baseDir, buildEnvironment),
                         new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -475,7 +479,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
                     }
                 } catch (Exception e) {
-                    logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath()  + "\" : ", e);
+                    logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath() + "\" : ", e);
                 }
             }
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
