@@ -61,6 +61,7 @@ public class ResourceParser {
 
     public List<SourceFile> parse(Path baseDir, Path projectDir, Collection<Path> alreadyParsed, ExecutionContext ctx) {
         List<SourceFile> sourceFiles = new ArrayList<>();
+        sourceFiles.addAll(parseSourceFiles(new GradleShellScriptParser(baseDir), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(new JsonParser(), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(new XmlParser(), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(new YamlParser(), baseDir, projectDir, alreadyParsed, ctx));
@@ -73,6 +74,7 @@ public class ResourceParser {
     // Used for calculating task inputs
     public List<Path> listSources(Path baseDir, Path searchDir) {
         List<Path> sources = new ArrayList<>();
+        sources.addAll(listSources(new GradleShellScriptParser(baseDir), baseDir, searchDir));
         sources.addAll(listSources(new JsonParser(), baseDir, searchDir));
         sources.addAll(listSources(new XmlParser(), baseDir, searchDir));
         sources.addAll(listSources(new YamlParser(), baseDir, searchDir));

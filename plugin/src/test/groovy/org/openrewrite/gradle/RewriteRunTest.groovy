@@ -13,12 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+//file:noinspection ConstantConditions
+//file:noinspection StatementWithEmptyBody
+//file:noinspection ClassInitializerMayBeStatic
 package org.openrewrite.gradle
 
 import org.gradle.testkit.runner.TaskOutcome
 import spock.lang.Issue
 import spock.lang.Unroll
 
+@SuppressWarnings("UnusedProperty")
+@SuppressWarnings("UnnecessaryQualifiedReference")
 @Unroll
 class RewriteRunTest extends RewriteTestBase {
 
@@ -30,7 +35,7 @@ class RewriteRunTest extends RewriteTestBase {
         given:
         new File(projectDir, "settings.gradle").createNewFile()
         File buildGradleFile = new File(projectDir, "build.gradle")
-
+        // language=groovy
         buildGradleFile.text = """
             buildscript {
                 repositories {
@@ -63,6 +68,7 @@ class RewriteRunTest extends RewriteTestBase {
         File srcDir = new File(projectDir, "src/test/java/com/foo")
         srcDir.mkdirs()
         File testClass = new File(srcDir, "ATestClass.java")
+        // language=java
         testClass.text = """\
                 package com.foo;
                 
@@ -102,58 +108,6 @@ class RewriteRunTest extends RewriteTestBase {
         !sourceFileBefore.exists()
         sourceFileAfter.exists()
         sourceFileAfter.text == helloWorldJavaAfterRefactor
-
-        where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
-    }
-
-    def "Applies recipes to files not inside of source directories"() {
-        given:
-        new File(projectDir, "settings.gradle").createNewFile()
-        File rewriteYaml = new File(projectDir, "rewrite.yml")
-        rewriteYaml.text = """\
-                ---
-                type: specs.openrewrite.org/v1beta/recipe
-                name: org.openrewrite.test.GradleWrapper7
-                displayName: Use Gradle version 7.1.1
-                description: Sets the gradle version to 7.1.1 in gradle/wrapper/gradle-wrapper.properties
-                recipeList:
-                  - org.openrewrite.properties.ChangePropertyValue:
-                      propertyKey: distributionUrl
-                      newValue: https\\://services.gradle.org/distributions/gradle-7.1.1-bin.zip
-            """.stripIndent()
-
-        File gradleWrapperProperties = new File(projectDir, "gradle/wrapper/gradle-wrapper.properties")
-        gradleWrapperProperties.getParentFile().mkdirs()
-        gradleWrapperProperties.text = """\
-                distributionUrl=https\\://services.gradle.org/distributions/gradle-7.0.1-bin.zip
-            """.stripIndent()
-
-        File buildGradle = new File(projectDir, "build.gradle")
-        buildGradle.text = """\
-                 plugins {
-                    id("java")
-                    id("org.openrewrite.rewrite")
-                 }
-                 
-                 rewrite {
-                    activeRecipe("org.openrewrite.test.GradleWrapper7")
-                 }
-                 
-                 repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
-                    }
-                }
-            """.stripIndent()
-        when:
-        def result = gradleRunner(gradleVersion, "rewriteRun").build()
-        def rewriteRunMainResult = result.task(":rewriteRun")
-
-        then:
-        gradleWrapperProperties.text == "distributionUrl=https\\://services.gradle.org/distributions/gradle-7.1.1-bin.zip\n"
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST
@@ -377,6 +331,7 @@ class RewriteRunTest extends RewriteTestBase {
         given:
         File checkstyleXml = new File(projectDir, "config/checkstyle/checkstyle.xml")
         checkstyleXml.getParentFile().mkdirs()
+        // language=xml
         checkstyleXml.text = """\
                 <!DOCTYPE module PUBLIC
                     "-//Checkstyle//DTD Checkstyle Configuration 1.2//EN"
@@ -389,6 +344,7 @@ class RewriteRunTest extends RewriteTestBase {
             """.stripIndent()
 
         File rootBuildGradle = new File(projectDir, "build.gradle")
+        // language=groovy
         rootBuildGradle.text = """\
                 plugins {
                     id("java")
@@ -411,6 +367,7 @@ class RewriteRunTest extends RewriteTestBase {
         File aSrcDir = new File(projectDir, "src/main/java/com/foo")
         aSrcDir.mkdirs()
         File aClass = new File(aSrcDir, "A.java")
+        // language=java
         aClass.text = """\
                 package com.foo;
                 
@@ -422,6 +379,7 @@ class RewriteRunTest extends RewriteTestBase {
                     }
                 }
             """.stripIndent()
+        // language=java
         String aClassExpected = """\
                 package com.foo;
                 
@@ -452,6 +410,7 @@ class RewriteRunTest extends RewriteTestBase {
         new File(projectDir, "settings.gradle").createNewFile()
 
         File rewriteYaml = new File(projectDir, "rewrite.yml")
+        // language=yaml
         rewriteYaml.text = """\
                 ---
                 type: specs.openrewrite.org/v1beta/recipe
@@ -465,6 +424,7 @@ class RewriteRunTest extends RewriteTestBase {
             """.stripIndent()
 
         File buildGradleFile = new File(projectDir, "build.gradle")
+        // language=groovy
         buildGradleFile.text = """\
                 plugins {
                     id("java")
@@ -500,6 +460,85 @@ class RewriteRunTest extends RewriteTestBase {
         rewriteRunResult.outcome == TaskOutcome.SUCCESS
         propertiesFileNotInSourceSet.text == propertiesTextExpected
         propertiesFileInSourceSet.text == propertiesTextExpected
+
+        where:
+        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+    }
+
+    def "Recipes that generate sources have those sources written out to disk successfully"() {
+        given:
+        new File(projectDir, "settings.gradle").createNewFile()
+        File gradlew = new File(projectDir, "gradlew")
+        gradlew.write(" ") // ResourceParser filters out 0 byte files
+        File gradlewBat = new File(projectDir, "gradlew.bat")
+        gradlewBat.write(" ")
+        File gradlePropsFile = new File(projectDir, "gradle/wrapper/gradle-wrapper.properties")
+        gradlePropsFile.parentFile.mkdirs()
+        gradlePropsFile.write(
+                // language=properties
+                """\
+                distributionBase=GRADLE_USER_HOME
+                distributionPath=wrapper/dists
+                distributionUrl=https\\://services.gradle.org/distributions/gradle-7.4-all.zip
+                zipStoreBase=GRADLE_USER_HOME
+                zipStorePath=wrapper/dists
+            """.stripIndent())
+        File gradleWrapperJar = new File(projectDir, "gradle/wrapper/gradle-wrapper.jar")
+        gradleWrapperJar.write(" ")
+
+        new File(projectDir, "rewrite.yml").write(
+                // language=yaml
+                """
+                ---
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.UpdateGradleWrapper
+                displayName: Use Gradle version 7.4.2
+                description: Sets the gradle version to 7.4.2 in gradle/wrapper/gradle-wrapper.properties
+                recipeList:
+                  - org.openrewrite.gradle.UpdateGradleWrapper:
+                      version: 7.4.2
+                """.stripIndent())
+        new File(projectDir, "build.gradle")
+            .write(
+                // language=groovy
+                """\
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.test.UpdateGradleWrapper")
+                }
+            """.stripIndent())
+
+        // language=properties
+        def expectedProps = """\
+                distributionBase=GRADLE_USER_HOME
+                distributionPath=wrapper/dists
+                distributionUrl=https\\://services.gradle.org/distributions/gradle-7.4.2-all.zip
+                zipStoreBase=GRADLE_USER_HOME
+                zipStorePath=wrapper/dists
+                """.stripIndent()
+
+        when:
+        def result = gradleRunner(gradleVersion, "rewriteRun").build()
+        def rewriteRunResult = result.task(":rewriteRun")
+
+        then:
+        rewriteRunResult.outcome == TaskOutcome.SUCCESS
+        gradlePropsFile.text == expectedProps
+        !gradlew.text.isEmpty()
+        !gradlewBat.text.isEmpty()
+        gradleWrapperJar.size() > 0
 
         where:
         gradleVersion << GRADLE_VERSIONS_UNDER_TEST

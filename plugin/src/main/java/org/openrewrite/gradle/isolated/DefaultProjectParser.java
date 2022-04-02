@@ -26,6 +26,7 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
 import org.openrewrite.*;
+import org.openrewrite.binary.Binary;
 import org.openrewrite.config.Environment;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
@@ -285,11 +286,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 try {
                     for (Result result : results.generated) {
-                        assert result.getAfter() != null;
-                        try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                                results.getProjectRoot().resolve(result.getAfter().getSourcePath()))) {
-                            sourceFileWriter.write(result.getAfter().printAll());
-                        }
+                        writeAfter(results.getProjectRoot(), result);
                     }
                     for (Result result : results.deleted) {
                         assert result.getBefore() != null;
@@ -323,24 +320,36 @@ public class DefaultProjectParser implements GradleProjectParser {
                         } else if (!afterParentDir.exists() && !afterParentDir.mkdirs()) {
                             throw new RuntimeException("Unable to create directory " + afterParentDir.getAbsolutePath());
                         }
-                        try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(afterLocation)) {
-                            sourceFileWriter.write(result.getAfter().printAll());
-                        }
+                        writeAfter(results.getProjectRoot(), result);
                     }
                     for (Result result : results.refactoredInPlace) {
-                        assert result.getBefore() != null;
-                        try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                                results.getProjectRoot().resolve(result.getBefore().getSourcePath()))) {
-                            assert result.getAfter() != null;
-                            sourceFileWriter.write(result.getAfter().printAll());
-                        }
+                        writeAfter(results.getProjectRoot(), result);
                     }
                 } catch (IOException e) {
-                    throw new RuntimeException("Unable to rewrite source files", e);
+                    throw new UncheckedIOException("Unable to rewrite source files", e);
                 }
             }
         } finally {
             shutdownRewrite();
+        }
+    }
+
+    private static void writeAfter(Path root, Result result) {
+        assert result.getAfter() != null;
+        if(result.getAfter() instanceof Binary) {
+            try (FileOutputStream sourceFileWriter = new FileOutputStream(
+                    root.resolve(result.getAfter().getSourcePath()).toFile())) {
+                sourceFileWriter.write(((Binary) result.getAfter()).getBytes());
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to rewrite source files", e);
+            }
+        } else {
+            try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
+                    root.resolve(result.getAfter().getSourcePath()))) {
+                sourceFileWriter.write(result.getAfter().printAll());
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to rewrite source files", e);
+            }
         }
     }
 
