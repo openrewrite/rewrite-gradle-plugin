@@ -97,9 +97,9 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @Nullable
-    private GitProvenance gitProvenance(Path baseDir) {
+    private GitProvenance gitProvenance(Path baseDir, @Nullable BuildEnvironment buildEnvironment) {
         try {
-            return GitProvenance.fromProjectDirectory(baseDir);
+            return GitProvenance.fromProjectDirectory(baseDir, buildEnvironment);
         } catch (Exception e) {
             // Logging at a low level as this is unlikely to happen except in non-git projects, where it is expected
             logger.debug("Unable to determine git provenance", e);
