@@ -483,6 +483,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         GradleParser gradleParser = new GradleParser(
                                 GroovyParser.builder()
                                         .styles(styles)
+                                        .typeCache(javaTypeCache)
                                         .logCompilationWarningsAndErrors(true));
 
                         sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
