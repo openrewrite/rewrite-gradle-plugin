@@ -29,7 +29,9 @@ import spock.lang.Unroll
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-class RewriteMetricsPluginTests extends RewriteTestBase {
+class RewriteMetricsPluginTests
+//        extends RewriteTestBase
+{
 
     File settingsFile
 
@@ -119,6 +121,6 @@ class RewriteMetricsPluginTests extends RewriteTestBase {
         scrapeResponseLatch.await(30, TimeUnit.SECONDS)
 
         where:
-        gradleVersion << GRADLE_VERSIONS_UNDER_TEST
+        gradleVersion << org.openrewrite.gradle.RewriteTestBase.GRADLE_VERSIONS_UNDER_TEST
     }
 }

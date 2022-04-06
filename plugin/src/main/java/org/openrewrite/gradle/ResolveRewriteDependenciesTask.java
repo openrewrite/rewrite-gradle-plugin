@@ -85,14 +85,18 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
             // dependencies which expose differing capabilities. So those must be manually configured
             Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
 
-            ObjectFactory objectFactory = project.getObjects();
-            detachedConf.attributes(attributes -> {
-                // Taken from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
-                attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
-                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
-                attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
-            });
+            try {
+                ObjectFactory objectFactory = project.getObjects();
+                detachedConf.attributes(attributes -> {
+                    // Taken from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
+                    attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                    attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+                    attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+                    attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+                });
+            } catch (NoClassDefFoundError e) {
+                // Old versions of gradle don't have all of these attributes and that's OK
+            }
 
             resolvedDependencies = detachedConf.resolve();
         }

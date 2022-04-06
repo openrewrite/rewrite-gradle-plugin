@@ -24,6 +24,7 @@ import io.micrometer.core.instrument.distribution.pause.PauseDetector;
 import io.micrometer.core.instrument.internal.DefaultGauge;
 import io.micrometer.core.instrument.internal.DefaultLongTaskTimer;
 import io.micrometer.core.instrument.internal.DefaultMeter;
+import io.micrometer.core.instrument.util.DoubleFormat;
 import io.micrometer.core.instrument.util.TimeUtils;
 import org.gradle.api.logging.Logger;
 
@@ -33,7 +34,6 @@ import java.util.function.ToDoubleFunction;
 import java.util.function.ToLongFunction;
 import java.util.stream.StreamSupport;
 
-import static io.micrometer.core.instrument.util.DoubleFormat.decimalOrNan;
 import static java.util.stream.Collectors.joining;
 
 public class GradleLoggingMeterRegistry extends MeterRegistry {
@@ -116,7 +116,7 @@ public class GradleLoggingMeterRegistry extends MeterRegistry {
                         case COUNT:
                             return "count=" + print.count(ms.getValue());
                         default:
-                            return msLine + decimalOrNan(ms.getValue());
+                            return msLine + DoubleFormat.decimalOrNan(ms.getValue());
                     }
                 })
                 .collect(joining(", ", print.id() + " ", ""));
@@ -188,7 +188,7 @@ public class GradleLoggingMeterRegistry extends MeterRegistry {
         }
 
         String unitlessCount(double count) {
-            return decimalOrNan(count);
+            return DoubleFormat.decimalOrNan(count);
         }
 
         String time(double time) {
@@ -202,10 +202,10 @@ public class GradleLoggingMeterRegistry extends MeterRegistry {
         // see https://stackoverflow.com/a/3758880/510017
         String humanReadableByteCount(double bytes) {
             int unit = 1024;
-            if (bytes < unit || Double.isNaN(bytes)) return decimalOrNan(bytes) + " B";
+            if (bytes < unit || Double.isNaN(bytes)) return DoubleFormat.decimalOrNan(bytes) + " B";
             int exp = (int) (Math.log(bytes) / Math.log(unit));
             String pre = "KMGTPE".charAt(exp - 1) + "i";
-            return decimalOrNan(bytes / Math.pow(unit, exp)) + " " + pre + "B";
+            return DoubleFormat.decimalOrNan(bytes / Math.pow(unit, exp)) + " " + pre + "B";
         }
 
         String humanReadableBaseUnit(double value) {
@@ -213,7 +213,7 @@ public class GradleLoggingMeterRegistry extends MeterRegistry {
             if (BaseUnits.BYTES.equals(baseUnit)) {
                 return humanReadableByteCount(value);
             }
-            return decimalOrNan(value) + (baseUnit != null ? " " + baseUnit : "");
+            return DoubleFormat.decimalOrNan(value) + (baseUnit != null ? " " + baseUnit : "");
         }
     }
 

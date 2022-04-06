@@ -23,13 +23,6 @@ pluginBundle {
 
 gradlePlugin {
     plugins {
-        create("rewriteMetrics") {
-            id = "org.openrewrite.rewrite-metrics"
-            displayName = "Rewrite metrics publishing"
-            description = "Publish metrics about refactoring operations happening across your organization."
-            implementationClass = "org.openrewrite.gradle.RewriteMetricsPlugin"
-        }
-
         create("rewrite") {
             id = "org.openrewrite.rewrite"
             displayName = "Rewrite"
@@ -100,12 +93,6 @@ val prometheusVersion = "1.3.0"
 val nettyVersion = "1.1.0"
 
 dependencies {
-    plugin("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
-    plugin("io.rsocket:rsocket-transport-netty:$nettyVersion")
-
-    api("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
-    api("io.rsocket:rsocket-transport-netty:$nettyVersion")
-
     "rewriteDependencies"("org.openrewrite:rewrite-core:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-hcl:$rewriteVersion")
     "rewriteDependencies"("org.openrewrite:rewrite-java:$rewriteVersion")
@@ -124,21 +111,21 @@ dependencies {
         isTransitive = false
     }
 
-    implementation("org.openrewrite:rewrite-core:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-hcl:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-java:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-java-11:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-java-8:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-json:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-xml:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-yaml:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-properties:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-protobuf:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-groovy:$rewriteVersion")
-    implementation("org.openrewrite:rewrite-gradle:$rewriteVersion")
-    implementation("com.puppycrawl.tools:checkstyle:9.3") {
+    implementation("org.openrewrite:rewrite-core:$rewriteVersion") {
         isTransitive = false
     }
+    compileOnly("org.openrewrite:rewrite-hcl:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-java:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-java-11:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-java-8:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-json:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-xml:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-yaml:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-properties:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-protobuf:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-groovy:$rewriteVersion")
+    compileOnly("org.openrewrite:rewrite-gradle:$rewriteVersion")
+    compileOnly("com.puppycrawl.tools:checkstyle:9.3")
 
     testImplementation(gradleTestKit())
     testImplementation(localGroovy())

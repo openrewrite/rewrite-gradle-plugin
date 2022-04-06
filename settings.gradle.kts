@@ -1,6 +1,7 @@
 rootProject.name = "rewrite-gradle-plugin"
 
 include("plugin")
+include("metrics")
 
 plugins {
     id("com.gradle.enterprise") version "3.8.1"
