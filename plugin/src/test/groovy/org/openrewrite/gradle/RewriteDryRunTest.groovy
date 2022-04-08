@@ -86,7 +86,7 @@ class RewriteDryRunTest extends RewriteTestBase {
             """.stripIndent())
 
         when:
-        def result = gradleRunner(gradleVersion, "rewriteDryRun").build()
+        def result = gradleRunner(gradleVersion, "rewriteDryRun", "--info").build()
         def rewriteDryRunResult = result.task(":rewriteDryRun")
 
         then:

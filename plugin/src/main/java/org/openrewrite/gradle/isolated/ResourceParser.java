@@ -34,12 +34,16 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static org.openrewrite.gradle.TimeUtils.prettyPrint;
 
 public class ResourceParser {
     private static final Logger logger = Logging.getLogger(ResourceParser.class);
@@ -61,6 +65,8 @@ public class ResourceParser {
 
     public List<SourceFile> parse(Path baseDir, Path projectDir, Collection<Path> alreadyParsed, ExecutionContext ctx) {
         List<SourceFile> sourceFiles = new ArrayList<>();
+        logger.info("Parsing other sources from {}", projectDir);
+        Instant start = Instant.now();
         sourceFiles.addAll(parseSourceFiles(new GradleShellScriptParser(baseDir), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(new JsonParser(), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(new XmlParser(), baseDir, projectDir, alreadyParsed, ctx));
@@ -68,6 +74,11 @@ public class ResourceParser {
         sourceFiles.addAll(parseSourceFiles(new PropertiesParser(), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(new ProtoParser(), baseDir, projectDir, alreadyParsed, ctx));
         sourceFiles.addAll(parseSourceFiles(HclParser.builder().build(), baseDir, projectDir, alreadyParsed, ctx));
+        if(sourceFiles.size() > 0) {
+            Duration duration = Duration.between(start, Instant.now());
+            logger.info("Finished parsing {} other sources from {} in {} ({} per source)",
+                    sourceFiles.size(), projectDir, prettyPrint(duration), prettyPrint(duration.dividedBy(sourceFiles.size())));
+        }
         return sourceFiles;
     }
 

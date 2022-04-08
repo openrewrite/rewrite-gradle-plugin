@@ -56,6 +56,8 @@ import org.openrewrite.tree.ParsingExecutionContextView;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -67,6 +69,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.openrewrite.Tree.randomId;
+import static org.openrewrite.gradle.TimeUtils.prettyPrint;
 import static org.openrewrite.internal.ListUtils.map;
 
 @SuppressWarnings("unused")
@@ -451,6 +454,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 JavaSourceSet sourceSetProvenance = null;
                 if (javaPaths.size() > 0) {
+                    logger.info("Parsing {} Java sources from {}/{}", javaPaths.size(), project.getName(), sourceSet.getName());
                     JavaParser jp = JavaParser.fromJavaVersion()
                             .styles(styles)
                             .classpath(dependencyPaths)
@@ -458,7 +462,11 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
                     jp.setSourceSet(sourceSet.getName());
+                    Instant start = Instant.now();
                     List<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx);
+                    Duration parseDuration = Duration.between(start, Instant.now());
+                    logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
+                            project.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
                     sourceFiles.addAll(map(maybeAutodetectStyles(cus, styles), addProvenance(projectProvenance, null)));
                     sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
                 }
