@@ -64,8 +64,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singleton;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.*;
 import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.gradle.TimeUtils.prettyPrint;
@@ -442,9 +441,18 @@ public class DefaultProjectParser implements GradleProjectParser {
                 Configuration rewriteImplementation = subproject.getConfigurations().maybeCreate("rewrite" + sourceSet.getImplementationConfigurationName());
                 rewriteImplementation.extendsFrom(implementation);
 
+                Set<File> implementationClasspath;
+                try {
+                    implementationClasspath = rewriteImplementation.resolve();
+                } catch (Exception e) {
+                    logger.warn("Failed to resolve dependencies from {}:{}. Some type information may be incomplete",
+                            subproject.getName(), sourceSet.getImplementationConfigurationName());
+                    implementationClasspath = emptySet();
+                }
+
                 // The implementation configuration doesn't include build/source directories from project dependencies
                 // So mash it and our rewriteImplementation together to get everything
-                List<Path> dependencyPaths = Stream.concat(rewriteImplementation.resolve().stream(), sourceSet.getCompileClasspath().getFiles().stream())
+                List<Path> dependencyPaths = Stream.concat(implementationClasspath.stream(), sourceSet.getCompileClasspath().getFiles().stream())
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
