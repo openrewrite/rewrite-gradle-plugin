@@ -93,7 +93,11 @@ public class DefaultRewriteExtension implements RewriteExtension {
     @Nullable
     public File getCheckstyleConfigFile() {
         if(checkstyleConfigFile == null && checkstyleConfigProvider != null) {
-            return checkstyleConfigProvider.get();
+            try {
+                return checkstyleConfigProvider.get();
+            } catch(Exception e) {
+                return null;
+            }
         }
         return checkstyleConfigFile;
     }
