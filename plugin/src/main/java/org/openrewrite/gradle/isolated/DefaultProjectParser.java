@@ -54,6 +54,7 @@ import org.openrewrite.style.NamedStyles;
 import org.openrewrite.tree.ParsingExecutionContextView;
 
 import java.io.*;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -347,7 +348,8 @@ public class DefaultProjectParser implements GradleProjectParser {
         } else {
             try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
                     root.resolve(result.getAfter().getSourcePath()))) {
-                sourceFileWriter.write(result.getAfter().printAll());
+                Charset charset = result.getAfter().getCharset();
+                sourceFileWriter.write(new String(result.getAfter().printAll().getBytes(charset), charset));
             } catch (IOException e) {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
             }
