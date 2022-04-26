@@ -23,17 +23,15 @@ import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 
 /**
- * Adds the RewriteExtension to the current project and registers tasks per-sourceSet.
- * Only needs to be applied to projects with java sources. No point in applying this to any project that does
- * not have java sources of its own, such as the root project in a multi-project builds.
+ * When applied to the root project of a multi-project build, applies to all subprojects.
+ * When applied to the root project the "rewrite" configuration and "rewrite" DSL created in the root project apply to
+ * all parts of the build.
+ *
+ * When applied to a subproject of a multi-project build, applies only to that subproject.
+ * Creates "rewrite" dependency configuration and "rewrite" DSL in and applicable to only that subproject.
  */
 @SuppressWarnings("unused")
 public class RewritePlugin implements Plugin<Project> {
-    /*
-     Note on compatibility:
-     As written this project doesn't use any APIs not present as of Gradle 4.0.
-     That predates Gradle supporting Java 11, which came in Gradle 5.0.
-     */
 
     @Override
     public void apply(Project project) {
