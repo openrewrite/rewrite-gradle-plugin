@@ -110,6 +110,7 @@ dependencies {
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3") {
         isTransitive = false
     }
+    "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
 
     implementation("org.openrewrite:rewrite-core:$rewriteVersion") {
         isTransitive = false

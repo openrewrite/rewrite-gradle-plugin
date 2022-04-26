@@ -72,7 +72,8 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
                     deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
 
                     // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
-                    deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion())
+                    deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion()),
+                    deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion())
             };
             if (configuration != null) {
                 dependencies = Stream.concat(

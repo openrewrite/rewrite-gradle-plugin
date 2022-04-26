@@ -101,4 +101,6 @@ public interface RewriteExtension {
     int getSizeThresholdMb();
 
     void setSizeThresholdMb(int thresholdMb);
+
+    String getJacksonModuleKotlinVersion();
 }

@@ -305,4 +305,9 @@ public class DefaultRewriteExtension implements RewriteExtension {
     public void setSizeThresholdMb(int thresholdMb) {
         this.sizeThresholdMb = thresholdMb;
     }
+
+    @Override
+    public String getJacksonModuleKotlinVersion() {
+        return getVersionProps().getProperty("com.fasterxml.jackson.module:jackson-module-kotlin");
+    }
 }
