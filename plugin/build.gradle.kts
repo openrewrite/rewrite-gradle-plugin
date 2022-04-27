@@ -1,7 +1,6 @@
 import nl.javadude.gradle.plugins.license.LicenseExtension
 import org.gradle.rewrite.build.GradleVersionData
 import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
-import java.awt.PageAttributes.MediaType.NOTE
 import java.util.*
 
 plugins {
@@ -87,10 +86,6 @@ val rewriteConfName = "rewriteDependencies"
 val rewriteDependencies = configurations.create("rewriteDependencies")
 
 configurations.getByName("compileOnly").extendsFrom(plugin)
-
-// Fixed version numbers because com.gradle.plugin-publish will publish poms with requested rather than resolved versions
-val prometheusVersion = "1.3.0"
-val nettyVersion = "1.1.0"
 
 dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-core:$rewriteVersion")
