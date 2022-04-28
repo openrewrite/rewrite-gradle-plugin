@@ -24,8 +24,8 @@ repositories {
 
 
 // Fixed version numbers because com.gradle.plugin-publish will publish poms with requested rather than resolved versions
-val prometheusVersion = "1.3.0"
-val nettyVersion = "1.1.0"
+val prometheusVersion = "1.4.0"
+val nettyVersion = "1.1.2"
 
 dependencies {
     api("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")

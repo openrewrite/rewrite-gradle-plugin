@@ -119,8 +119,8 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
                 @Override
                 public void buildFinished(BuildResult result) {
                     try {
-                        // Don't bother blocking long here. If the daemon dies before the dying push can happen, so be it.
-                        metricsClient.pushAndClose().block(Duration.ofSeconds(3));
+                        // The push and close will block for one second. If the daemon dies before the dying push can happen, so be it.
+                        metricsClient.pushAndClose();
                     } catch (Throwable ignore) {
                         // sometimes fails when connection already closed, e.g. due to flaky internet connection
                         ignore.printStackTrace();
