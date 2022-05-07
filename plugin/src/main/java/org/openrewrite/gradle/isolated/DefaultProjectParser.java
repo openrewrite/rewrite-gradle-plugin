@@ -133,8 +133,13 @@ public class DefaultProjectParser implements GradleProjectParser {
     @Override
     public Collection<Path> listSources(Project project) {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
-        ResourceParser rp = new ResourceParser(project, extension);
-        Set<Path> result = new TreeSet<>(rp.listSources(baseDir, project.getProjectDir().toPath()));
+        ResourceParser rp = new ResourceParser(baseDir, project, extension);
+        Set<Path> result;
+        try {
+            result = new TreeSet<>(rp.listSources(project.getProjectDir().toPath()));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
         //noinspection deprecation
         JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
         if (javaConvention != null) {
@@ -425,7 +430,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceSets = javaConvention.getSourceSets();
             }
 
-            ResourceParser rp = new ResourceParser(project, extension);
+            ResourceParser rp = new ResourceParser(baseDir, project, extension);
 
             List<SourceFile> sourceFiles = new ArrayList<>();
             JavaTypeCache javaTypeCache = new JavaTypeCache();
@@ -487,7 +492,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             // Skip providing a classpath because it's time-consuming and non-Java sources have no concept of java type information
                             sourceSetProvenance = new JavaSourceSet(randomId(), sourceSet.getName(), emptyList());
                         }
-                        sourceFiles.addAll(map(rp.parse(baseDir, resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, sourceSetProvenance)));
+                        sourceFiles.addAll(map(rp.parse(resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, sourceSetProvenance)));
                     }
                 }
             }
@@ -510,7 +515,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
             }
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-            sourceFiles.addAll(map(rp.parse(baseDir, subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
+            sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
 
             return sourceFiles;
         } catch (Exception e) {
