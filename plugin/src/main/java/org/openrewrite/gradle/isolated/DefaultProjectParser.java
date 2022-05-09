@@ -478,6 +478,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     jp.setSourceSet(sourceSet.getName());
                     Instant start = Instant.now();
                     List<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx);
+                    alreadyParsed.addAll(javaPaths);
                     Duration parseDuration = Duration.between(start, Instant.now());
                     logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
                             project.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
