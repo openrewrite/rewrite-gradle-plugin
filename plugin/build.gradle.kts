@@ -106,6 +106,7 @@ dependencies {
         isTransitive = false
     }
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
+    "rewriteDependencies"(platform("org.jetbrains.kotlin:kotlin-bom:1.6.21"))
 
     implementation("org.openrewrite:rewrite-core:$rewriteVersion") {
         isTransitive = false
