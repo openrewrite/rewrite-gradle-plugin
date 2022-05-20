@@ -73,7 +73,8 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
 
                     // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
                     deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion()),
-                    deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion())
+                    deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
+                    deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
             };
             if (configuration != null) {
                 dependencies = Stream.concat(
