@@ -49,6 +49,7 @@ import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.marker.ci.BuildEnvironment;
+import org.openrewrite.quark.Quark;
 import org.openrewrite.shaded.jgit.api.Git;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.tree.ParsingExecutionContextView;
@@ -309,25 +310,30 @@ public class DefaultProjectParser implements GradleProjectParser {
                         Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
                         File originalParentDir = originalLocation.toFile().getParentFile();
 
-                        // On Mac this can return "false" even when the file was deleted, so skip the check
-                        //noinspection ResultOfMethodCallIgnored
-                        originalLocation.toFile().delete();
+                        // Quarks are empty source files, the contents cannot be modified, so they can just be moved.
+                        if (result.getAfter() instanceof Quark) {
+                            Files.move(originalLocation, result.getAfter().getSourcePath());
+                        } else {
+                            // On Mac this can return "false" even when the file was deleted, so skip the check
+                            //noinspection ResultOfMethodCallIgnored
+                            originalLocation.toFile().delete();
 
-                        assert result.getAfter() != null;
-                        // Ensure directories exist in case something was moved into a hitherto non-existent package
-                        Path afterLocation = results.getProjectRoot().resolve(result.getAfter().getSourcePath());
-                        File afterParentDir = afterLocation.toFile().getParentFile();
-                        // Rename the directory if its name case has been changed, e.g. camel case to lower case.
-                        if (afterParentDir.exists()
-                                && afterParentDir.getAbsolutePath().equalsIgnoreCase((originalParentDir.getAbsolutePath()))
-                                && !afterParentDir.getAbsolutePath().equals(originalParentDir.getAbsolutePath())) {
-                            if (!originalParentDir.renameTo(afterParentDir)) {
-                                throw new RuntimeException("Unable to rename directory from " + originalParentDir.getAbsolutePath() + " To: " + afterParentDir.getAbsolutePath());
+                            assert result.getAfter() != null;
+                            // Ensure directories exist in case something was moved into a hitherto non-existent package
+                            Path afterLocation = results.getProjectRoot().resolve(result.getAfter().getSourcePath());
+                            File afterParentDir = afterLocation.toFile().getParentFile();
+                            // Rename the directory if its name case has been changed, e.g. camel case to lower case.
+                            if (afterParentDir.exists()
+                                    && afterParentDir.getAbsolutePath().equalsIgnoreCase((originalParentDir.getAbsolutePath()))
+                                    && !afterParentDir.getAbsolutePath().equals(originalParentDir.getAbsolutePath())) {
+                                if (!originalParentDir.renameTo(afterParentDir)) {
+                                    throw new RuntimeException("Unable to rename directory from " + originalParentDir.getAbsolutePath() + " To: " + afterParentDir.getAbsolutePath());
+                                }
+                            } else if (!afterParentDir.exists() && !afterParentDir.mkdirs()) {
+                                throw new RuntimeException("Unable to create directory " + afterParentDir.getAbsolutePath());
                             }
-                        } else if (!afterParentDir.exists() && !afterParentDir.mkdirs()) {
-                            throw new RuntimeException("Unable to create directory " + afterParentDir.getAbsolutePath());
+                            writeAfter(results.getProjectRoot(), result);
                         }
-                        writeAfter(results.getProjectRoot(), result);
                     }
                     for (Result result : results.refactoredInPlace) {
                         writeAfter(results.getProjectRoot(), result);
