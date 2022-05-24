@@ -121,7 +121,12 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     public SortedSet<String> getActiveStyles() {
-        return new TreeSet<>(extension.getActiveStyles());
+        String activeStyleProp = System.getProperty("activeStyle");
+        if(activeStyleProp == null) {
+            return new TreeSet<>(extension.getActiveStyles());
+        } else {
+            return new TreeSet<>(singleton(activeStyleProp));
+        }
     }
 
     public SortedSet<String> getAvailableStyles() {
