@@ -56,6 +56,7 @@ import org.openrewrite.tree.ParsingExecutionContextView;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -357,9 +358,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
             }
         } else {
+            Charset charset = result.getAfter().getCharset() == null ? StandardCharsets.UTF_8 : result.getAfter().getCharset();
             try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                    root.resolve(result.getAfter().getSourcePath()))) {
-                Charset charset = result.getAfter().getCharset();
+                    root.resolve(result.getAfter().getSourcePath()), charset)) {
                 sourceFileWriter.write(new String(result.getAfter().printAll().getBytes(charset), charset));
             } catch (IOException e) {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
