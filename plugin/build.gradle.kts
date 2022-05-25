@@ -128,6 +128,7 @@ dependencies {
     testImplementation(localGroovy())
     testImplementation(platform("org.spockframework:spock-bom:2.0-groovy-3.0"))
     testImplementation("org.spockframework:spock-core")
+    testImplementation("org.openrewrite:rewrite-gradle:$rewriteVersion")
 }
 
 tasks.pluginUnderTestMetadata {

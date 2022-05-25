@@ -37,6 +37,7 @@ import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
+import org.openrewrite.ipc.http.HttpUrlConnectionSender;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.java.marker.JavaProject;
@@ -50,6 +51,7 @@ import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.quark.Quark;
+import org.openrewrite.remote.Remote;
 import org.openrewrite.shaded.jgit.api.Git;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.tree.ParsingExecutionContextView;
@@ -355,20 +357,52 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     private static void writeAfter(Path root, Result result) {
         assert result.getAfter() != null;
+        Path targetPath = root.resolve(result.getAfter().getSourcePath());
+        File targetFile = targetPath.toFile();
+        if(!targetFile.getParentFile().exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            targetFile.getParentFile().mkdirs();
+        }
         if(result.getAfter() instanceof Binary) {
-            try (FileOutputStream sourceFileWriter = new FileOutputStream(
-                    root.resolve(result.getAfter().getSourcePath()).toFile())) {
+            try (FileOutputStream sourceFileWriter = new FileOutputStream(targetFile)) {
                 sourceFileWriter.write(((Binary) result.getAfter()).getBytes());
             } catch (IOException e) {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
             }
+        } else if (result.getAfter() instanceof Remote) {
+            Remote remote = (Remote) result.getAfter();
+            try (FileOutputStream sourceFileWriter = new FileOutputStream(targetFile)) {
+                InputStream source = remote.getInputStream(new HttpUrlConnectionSender());
+                byte[] buf = new byte[4096];
+                int length;
+                while ((length = source.read(buf)) > 0) {
+                    sourceFileWriter.write(buf, 0, length);
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException("Unable to rewrite source files", e);
+            }
         } else {
+            //noinspection ConstantConditions
             Charset charset = result.getAfter().getCharset() == null ? StandardCharsets.UTF_8 : result.getAfter().getCharset();
-            try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(
-                    root.resolve(result.getAfter().getSourcePath()), charset)) {
+            try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(targetPath, charset)) {
                 sourceFileWriter.write(new String(result.getAfter().printAll().getBytes(charset), charset));
             } catch (IOException e) {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
+            }
+        }
+        if(result.getAfter().getFileAttributes() != null) {
+            FileAttributes fileAttributes = result.getAfter().getFileAttributes();
+            if(targetFile.canRead() != fileAttributes.isReadable()) {
+                //noinspection ResultOfMethodCallIgnored
+                targetFile.setReadable(fileAttributes.isReadable());
+            }
+            if(targetFile.canWrite() != fileAttributes.isWritable()) {
+                //noinspection ResultOfMethodCallIgnored
+                targetFile.setWritable(fileAttributes.isWritable());
+            }
+            if(targetFile.canExecute() != fileAttributes.isExecutable()) {
+                //noinspection ResultOfMethodCallIgnored
+                targetFile.setExecutable(fileAttributes.isExecutable());
             }
         }
     }
