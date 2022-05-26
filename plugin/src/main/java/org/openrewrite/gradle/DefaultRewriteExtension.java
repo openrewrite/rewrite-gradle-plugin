@@ -39,7 +39,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
     Provider<Map<String,Object>> checkstylePropertiesProvider;
     private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
-    private boolean enableExperimentalGradleBuildScriptParsing;
+    private boolean enableExperimentalGradleBuildScriptParsing = true;
     private final List<String> exclusions = new ArrayList<>();
     private int sizeThresholdMb = 10;
 

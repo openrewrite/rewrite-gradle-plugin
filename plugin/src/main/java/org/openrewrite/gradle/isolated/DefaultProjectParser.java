@@ -545,7 +545,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             if (extension.isEnableExperimentalGradleBuildScriptParsing()) {
-                logger.warn("Rewrite of Gradle files is an incubating feature which has been disabled in this release because it needs a bit more time to bake.");
                 File buildScriptFile = subproject.getBuildFile();
                 try {
                     if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists()) {
@@ -553,7 +552,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 GroovyParser.builder()
                                         .styles(styles)
                                         .typeCache(javaTypeCache)
-                                        .logCompilationWarningsAndErrors(true));
+                                        .logCompilationWarningsAndErrors(false));
 
                         sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
                     }
