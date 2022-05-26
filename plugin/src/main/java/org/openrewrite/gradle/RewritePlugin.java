@@ -66,7 +66,7 @@ public class RewritePlugin implements Plugin<Project> {
                 .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
-        if(isRootProject) {
+        if (isRootProject) {
             project.allprojects(subproject -> configureProject(subproject, extension, rewriteDryRun, rewriteRun));
         } else {
             configureProject(project, extension, rewriteDryRun, rewriteRun);
@@ -77,14 +77,14 @@ public class RewritePlugin implements Plugin<Project> {
         // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
         // Do not replace all() with any form of collection iteration which does not share this important property
         project.getPlugins().all(plugin -> {
-            if(plugin instanceof CheckstylePlugin) {
+            if (plugin instanceof CheckstylePlugin) {
                 // A multi-project build could hypothetically have different checkstyle configuration per-project
                 // In practice all projects tend to have the same configuration
                 CheckstyleExtension checkstyleExtension = project.getExtensions().getByType(CheckstyleExtension.class);
                 extension.checkstyleConfigProvider = checkstyleExtension::getConfigFile;
                 extension.checkstylePropertiesProvider = checkstyleExtension::getConfigProperties;
             }
-            if(!(plugin instanceof JavaBasePlugin)) {
+            if (!(plugin instanceof JavaBasePlugin)) {
                 return;
             }
 

@@ -18,48 +18,50 @@ package org.openrewrite.gradle;
 import java.time.Duration;
 
 public class TimeUtils {
-    private TimeUtils() {}
+    private TimeUtils() {
+    }
     public static final int MINUTES_PER_HOUR = 60;
     public static final int SECONDS_PER_MINUTE = 60;
     public static final int SECONDS_PER_HOUR = SECONDS_PER_MINUTE * MINUTES_PER_HOUR;
     public static final int SECONDS_PER_DAY = SECONDS_PER_HOUR * 24;
+
     public static String prettyPrint(Duration duration) {
         StringBuilder result = new StringBuilder();
         long days = duration.getSeconds() / SECONDS_PER_DAY;
         boolean startedPrinting = false;
-        if(days > 0) {
+        if (days > 0) {
             startedPrinting = true;
             result.append(days);
             result.append(" day");
-            if(days != 1) {
+            if (days != 1) {
                 result.append("s");
             }
             result.append(" ");
         }
 
         long hours =  duration.toHours() % 24;
-        if(startedPrinting || hours > 0) {
+        if (startedPrinting || hours > 0) {
             startedPrinting = true;
             result.append(hours);
             result.append(" hour");
-            if(hours != 1) {
+            if (hours != 1) {
                 result.append("s");
             }
             result.append(" ");
         }
 
         long minutes = (duration.getSeconds() / SECONDS_PER_MINUTE) % MINUTES_PER_HOUR;
-        if(startedPrinting || minutes > 0) {
+        if (startedPrinting || minutes > 0) {
             result.append(minutes);
             result.append(" minute");
-            if(minutes != 1) {
+            if (minutes != 1) {
                 result.append("s");
             }
             result.append(" ");
         }
 
         long seconds = duration.getSeconds() % SECONDS_PER_MINUTE;
-        if(startedPrinting || seconds > 0) {
+        if (startedPrinting || seconds > 0) {
             result.append(seconds);
             result.append(" second");
             if (seconds != 1) {
@@ -71,7 +73,7 @@ public class TimeUtils {
         long millis = duration.getNano() / 1000_000;
         result.append(millis);
         result.append(" millisecond");
-        if(millis != 1) {
+        if (millis != 1) {
             result.append("s");
         }
 

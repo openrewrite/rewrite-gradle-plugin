@@ -257,9 +257,9 @@ public class ResourceParser {
         String pathString = path.toString();
 
         return  pathString.contains("/META-INF/services") ||
-                pathString.endsWith(".gitignore")||
-                pathString.endsWith(".gitattributes")||
-                pathString.endsWith(".java-version")||
+                pathString.endsWith(".gitignore") ||
+                pathString.endsWith(".gitattributes") ||
+                pathString.endsWith(".java-version") ||
                 pathString.endsWith(".sdkmanrc");
     }
 

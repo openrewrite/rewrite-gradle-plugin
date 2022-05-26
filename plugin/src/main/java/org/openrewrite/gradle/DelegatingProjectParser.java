@@ -54,21 +54,21 @@ public class DelegatingProjectParser implements GradleProjectParser {
                     .getResource("/org/openrewrite/gradle/isolated/DefaultProjectParser.class")
                     .toString();
             URL currentJar = null;
-            if(path.startsWith("jar:")) {
+            if (path.startsWith("jar:")) {
                 path = path.substring(4);
                 int indexOfBang = path.indexOf("!");
-                if(indexOfBang != -1) {
+                if (indexOfBang != -1) {
                     path = path.substring(0, indexOfBang);
                 }
                 currentJar = new URI(path).toURL();
-            } else if(path.endsWith(".class")) {
+            } else if (path.endsWith(".class")) {
                 // This code path only gets taken when running the tests against older versions of Gradle
                 // In all other circumstances, "path" will point at a jar file
                 currentJar = Paths.get(System.getProperty("jarLocationForTest")).toUri().toURL();
             }
 
             classpathUrls.add(currentJar);
-            if(rewriteClassLoader == null || !classpathUrls.equals(rewriteClasspath)) {
+            if (rewriteClassLoader == null || !classpathUrls.equals(rewriteClasspath)) {
                 rewriteClassLoader = new RewriteClassLoader(classpathUrls);
                 rewriteClasspath = classpathUrls;
                 astCache.clear();
@@ -139,7 +139,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
         try {
             return supplier.call();
         } catch (InvocationTargetException e) {
-            if(e.getTargetException() instanceof RuntimeException) {
+            if (e.getTargetException() instanceof RuntimeException) {
                 throw (RuntimeException) e.getTargetException();
             } else {
                 throw new RuntimeException(e.getTargetException());

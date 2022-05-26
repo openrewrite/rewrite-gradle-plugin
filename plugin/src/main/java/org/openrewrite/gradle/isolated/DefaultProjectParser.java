@@ -95,9 +95,9 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         BuildEnvironment buildEnvironment = BuildEnvironment.build(System::getenv);
         sharedProvenance = Stream.of(
-                        buildEnvironment,
-                        gitProvenance(baseDir, buildEnvironment),
-                        new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
+                buildEnvironment,
+                gitProvenance(baseDir, buildEnvironment),
+                new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
@@ -124,7 +124,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public SortedSet<String> getActiveStyles() {
         String activeStyleProp = System.getProperty("activeStyle");
-        if(activeStyleProp == null) {
+        if (activeStyleProp == null) {
             return new TreeSet<>(extension.getActiveStyles());
         } else {
             return new TreeSet<>(singleton(activeStyleProp));
@@ -231,9 +231,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 reportPath.getParent().toFile().mkdirs();
                 try (BufferedWriter writer = Files.newBufferedWriter(reportPath)) {
                     Stream.concat(
-                                    Stream.concat(results.generated.stream(), results.deleted.stream()),
-                                    Stream.concat(results.moved.stream(), results.refactoredInPlace.stream())
-                            )
+                            Stream.concat(results.generated.stream(), results.deleted.stream()),
+                            Stream.concat(results.moved.stream(), results.refactoredInPlace.stream())
+                    )
                             .map(Result::diff)
                             .forEach(diff -> {
                                 try {
@@ -359,11 +359,11 @@ public class DefaultProjectParser implements GradleProjectParser {
         assert result.getAfter() != null;
         Path targetPath = root.resolve(result.getAfter().getSourcePath());
         File targetFile = targetPath.toFile();
-        if(!targetFile.getParentFile().exists()) {
+        if (!targetFile.getParentFile().exists()) {
             //noinspection ResultOfMethodCallIgnored
             targetFile.getParentFile().mkdirs();
         }
-        if(result.getAfter() instanceof Binary) {
+        if (result.getAfter() instanceof Binary) {
             try (FileOutputStream sourceFileWriter = new FileOutputStream(targetFile)) {
                 sourceFileWriter.write(((Binary) result.getAfter()).getBytes());
             } catch (IOException e) {
@@ -390,17 +390,17 @@ public class DefaultProjectParser implements GradleProjectParser {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
             }
         }
-        if(result.getAfter().getFileAttributes() != null) {
+        if (result.getAfter().getFileAttributes() != null) {
             FileAttributes fileAttributes = result.getAfter().getFileAttributes();
-            if(targetFile.canRead() != fileAttributes.isReadable()) {
+            if (targetFile.canRead() != fileAttributes.isReadable()) {
                 //noinspection ResultOfMethodCallIgnored
                 targetFile.setReadable(fileAttributes.isReadable());
             }
-            if(targetFile.canWrite() != fileAttributes.isWritable()) {
+            if (targetFile.canWrite() != fileAttributes.isWritable()) {
                 //noinspection ResultOfMethodCallIgnored
                 targetFile.setWritable(fileAttributes.isWritable());
             }
-            if(targetFile.canExecute() != fileAttributes.isExecutable()) {
+            if (targetFile.canExecute() != fileAttributes.isExecutable()) {
                 //noinspection ResultOfMethodCallIgnored
                 targetFile.setExecutable(fileAttributes.isExecutable());
             }

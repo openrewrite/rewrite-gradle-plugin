@@ -36,7 +36,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
     protected final Project project;
     private File configFile;
     Provider<File> checkstyleConfigProvider;
-    Provider<Map<String,Object>> checkstylePropertiesProvider;
+    Provider<Map<String, Object>> checkstylePropertiesProvider;
     private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
     private boolean enableExperimentalGradleBuildScriptParsing;
@@ -92,10 +92,10 @@ public class DefaultRewriteExtension implements RewriteExtension {
     @Override
     @Nullable
     public File getCheckstyleConfigFile() {
-        if(checkstyleConfigFile == null && checkstyleConfigProvider != null) {
+        if (checkstyleConfigFile == null && checkstyleConfigProvider != null) {
             try {
                 return checkstyleConfigProvider.get();
-            } catch(Exception e) {
+            } catch (Exception e) {
                 return null;
             }
         }
@@ -104,7 +104,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
 
     @Override
     public Map<String, Object> getCheckstyleProperties() {
-        if(checkstyleConfigProvider == null) {
+        if (checkstyleConfigProvider == null) {
             return emptyMap();
         }
         return checkstylePropertiesProvider.get();
@@ -189,11 +189,11 @@ public class DefaultRewriteExtension implements RewriteExtension {
     }
 
     private Properties getVersionProps() {
-        if(versionProps == null) {
-            try(InputStream is = DefaultRewriteExtension.class.getResourceAsStream("/versions.properties")) {
+        if (versionProps == null) {
+            try (InputStream is = DefaultRewriteExtension.class.getResourceAsStream("/versions.properties")) {
                 versionProps = new Properties();
                 versionProps.load(is);
-            } catch(IOException e) {
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -205,7 +205,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
      */
     @Override
     public String getRewriteVersion() {
-        if(rewriteVersion == null) {
+        if (rewriteVersion == null) {
             return getVersionProps().getProperty("org.openrewrite:rewrite-core");
         }
         return rewriteVersion;
