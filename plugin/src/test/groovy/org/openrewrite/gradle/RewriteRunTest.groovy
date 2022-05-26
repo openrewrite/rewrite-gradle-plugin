@@ -480,9 +480,10 @@ class RewriteRunTest extends RewriteTestBase {
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.AddGradleWrapper
                 displayName: Adds a Gradle wrapper
-                description: Add wrapper for gradle version ${GradleProperties.DEFAULT_VERSION}
+                description: Add wrapper for gradle version 7.4.2
                 recipeList:
-                  - org.openrewrite.gradle.AddGradleWrapper
+                  - org.openrewrite.gradle.AddGradleWrapper:
+                      version: "7.4.2"
                 """.stripIndent())
         new File(projectDir, "build.gradle")
             .write(
@@ -510,7 +511,7 @@ class RewriteRunTest extends RewriteTestBase {
         def expectedProps = """\
                 distributionBase=GRADLE_USER_HOME
                 distributionPath=wrapper/dists
-                distributionUrl=https\\://services.gradle.org/distributions/gradle-${GradleProperties.DEFAULT_VERSION}-bin.zip
+                distributionUrl=https\\://services.gradle.org/distributions/gradle-7.4.2-bin.zip
                 zipStoreBase=GRADLE_USER_HOME
                 zipStorePath=wrapper/dists""".stripIndent()
 
