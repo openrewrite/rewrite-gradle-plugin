@@ -77,6 +77,9 @@ import static org.openrewrite.internal.ListUtils.map;
 
 @SuppressWarnings("unused")
 public class DefaultProjectParser implements GradleProjectParser {
+
+    private final static JavaTypeCache javaTypeCache = new JavaTypeCache();
+
     private final Logger logger = Logging.getLogger(DefaultProjectParser.class);
     protected final Path baseDir;
     protected final RewriteExtension extension;
@@ -382,7 +385,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
             }
         } else {
-            //noinspection ConstantConditions
             Charset charset = result.getAfter().getCharset() == null ? StandardCharsets.UTF_8 : result.getAfter().getCharset();
             try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(targetPath, charset)) {
                 sourceFileWriter.write(new String(result.getAfter().printAll().getBytes(charset), charset));
@@ -479,7 +481,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             ResourceParser rp = new ResourceParser(baseDir, project, extension);
 
             List<SourceFile> sourceFiles = new ArrayList<>();
-            JavaTypeCache javaTypeCache = new JavaTypeCache();
             for (SourceSet sourceSet : sourceSets) {
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
