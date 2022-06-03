@@ -133,6 +133,7 @@ class RewriteRunTest extends RewriteTestBase {
                 
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
+                    exclusion("**/BTestClass.java")
                 }
                 
                 repositories {
@@ -172,7 +173,7 @@ class RewriteRunTest extends RewriteTestBase {
         File bSrcDir = new File(projectDir, "b/src/test/java/com/foo")
         bSrcDir.mkdirs()
         File bTestClass = new File(bSrcDir, "BTestClass.java")
-        bTestClass.text = """\
+        String bTestClassExpected = """\
                 package com.foo;
     
                 import org.junit.Test;
@@ -182,7 +183,8 @@ class RewriteRunTest extends RewriteTestBase {
                     @Test
                     public void passes() { }
                 }
-            """.stripIndent()
+        """.stripIndent()
+        bTestClass.text = bTestClassExpected
         when:
         def result = gradleRunner(gradleVersion, "rewriteRun").build()
         def rewriteRunResult = result.task(":rewriteRun")
@@ -198,18 +200,7 @@ class RewriteRunTest extends RewriteTestBase {
                     }
                 }
         """.stripIndent()
-        String bTestClassExpected = """\
-                package com.foo;
-    
-                import org.junit.Test;
-                
-                public class BTestClass {
-                
-                    @Test
-                    public void passes() {
-                    }
-                }
-        """.stripIndent()
+
         then:
         rewriteRunResult.outcome == TaskOutcome.SUCCESS
         aTestClass.text == aTestClassExpected

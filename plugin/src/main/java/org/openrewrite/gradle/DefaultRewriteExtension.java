@@ -22,7 +22,10 @@ import javax.inject.Provider;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.PathMatcher;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;

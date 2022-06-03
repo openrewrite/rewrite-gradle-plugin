@@ -56,7 +56,6 @@ public class ResourceParser {
         this.sizeThresholdMb = extension.getSizeThresholdMb();
     }
 
-    @SuppressWarnings("unchecked")
     private static Collection<String> mergeExclusions(Project project, RewriteExtension extension) {
         return Stream.concat(
                 project.getSubprojects().stream()
@@ -90,7 +89,6 @@ public class ResourceParser {
     }
 
     public List<Path> listSources(Path searchDir) throws IOException {
-        GradleShellScriptParser gradleShellScriptParser = new GradleShellScriptParser(baseDir);
         JsonParser jsonParser = new JsonParser();
         XmlParser xmlParser = new XmlParser();
         YamlParser yamlParser = new YamlParser();
@@ -111,8 +109,7 @@ public class ResourceParser {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (attrs.size() != 0 && !attrs.isOther() && !isExcluded(file) && !isOverSizeThreshold(attrs.size())) {
-                    if (gradleShellScriptParser.accept(file) ||
-                            jsonParser.accept(file) ||
+                    if (jsonParser.accept(file) ||
                             xmlParser.accept(file) ||
                             yamlParser.accept(file) ||
                             propertiesParser.accept(file) ||
@@ -165,9 +162,6 @@ public class ResourceParser {
 
         List<S> sourceFiles = new ArrayList<>(resources.size());
 
-        GradleShellScriptParser gradleShellScriptParser = new GradleShellScriptParser(baseDir);
-        List<Path> gradleShellScriptPaths = new ArrayList<>();
-
         JsonParser jsonParser = new JsonParser();
         List<Path> jsonPaths = new ArrayList<>();
 
@@ -191,9 +185,7 @@ public class ResourceParser {
         QuarkParser quarkParser = new QuarkParser();
 
         resources.forEach(path -> {
-            if (gradleShellScriptParser.accept(path)) {
-                gradleShellScriptPaths.add(path);
-            } else if (jsonParser.accept(path)) {
+            if (jsonParser.accept(path)) {
                 jsonPaths.add(path);
             } else if (xmlParser.accept(path)) {
                 xmlPaths.add(path);
@@ -209,9 +201,6 @@ public class ResourceParser {
                 quarkPaths.add(path);
             }
         });
-
-        sourceFiles.addAll((List<S>) gradleShellScriptParser.parse(gradleShellScriptPaths, baseDir, ctx));
-        alreadyParsed.addAll(gradleShellScriptPaths);
 
         sourceFiles.addAll((List<S>) jsonParser.parse(jsonPaths, baseDir, ctx));
         alreadyParsed.addAll(jsonPaths);
@@ -260,7 +249,9 @@ public class ResourceParser {
                 pathString.endsWith(".gitignore")||
                 pathString.endsWith(".gitattributes")||
                 pathString.endsWith(".java-version")||
-                pathString.endsWith(".sdkmanrc");
+                pathString.endsWith(".sdkmanrc") ||
+                pathString.endsWith("gradlew") ||
+                pathString.endsWith("gradlew.bat");
     }
 
     private boolean isIgnoredDirectory(Path searchDir, Path path) {

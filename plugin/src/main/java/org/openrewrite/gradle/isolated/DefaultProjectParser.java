@@ -61,6 +61,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -529,6 +530,17 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Duration parseDuration = Duration.between(start, Instant.now());
                     logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
                             project.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
+                    Collection<PathMatcher> exclusions = extension.getExclusions().stream()
+                            .map(pattern -> project.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
+                            .collect(toList());
+                    cus = ListUtils.map(cus, cu -> {
+                        for (PathMatcher excluded : exclusions) {
+                            if (excluded.matches(cu.getSourcePath())) {
+                                return null;
+                            }
+                        }
+                        return cu;
+                    });
                     sourceFiles.addAll(map(maybeAutodetectStyles(cus, styles), addProvenance(projectProvenance, null)));
                     sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
                 }
