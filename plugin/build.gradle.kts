@@ -5,7 +5,7 @@ import java.util.*
 
 plugins {
     java
-    groovy
+    kotlin("jvm") version("1.6.20")
     `java-gradle-plugin`
     id("com.gradle.plugin-publish") version ("0.15.0")
     id("com.github.hierynomus.license") version "0.16.1" apply false
@@ -39,6 +39,7 @@ repositories {
     mavenCentral()
 }
 
+val gradleProvided = configurations.create("gradleProvided")
 configurations.all {
     resolutionStrategy {
         cacheChangingModulesFor(0, TimeUnit.SECONDS)
@@ -124,10 +125,12 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-gradle:$rewriteVersion")
     compileOnly("com.puppycrawl.tools:checkstyle:9.3")
 
+    "gradleProvided"(gradleApi())
     testImplementation(gradleTestKit())
-    testImplementation(localGroovy())
-    testImplementation(platform("org.spockframework:spock-bom:2.0-groovy-3.0"))
-    testImplementation("org.spockframework:spock-core")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:latest.release")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:latest.release")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:latest.release")
+    testImplementation("org.assertj:assertj-core:latest.release")
     testImplementation("org.openrewrite:rewrite-gradle:$rewriteVersion")
 }
 
@@ -136,27 +139,6 @@ tasks.pluginUnderTestMetadata {
 }
 
 project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))
-
-tasks.named<Test>("test") {
-    systemProperty(
-        GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME,
-        project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
-    )
-}
-
-val testGradle4 = tasks.register<Test>("testGradle4") {
-    systemProperty(GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME, "4.0")
-    // Gradle 4.0 predates support for Java 11
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(8))
-    })
-    dependsOn(tasks.named("jar"))
-    val jar: Jar = tasks.named<Jar>("jar").get()
-    jvmArgs("-DjarLocationForTest=${jar.archiveFile.get().asFile.absolutePath}")
-}
-tasks.named("check").configure {
-    dependsOn(testGradle4)
-}
 
 tasks.register<Test>("testGradleReleases") {
     jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getReleasedVersions))
@@ -201,6 +183,70 @@ val gVP = tasks.register("generateVersionsProperties") {
 tasks.named("processResources") {
     dependsOn(gVP)
 }
+val versionManifest = tasks.register("writeVersionManifest") {
+    group = "other"
+    description = "Produce a text file containing the version number of this plugin to be used when invoking the plugin from tests"
+
+    val outputFile = project.file("src/test/resources/plugin-version.txt")
+    val version = project.version.toString()
+    inputs.property("version", version)
+    outputs.file(outputFile)
+    doLast {
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(version)
+    }
+}
+val testManifest = tasks.register("writeTestManifest") {
+    group = "other"
+    description = "Produce a text file containing the classpath to be used when invoking the plugin from tests"
+
+    val runtimeClasspath = configurations.named("runtimeClasspath")
+    val outputFile = project.file("src/test/resources/plugin-classpath.txt")
+    dependsOn(runtimeClasspath)
+    dependsOn(gradleProvided)
+
+    outputs.file(outputFile)
+
+    doLast {
+        runtimeClasspath.get().resolve().minus(gradleProvided.resolve())
+
+        val contents = sequenceOf(tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
+            .plus(runtimeClasspath.get().resolve()
+                .minus(gradleProvided.resolve())
+                .map(File::getAbsolutePath))
+            .joinToString("\n")
+
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(contents)
+    }
+}
+
+tasks.named("processTestResources") {
+    dependsOn(testManifest, versionManifest)
+}
+
+tasks.named<Test>("test") {
+    systemProperty(
+        GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME,
+        project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
+    )
+    val jar: Jar = tasks.named<Jar>("jar").get()
+    dependsOn(jar, testManifest, versionManifest)
+}
+
+val testGradle4 = tasks.register<Test>("testGradle4") {
+    systemProperty(GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME, "4.0")
+    // Gradle 4.0 predates support for Java 11
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(8))
+    })
+    val jar: Jar = tasks.named<Jar>("jar").get()
+    dependsOn(jar, testManifest, versionManifest)
+    jvmArgs("-DjarLocationForTest=${jar.archiveFile.get().asFile.absolutePath}")
+}
+tasks.named("check").configure {
+    dependsOn(testGradle4)
+}
 
 configure<LicenseExtension> {
     ext.set("year", Calendar.getInstance().get(Calendar.YEAR))
@@ -209,11 +255,15 @@ configure<LicenseExtension> {
     mapping(mapOf("kt" to "SLASHSTAR_STYLE", "java" to "SLASHSTAR_STYLE"))
     strictCheck = true
     exclude("**/versions.properties")
+    exclude("**/*.txt")
 }
 
 // This is here to silence a warning from Gradle about tasks using each-others outputs without declaring a dependency
 tasks.named("licenseMain") {
     dependsOn(gVP)
+}
+tasks.named("licenseTest") {
+    dependsOn(testManifest, versionManifest)
 }
 // The plugin that adds this task does it weirdly so it isn't available for configuration yet.
 // So have this behavior applied to it whenever it _is_ added.
