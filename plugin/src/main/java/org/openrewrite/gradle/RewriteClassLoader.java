@@ -51,9 +51,6 @@ public class RewriteClassLoader extends URLClassLoader {
      */
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        if(name.startsWith("org.openrewrite.java.package-info")) {
-            System.out.println("here");
-        }
         Class<?> foundClass = findLoadedClass(name);
         if (foundClass == null) {
             try {
