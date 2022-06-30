@@ -480,7 +480,9 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             ResourceParser rp = new ResourceParser(baseDir, project, extension);
-
+            Collection<PathMatcher> exclusions = extension.getExclusions().stream()
+                    .map(pattern -> project.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
+                    .collect(toList());
             List<SourceFile> sourceFiles = new ArrayList<>();
             for (SourceSet sourceSet : sourceSets) {
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
@@ -530,14 +532,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Duration parseDuration = Duration.between(start, Instant.now());
                     logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
                             project.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
-                    Collection<PathMatcher> exclusions = extension.getExclusions().stream()
-                            .map(pattern -> project.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
-                            .collect(toList());
                     cus = ListUtils.map(cus, cu -> {
-                        for (PathMatcher excluded : exclusions) {
-                            if (excluded.matches(cu.getSourcePath())) {
-                                return null;
-                            }
+                        if(isExcluded(exclusions, cu.getSourcePath())) {
+                            return null;
                         }
                         return cu;
                     });
@@ -560,7 +557,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             if (extension.isEnableExperimentalGradleBuildScriptParsing()) {
                 File buildScriptFile = subproject.getBuildFile();
                 try {
-                    if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists()) {
+                    if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists() && !isExcluded(exclusions, buildScriptFile.toPath())) {
                         GradleParser gradleParser = new GradleParser(
                                 GroovyParser.builder()
                                         .styles(styles)
@@ -580,6 +577,15 @@ public class DefaultProjectParser implements GradleProjectParser {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private boolean isExcluded(Collection<PathMatcher> exclusions, Path path) {
+        for (PathMatcher excluded : exclusions) {
+            if (excluded.matches(path)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<NamedStyles> getStyles() {
