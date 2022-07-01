@@ -92,7 +92,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     private Environment environment;
 
     public DefaultProjectParser(Project project, RewriteExtension extension, Map<String, Object> astCache) {
-        this.baseDir = project.getProjectDir().toPath();
+        this.baseDir = project.getRootProject().getProjectDir().toPath();
         this.extension = extension;
         this.project = project;
         this.astCache = astCache;
