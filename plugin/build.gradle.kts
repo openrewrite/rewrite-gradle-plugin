@@ -227,15 +227,14 @@ tasks.named("processTestResources") {
 
 tasks.named<Test>("test") {
     systemProperty(
-        GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME,
-        project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
+        "org.openrewrite.test.gradleVersion", project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
     )
     val jar: Jar = tasks.named<Jar>("jar").get()
     dependsOn(jar, testManifest, versionManifest)
 }
 
 val testGradle4 = tasks.register<Test>("testGradle4") {
-    systemProperty(GradleVersionsCommandLineArgumentProvider.PROPERTY_NAME, "4.0")
+    systemProperty("org.openrewrite.test.gradleVersion", "4.0")
     // Gradle 4.0 predates support for Java 11
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(8))

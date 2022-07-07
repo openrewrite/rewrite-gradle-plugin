@@ -33,7 +33,7 @@ val pluginVersion = RewritePluginTest::class.java
     .readText()
     .trim()
 
-val gradleVersion: String? = System.getProperty("org.openrewrite .test.gradleVersion")
+val gradleVersion: String? = System.getProperty("org.openrewrite.test.gradleVersion")
 
 interface RewritePluginTest {
 
