@@ -420,7 +420,6 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             Properties properties = new Properties();
             properties.putAll(gradleProps);
-            GradlePropertiesHelper.checkAndLogMissingJvmModuleExports((String) gradleProps.getOrDefault("org.gradle.jvmargs", ""));
 
             Environment.Builder env = Environment.builder();
             env.scanClassLoader(getClass().getClassLoader());
