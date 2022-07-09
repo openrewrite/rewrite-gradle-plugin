@@ -562,8 +562,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                                         .styles(styles)
                                         .typeCache(javaTypeCache)
                                         .logCompilationWarningsAndErrors(false));
-
                         sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
+                        alreadyParsed.add(buildScriptFile.toPath());
                     }
                 } catch (Exception e) {
                     logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath() + "\" : ", e);
