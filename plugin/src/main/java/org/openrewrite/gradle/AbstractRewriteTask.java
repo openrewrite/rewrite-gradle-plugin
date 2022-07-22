@@ -93,10 +93,6 @@ public abstract class AbstractRewriteTask extends DefaultTask {
         return getProjectParser().getActiveStyles();
     }
 
-    protected void shutdownRewrite() {
-        getProjectParser().shutdownRewrite();
-    }
-
     protected void clearAstCache() {
         getProjectParser().clearAstCache();
     }

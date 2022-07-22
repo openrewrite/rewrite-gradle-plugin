@@ -53,47 +53,48 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        Collection<RecipeDescriptor> availableRecipeDescriptors = getProjectParser().listRecipeDescriptors();
+        try(DelegatingProjectParser gpp = getProjectParser()) {
+            Collection<RecipeDescriptor> availableRecipeDescriptors = gpp.listRecipeDescriptors();
 
-        if (interactive) {
-            log.quiet("Entering interactive mode, Ctrl-C to exit...");
-            UserInputHandler prompter = getServices().get(UserInputHandler.class);
-            RecipeDescriptorTreePrompter treePrompter = new RecipeDescriptorTreePrompter(prompter);
-            RecipeDescriptor rd = treePrompter.execute(availableRecipeDescriptors);
-            writeRecipeDescriptor(rd);
-        } else {
-            Set<String> activeRecipes = getActiveRecipes();
-            Set<String> availableStyles = getProjectParser().getAvailableStyles();
-            Set<String> activeStyles = getActiveStyles();
+            if (interactive) {
+                log.quiet("Entering interactive mode, Ctrl-C to exit...");
+                UserInputHandler prompter = getServices().get(UserInputHandler.class);
+                RecipeDescriptorTreePrompter treePrompter = new RecipeDescriptorTreePrompter(prompter);
+                RecipeDescriptor rd = treePrompter.execute(availableRecipeDescriptors);
+                writeRecipeDescriptor(rd);
+            } else {
+                Set<String> activeRecipes = getActiveRecipes();
+                Set<String> availableStyles = gpp.getAvailableStyles();
+                Set<String> activeStyles = getActiveStyles();
 
-            log.quiet("Available Recipes:");
-            for (RecipeDescriptor recipe : availableRecipeDescriptors) {
-                log.quiet(indent(1, recipe.getName()));
+                log.quiet("Available Recipes:");
+                for (RecipeDescriptor recipe : availableRecipeDescriptors) {
+                    log.quiet(indent(1, recipe.getName()));
+                }
+
+                log.quiet(indent(0, ""));
+                log.quiet("Available Styles:");
+                for (String style : availableStyles) {
+                    log.quiet(indent(1, style));
+                }
+
+                log.quiet(indent(0, ""));
+                log.quiet("Active Styles:");
+                for (String style : activeStyles) {
+                    log.quiet(indent(1, style));
+                }
+
+                log.quiet(indent(0, ""));
+                log.quiet("Active Recipes:");
+                for (String activeRecipe : activeRecipes) {
+                    log.quiet(indent(1, activeRecipe));
+                }
+
+                log.quiet(indent(0, ""));
+                log.quiet("Found " + availableRecipeDescriptors.size() + " available recipes and " + availableStyles.size() + " available styles.");
+                log.quiet("Configured with " + activeRecipes.size() + " active recipes and " + activeStyles.size() + " active styles.");
             }
-
-            log.quiet(indent(0, ""));
-            log.quiet("Available Styles:");
-            for (String style : availableStyles) {
-                log.quiet(indent(1, style));
-            }
-
-            log.quiet(indent(0, ""));
-            log.quiet("Active Styles:");
-            for (String style : activeStyles) {
-                log.quiet(indent(1, style));
-            }
-
-            log.quiet(indent(0, ""));
-            log.quiet("Active Recipes:");
-            for (String activeRecipe : activeRecipes) {
-                log.quiet(indent(1, activeRecipe));
-            }
-
-            log.quiet(indent(0, ""));
-            log.quiet("Found " + availableRecipeDescriptors.size() + " available recipes and " + availableStyles.size() + " available styles.");
-            log.quiet("Configured with " + activeRecipes.size() + " active recipes and " + activeStyles.size() + " active styles.");
         }
-
     }
 
     @SuppressWarnings("ConstantConditions")

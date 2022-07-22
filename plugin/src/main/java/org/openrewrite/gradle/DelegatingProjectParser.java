@@ -18,6 +18,9 @@ package org.openrewrite.gradle;
 import org.gradle.api.Project;
 import org.openrewrite.config.RecipeDescriptor;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -30,7 +33,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
-public class DelegatingProjectParser implements GradleProjectParser {
+public class DelegatingProjectParser implements GradleProjectParser, Closeable {
     protected final Class<?> gppClass;
     protected final Object gpp;
     protected static List<URL> rewriteClasspath;
@@ -146,6 +149,17 @@ public class DelegatingProjectParser implements GradleProjectParser {
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void close(){
+        if(rewriteClassLoader != null) {
+            try {
+                rewriteClassLoader.close();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         }
     }
 }
