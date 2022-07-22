@@ -18,8 +18,6 @@ package org.openrewrite.gradle;
 import org.gradle.api.Project;
 import org.openrewrite.config.RecipeDescriptor;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -32,11 +30,12 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
-public class DelegatingProjectParser implements GradleProjectParser, Closeable {
+public class DelegatingProjectParser implements GradleProjectParser {
     protected final Class<?> gppClass;
     protected final Object gpp;
     protected static List<URL> rewriteClasspath;
     protected static RewriteClassLoader rewriteClassLoader;
+    protected static final Map<String, Object> astCache = new HashMap<>();
 
     public DelegatingProjectParser(Project project, RewriteExtension extension, Set<Path> classpath) {
         try {
@@ -72,12 +71,13 @@ public class DelegatingProjectParser implements GradleProjectParser, Closeable {
             if(rewriteClassLoader == null || !classpathUrls.equals(rewriteClasspath)) {
                 rewriteClassLoader = new RewriteClassLoader(classpathUrls);
                 rewriteClasspath = classpathUrls;
+                astCache.clear();
             }
 
             gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, rewriteClassLoader);
             assert (gppClass.getClassLoader() == rewriteClassLoader) : "DefaultProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's classpath";
-            gpp = gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class)
-                    .newInstance(project, extension);
+            gpp = gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class, Map.class)
+                    .newInstance(project, extension, astCache);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -85,18 +85,18 @@ public class DelegatingProjectParser implements GradleProjectParser, Closeable {
     }
 
     @Override
-    public List<String> getActiveRecipes() {
-        return unwrapInvocationException(() -> (List<String>) gppClass.getMethod("getActiveRecipes").invoke(gpp));
+    public SortedSet<String> getActiveRecipes() {
+        return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getActiveRecipes").invoke(gpp));
     }
 
     @Override
-    public List<String> getActiveStyles() {
-        return unwrapInvocationException(() -> (List<String>) gppClass.getMethod("getActiveStyles").invoke(gpp));
+    public SortedSet<String> getActiveStyles() {
+        return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getActiveStyles").invoke(gpp));
     }
 
     @Override
-    public List<String> getAvailableStyles() {
-        return unwrapInvocationException(() -> (List<String>) gppClass.getMethod("getAvailableStyles").invoke(gpp));
+    public SortedSet<String> getAvailableStyles() {
+        return unwrapInvocationException(() -> (SortedSet<String>) gppClass.getMethod("getAvailableStyles").invoke(gpp));
     }
 
     @Override
@@ -110,13 +110,18 @@ public class DelegatingProjectParser implements GradleProjectParser, Closeable {
     }
 
     @Override
-    public void run(Consumer<Throwable> onError) {
-        unwrapInvocationException(() -> gppClass.getMethod("run", Consumer.class).invoke(gpp, onError));
+    public void run(boolean useAstCache, Consumer<Throwable> onError) {
+        unwrapInvocationException(() -> gppClass.getMethod("run", boolean.class, Consumer.class).invoke(gpp, useAstCache, onError));
     }
 
     @Override
-    public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
-        unwrapInvocationException(() -> gppClass.getMethod("dryRun", Path.class, boolean.class, Consumer.class).invoke(gpp, reportPath, dumpGcActivity, onError));
+    public void dryRun(Path reportPath, boolean dumpGcActivity, boolean useAstCache, Consumer<Throwable> onError) {
+        unwrapInvocationException(() -> gppClass.getMethod("dryRun", Path.class, boolean.class, boolean.class, Consumer.class).invoke(gpp, reportPath, dumpGcActivity, useAstCache, onError));
+    }
+
+    @Override
+    public void clearAstCache() {
+        unwrapInvocationException(() -> gppClass.getMethod("clearAstCache").invoke(gpp));
     }
 
     @Override
@@ -140,17 +145,6 @@ public class DelegatingProjectParser implements GradleProjectParser, Closeable {
                 throw new RuntimeException(e.getTargetException());
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public void close() {
-        try {
-            if(rewriteClassLoader != null) {
-                rewriteClassLoader.close();
-            }
-        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

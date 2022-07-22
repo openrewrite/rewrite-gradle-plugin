@@ -15,32 +15,20 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.logging.Logger;
-import org.gradle.api.logging.Logging;
-import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.api.tasks.options.Option;
 
 import javax.inject.Inject;
 
-public class RewriteRunTask extends AbstractRewriteTask {
-
-    private static final Logger logger = Logging.getLogger(RewriteRunTask.class);
+public class RewriteClearCacheTask extends AbstractRewriteTask {
 
     @Inject
-    public RewriteRunTask() {
+    public RewriteClearCacheTask() {
         setGroup("rewrite");
-        setDescription("Apply the active refactoring recipes");
-    }
-
-    @Input
-    public boolean isUseAstCache() {
-        return useAstCache;
+        setDescription("Clear in-memory AST cache");
     }
 
     @TaskAction
     public void run() {
-        getProjectParser().run(useAstCache, throwable -> logger.warn("Error during rewrite run", throwable));
+        clearAstCache();
     }
-
 }

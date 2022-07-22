@@ -62,6 +62,10 @@ public class RewritePlugin implements Plugin<Project> {
                 .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
 
+        project.getTasks().create("rewriteClearCache", RewriteClearCacheTask.class)
+                .setExtension(extension)
+                .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+
         if(isRootProject) {
             project.allprojects(subproject -> configureProject(subproject, extension, rewriteDryRun, rewriteRun));
         } else {

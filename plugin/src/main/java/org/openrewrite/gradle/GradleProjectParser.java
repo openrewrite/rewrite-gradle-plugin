@@ -20,24 +20,25 @@ import org.openrewrite.config.RecipeDescriptor;
 
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.List;
 import java.util.SortedSet;
 import java.util.function.Consumer;
 
 public interface GradleProjectParser {
-    List<String> getActiveRecipes();
+    SortedSet<String> getActiveRecipes();
 
-    List<String> getActiveStyles();
+    SortedSet<String> getActiveStyles();
 
-    List<String> getAvailableStyles();
+    SortedSet<String> getAvailableStyles();
 
     Collection<RecipeDescriptor> listRecipeDescriptors();
 
     Collection<Path> listSources(Project project);
 
-    void run(Consumer<Throwable> onError);
+    void run(boolean useAstCache, Consumer<Throwable> onError);
 
-    void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError);
+    void dryRun(Path reportPath, boolean dumpGcActivity, boolean useAstCache, Consumer<Throwable> onError);
+
+    void clearAstCache();
 
     void shutdownRewrite();
 }

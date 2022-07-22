@@ -28,6 +28,8 @@ import java.util.stream.Collectors;
 public abstract class AbstractRewriteTask extends DefaultTask {
     protected ResolveRewriteDependenciesTask resolveDependenciesTask;
     protected boolean dumpGcActivity;
+    protected boolean useAstCache;
+    protected GradleProjectParser gpp;
     protected RewriteExtension extension;
 
     public <T extends AbstractRewriteTask> T setExtension(RewriteExtension extension) {
@@ -43,6 +45,16 @@ public abstract class AbstractRewriteTask extends DefaultTask {
         return (T) this;
     }
 
+    @Option(description = "Cache the AST results in-memory when using the Gradle daemon.", option = "useAstCache")
+    public void setUseAstCache(boolean useAstCache) {
+        this.useAstCache = useAstCache;
+    }
+
+    @Input
+    public boolean isUseAstCache() {
+        return useAstCache;
+    }
+
     @Option(description = "Dump GC activity related to parsing.", option = "dumpGcActivity")
     public void setDumpGcActivity(boolean dumpGcActivity) {
         this.dumpGcActivity = dumpGcActivity;
@@ -54,40 +66,39 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     }
 
     @Internal
-    protected DelegatingProjectParser getProjectParser() {
-        if(extension == null) {
-            throw new IllegalArgumentException("Must configure extension");
-        }
-        if (resolveDependenciesTask == null) {
-            throw new IllegalArgumentException("Must configure resolveDependenciesTask");
-        }
-        Set<Path> classpath = resolveDependenciesTask.getResolvedDependencies().stream()
-                .map(File::toPath)
-                .collect(Collectors.toSet());
-        return new DelegatingProjectParser(getProject(), extension, classpath);
-    }
-
-    private List<String> activeRecipes = null;
-    private List<String> activeStyles = null;
-
-    private void populateActiveRecipesAndStyles() {
-        if(activeRecipes == null) {
-            try(DelegatingProjectParser gpp = getProjectParser()) {
-                activeRecipes = gpp.getActiveRecipes();
-                activeStyles = gpp.getActiveStyles();
+    protected <T extends GradleProjectParser> T getProjectParser() {
+        if(gpp == null) {
+            if(extension == null) {
+                throw new IllegalArgumentException("Must configure extension");
             }
+            if (resolveDependenciesTask == null) {
+                throw new IllegalArgumentException("Must configure resolveDependenciesTask");
+            }
+            Set<Path> classpath = resolveDependenciesTask.getResolvedDependencies().stream()
+                    .map(File::toPath)
+                    .collect(Collectors.toSet());
+            gpp = new DelegatingProjectParser(getProject(), extension, classpath);
         }
+        //noinspection unchecked
+        return (T) gpp;
     }
 
     @Input
-    public List<String> getActiveRecipes() {
-        populateActiveRecipesAndStyles();
-        return activeRecipes;
+    public Set<String> getActiveRecipes() {
+        return getProjectParser().getActiveRecipes();
     }
 
     @Input
-    public List<String> getActiveStyles() {
-        populateActiveRecipesAndStyles();
-        return activeStyles;
+    public Set<String> getActiveStyles() {
+        return getProjectParser().getActiveStyles();
     }
+
+    protected void shutdownRewrite() {
+        getProjectParser().shutdownRewrite();
+    }
+
+    protected void clearAstCache() {
+        getProjectParser().clearAstCache();
+    }
+
 }

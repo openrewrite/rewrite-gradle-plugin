@@ -86,14 +86,16 @@ public class DefaultProjectParser implements GradleProjectParser {
     protected final RewriteExtension extension;
     protected final Project project;
     private final List<Marker> sharedProvenance;
+    private final Map<String, Object> astCache;
 
     private List<NamedStyles> styles;
     private Environment environment;
 
-    public DefaultProjectParser(Project project, RewriteExtension extension) {
+    public DefaultProjectParser(Project project, RewriteExtension extension, Map<String, Object> astCache) {
         this.baseDir = project.getRootProject().getProjectDir().toPath();
         this.extension = extension;
         this.project = project;
+        this.astCache = astCache;
 
         BuildEnvironment buildEnvironment = BuildEnvironment.build(System::getenv);
         sharedProvenance = Stream.of(
@@ -115,26 +117,26 @@ public class DefaultProjectParser implements GradleProjectParser {
         return null;
     }
 
-    public List<String> getActiveRecipes() {
+    public SortedSet<String> getActiveRecipes() {
         String activeRecipeProp = System.getProperty("activeRecipe");
         if (activeRecipeProp == null) {
-            return extension.getActiveRecipes();
+            return new TreeSet<>(extension.getActiveRecipes());
         } else {
-            return singletonList(activeRecipeProp);
+            return new TreeSet<>(singleton(activeRecipeProp));
         }
     }
 
-    public List<String> getActiveStyles() {
+    public SortedSet<String> getActiveStyles() {
         String activeStyleProp = System.getProperty("activeStyle");
         if(activeStyleProp == null) {
-            return extension.getActiveStyles();
+            return new TreeSet<>(extension.getActiveStyles());
         } else {
-            return singletonList(activeStyleProp);
+            return new TreeSet<>(singleton(activeStyleProp));
         }
     }
 
-    public List<String> getAvailableStyles() {
-        return environment().listStyles().stream().map(NamedStyles::getName).collect(Collectors.toList());
+    public SortedSet<String> getAvailableStyles() {
+        return environment().listStyles().stream().map(NamedStyles::getName).collect(Collectors.toCollection(TreeSet::new));
     }
 
     public Collection<RecipeDescriptor> listRecipeDescriptors() {
@@ -167,7 +169,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
+    public void dryRun(Path reportPath, boolean dumpGcActivity, boolean useAstCache, Consumer<Throwable> onError) {
         ParsingExecutionContextView ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(onError));
         if (dumpGcActivity) {
             SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
@@ -191,7 +193,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             throw new UncheckedIOException(e);
                         }
                     });
-                    dryRun(reportPath, listResults(ctx));
+                    dryRun(reportPath, listResults(useAstCache, ctx));
                     logWriter.flush();
                     logger.lifecycle("Wrote rewrite GC log: {}", rewriteGcLog.getAbsolutePath());
                 } catch (IOException e) {
@@ -200,7 +202,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
             }
         } else {
-            dryRun(reportPath, listResults(ctx));
+            dryRun(reportPath, listResults(useAstCache, ctx));
         }
     }
 
@@ -263,8 +265,8 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void run(Consumer<Throwable> onError) {
-        run(listResults(new InMemoryExecutionContext(onError)));
+    public void run(boolean useAstCache, Consumer<Throwable> onError) {
+        run(listResults(useAstCache, new InMemoryExecutionContext(onError)));
     }
 
     public void run(ResultsContainer results) {
@@ -601,7 +603,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @SuppressWarnings("unused")
-    public ResultsContainer listResults(ExecutionContext ctx) {
+    public ResultsContainer listResults(boolean useAstCache, ExecutionContext ctx) {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
         if(recipe.getRecipeList().size() == 0) {
@@ -625,10 +627,24 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
-        List<SourceFile> sourceFiles  = parse(ctx);
+        List<SourceFile> sourceFiles;
+        if (useAstCache && astCache.containsKey(project.getProjectDir().toPath().toString())) {
+            logger.lifecycle("Using cached in-memory ASTs");
+            //noinspection unchecked
+            sourceFiles = (List<SourceFile>) astCache.get(project.getProjectDir().toPath().toString());
+        } else {
+            sourceFiles = parse(ctx);
+            if (useAstCache) {
+                astCache.put(project.getProjectDir().toPath().toString(), sourceFiles);
+            }
+        }
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         List<Result> results = recipe.run(sourceFiles, ctx);
         return new ResultsContainer(baseDir, results);
+    }
+
+    public void clearAstCache() {
+        astCache.clear();
     }
 
     @Override

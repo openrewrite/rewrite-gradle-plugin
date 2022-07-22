@@ -22,7 +22,6 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
-import java.io.IOException;
 import java.nio.file.Path;
 
 public class RewriteDryRunTask extends AbstractRewriteTask {
@@ -45,8 +44,6 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        try(DelegatingProjectParser gpp = getProjectParser()) {
-            gpp.dryRun(getReportPath(), dumpGcActivity, throwable -> logger.warn("Error during rewrite dry run", throwable));
-        }
+        getProjectParser().dryRun(getReportPath(), dumpGcActivity, useAstCache, throwable -> logger.warn("Error during rewrite dry run", throwable));
     }
 }
