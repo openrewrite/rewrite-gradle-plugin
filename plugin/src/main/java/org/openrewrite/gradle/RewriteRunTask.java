@@ -40,9 +40,7 @@ public class RewriteRunTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        try (DelegatingProjectParser gpp = getProjectParser()) {
-            gpp.run(useAstCache, throwable -> logger.warn("Error during rewrite run", throwable));
-        }
+        getProjectParser().run(useAstCache, throwable -> logger.warn("Error during rewrite run", throwable));
     }
 
 }

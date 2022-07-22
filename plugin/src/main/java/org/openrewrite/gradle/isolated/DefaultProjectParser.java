@@ -719,8 +719,4 @@ public class DefaultProjectParser implements GradleProjectParser {
             logRecipe(rchild, prefix + "    ");
         }
     }
-
-    @Override
-    public void close() {
-    }
 }

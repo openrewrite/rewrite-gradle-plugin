@@ -18,13 +18,12 @@ package org.openrewrite.gradle;
 import org.gradle.api.Project;
 import org.openrewrite.config.RecipeDescriptor;
 
-import java.io.Closeable;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.SortedSet;
 import java.util.function.Consumer;
 
-public interface GradleProjectParser extends Closeable {
+public interface GradleProjectParser {
     SortedSet<String> getActiveRecipes();
 
     SortedSet<String> getActiveStyles();
