@@ -22,6 +22,7 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
 
 import javax.inject.Inject;
+import java.io.IOException;
 
 public class RewriteRunTask extends AbstractRewriteTask {
 
@@ -33,14 +34,11 @@ public class RewriteRunTask extends AbstractRewriteTask {
         setDescription("Apply the active refactoring recipes");
     }
 
-    @Input
-    public boolean isUseAstCache() {
-        return useAstCache;
-    }
-
     @TaskAction
     public void run() {
-        getProjectParser().run(useAstCache, throwable -> logger.warn("Error during rewrite run", throwable));
+        try(DelegatingProjectParser gpp = getProjectParser()) {
+            gpp.run(throwable -> logger.warn("Error during rewrite run", throwable));
+        }
     }
 
 }
