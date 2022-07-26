@@ -15,7 +15,6 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.Project;
 import org.gradle.internal.service.ServiceRegistry;
 
 import java.nio.file.Path;
@@ -32,7 +31,7 @@ public interface GradleProjectParser {
 
     void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry);
 
-    Collection<Path> listSources(Project project);
+    Collection<Path> listSources();
 
     void run(boolean useAstCache, Consumer<Throwable> onError);
 
