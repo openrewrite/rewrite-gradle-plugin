@@ -33,6 +33,7 @@ public class RewriteClassLoader extends URLClassLoader {
         "org.openrewrite.gradle.GradleProjectParser",
         "org.openrewrite.gradle.DefaultRewriteExtension",
         "org.openrewrite.gradle.RewriteExtension",
+        "io.moderne.gradle.SerializingGradleProjectParser",
         "io.moderne.gradle.ModerneExtension",
         "org.slf4j",
         "org.gradle"
