@@ -16,7 +16,7 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.Project;
-import org.openrewrite.config.RecipeDescriptor;
+import org.gradle.internal.service.ServiceRegistry;
 
 import java.nio.file.Path;
 import java.util.Collection;
@@ -30,7 +30,7 @@ public interface GradleProjectParser {
 
     SortedSet<String> getAvailableStyles();
 
-    Collection<RecipeDescriptor> listRecipeDescriptors();
+    void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry);
 
     Collection<Path> listSources(Project project);
 

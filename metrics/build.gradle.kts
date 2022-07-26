@@ -1,6 +1,5 @@
 plugins {
-    `java-gradle-plugin`
-    groovy
+    `groovy-gradle-plugin`
 }
 
 gradlePlugin {
@@ -15,24 +14,22 @@ gradlePlugin {
 }
 
 repositories {
-    mavenLocal()
-    maven {
-        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+    if (!project.hasProperty("releasing")) {
+        mavenLocal()
+        maven {
+            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+        }
     }
+
     mavenCentral()
 }
 
-
-// Fixed version numbers because com.gradle.plugin-publish will publish poms with requested rather than resolved versions
-val prometheusVersion = "1.4.0"
-val nettyVersion = "1.1.2"
-
 dependencies {
-    api("io.micrometer.prometheus:prometheus-rsocket-client:$prometheusVersion")
-    api("io.rsocket:rsocket-transport-netty:$nettyVersion")
+    api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
+    api("io.rsocket:rsocket-transport-netty:latest.release")
 
-    testImplementation(gradleTestKit())
     testImplementation(localGroovy())
-    testImplementation(platform("org.spockframework:spock-bom:2.0-groovy-3.0"))
-    testImplementation("org.spockframework:spock-core")
+    testImplementation("org.spockframework:spock-core:2.0-groovy-3.0") {
+        exclude(group = "org.codehaus.groovy")
+    }
 }

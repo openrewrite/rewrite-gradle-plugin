@@ -30,5 +30,4 @@ gradleEnterprise {
         this as com.gradle.enterprise.gradleplugin.internal.extension.BuildScanExtensionWithHiddenFeatures
         publishIfAuthenticated()
     }
-
 }

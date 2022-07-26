@@ -20,19 +20,6 @@ import org.gradle.testkit.runner.GradleRunner
 import java.io.File
 import java.lang.management.ManagementFactory
 
-val pluginClasspath = RewritePluginTest::class.java
-    .getResourceAsStream("/plugin-classpath.txt")!!
-    .bufferedReader()
-    .readText()
-    .split("\n")
-    .map(::File)
-
-val pluginVersion = RewritePluginTest::class.java
-    .getResourceAsStream("/plugin-version.txt")!!
-    .bufferedReader()
-    .readText()
-    .trim()
-
 val gradleVersion: String? = System.getProperty("org.openrewrite.test.gradleVersion")
 
 interface RewritePluginTest {
@@ -47,7 +34,7 @@ interface RewritePluginTest {
                 }
             }
             .withArguments(*args)
-            .withPluginClasspath(pluginClasspath)
+            .withPluginClasspath()
             .forwardOutput()
             .build()
 

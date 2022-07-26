@@ -21,19 +21,23 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.internal.service.ServiceRegistry;
 import org.openrewrite.*;
 import org.openrewrite.binary.Binary;
 import org.openrewrite.config.Environment;
+import org.openrewrite.config.OptionDescriptor;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
 import org.openrewrite.gradle.DefaultRewriteExtension;
 import org.openrewrite.gradle.GradleParser;
 import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
+import org.openrewrite.gradle.isolated.ui.RecipeDescriptorTreePrompter;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
@@ -78,8 +82,8 @@ import static org.openrewrite.internal.ListUtils.map;
 
 @SuppressWarnings("unused")
 public class DefaultProjectParser implements GradleProjectParser {
-
-    private final static JavaTypeCache javaTypeCache = new JavaTypeCache();
+    private static final JavaTypeCache javaTypeCache = new JavaTypeCache();
+    private static final String LOG_INDENT_INCREMENT = "    ";
 
     private final Logger logger = Logging.getLogger(DefaultProjectParser.class);
     protected final Path baseDir;
@@ -139,8 +143,84 @@ public class DefaultProjectParser implements GradleProjectParser {
         return environment().listStyles().stream().map(NamedStyles::getName).collect(Collectors.toCollection(TreeSet::new));
     }
 
+    @Override
+    public void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
+        Collection<RecipeDescriptor> availableRecipeDescriptors = this.listRecipeDescriptors();
+
+        if (interactive) {
+            logger.quiet("Entering interactive mode, Ctrl-C to exit...");
+            UserInputHandler prompter = serviceRegistry.get(UserInputHandler.class);
+            RecipeDescriptorTreePrompter treePrompter = new RecipeDescriptorTreePrompter(prompter);
+            RecipeDescriptor rd = treePrompter.execute(availableRecipeDescriptors);
+            writeRecipeDescriptor(rd);
+        } else {
+            Set<String> activeRecipes = getActiveRecipes();
+            Set<String> availableStyles = getAvailableStyles();
+            Set<String> activeStyles = getActiveStyles();
+
+            logger.quiet("Available Recipes:");
+            for (RecipeDescriptor recipe : availableRecipeDescriptors) {
+                logger.quiet(indent(1, recipe.getName()));
+            }
+
+            logger.quiet(indent(0, ""));
+            logger.quiet("Available Styles:");
+            for (String style : availableStyles) {
+                logger.quiet(indent(1, style));
+            }
+
+            logger.quiet(indent(0, ""));
+            logger.quiet("Active Styles:");
+            for (String style : activeStyles) {
+                logger.quiet(indent(1, style));
+            }
+
+            logger.quiet(indent(0, ""));
+            logger.quiet("Active Recipes:");
+            for (String activeRecipe : activeRecipes) {
+                logger.quiet(indent(1, activeRecipe));
+            }
+
+            logger.quiet(indent(0, ""));
+            logger.quiet("Found " + availableRecipeDescriptors.size() + " available recipes and " + availableStyles.size() + " available styles.");
+            logger.quiet("Configured with " + activeRecipes.size() + " active recipes and " + activeStyles.size() + " active styles.");
+        }
+    }
+
     public Collection<RecipeDescriptor> listRecipeDescriptors() {
         return environment().listRecipeDescriptors();
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    private void writeRecipeDescriptor(RecipeDescriptor rd) {
+        logger.quiet(indent(0, rd.getDisplayName()));
+        logger.quiet(indent(1, rd.getName()));
+        if (rd.getDescription() != null && !rd.getDescription().isEmpty()) {
+            logger.quiet(indent(1, rd.getDescription()));
+        }
+        if (!rd.getOptions().isEmpty()) {
+            logger.quiet(indent(0, "options: "));
+            for (OptionDescriptor od : rd.getOptions()) {
+                logger.quiet(indent(1, od.getName() + ": " + od.getType() + (od.isRequired() ? "!" : "")));
+                if (od.getDescription() != null && !od.getDescription().isEmpty()) {
+                    logger.quiet(indent(2, od.getDescription()));
+                }
+            }
+        }
+        logger.quiet("");
+    }
+
+    private static String indent(int indent, CharSequence content) {
+        StringBuilder prefix = repeat(indent);
+        return prefix.append(content).toString();
+    }
+
+    private static StringBuilder repeat(int repeat) {
+        StringBuilder buffer = new StringBuilder(repeat * LOG_INDENT_INCREMENT.length());
+        for (int i = 0; i < repeat; i++) {
+            buffer.append(LOG_INDENT_INCREMENT);
+        }
+        return buffer;
     }
 
     @Override
