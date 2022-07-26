@@ -53,24 +53,11 @@ public class DelegatingProjectParser implements GradleProjectParser {
                         }
                     })
                     .collect(Collectors.toList());
-            @SuppressWarnings("ConstantConditions")
-            String path = getClass()
-                    .getResource("/org/openrewrite/gradle/isolated/DefaultProjectParser.class")
-                    .toString();
-            URL currentJar = null;
-            if(path.startsWith("jar:")) {
-                path = path.substring(4);
-                int indexOfBang = path.indexOf("!");
-                if(indexOfBang != -1) {
-                    path = path.substring(0, indexOfBang);
-                }
-                currentJar = new URI(path).toURL();
-            } else if(path.endsWith(".class")) {
-                // This code path only gets taken when running the tests against older versions of Gradle
-                // In all other circumstances, "path" will point at a jar file
-                currentJar = Paths.get(System.getProperty("jarLocationForTest")).toUri().toURL();
-            }
 
+            @SuppressWarnings("ConstantConditions")
+            URL currentJar = jarContainingResource(getClass()
+                    .getResource("/org/openrewrite/gradle/isolated/DefaultProjectParser.class")
+                    .toString());
             classpathUrls.add(currentJar);
             if(rewriteClassLoader == null || !classpathUrls.equals(rewriteClasspath)) {
                 if (rewriteClassLoader != null) {
@@ -115,8 +102,8 @@ public class DelegatingProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public Collection<Path> listSources(Project project) {
-        return unwrapInvocationException(() -> gpp.listSources(project));
+    public Collection<Path> listSources() {
+        return unwrapInvocationException(gpp::listSources);
     }
 
     @Override
@@ -149,6 +136,24 @@ public class DelegatingProjectParser implements GradleProjectParser {
             gpp.shutdownRewrite();
             return null;
         });
+    }
+
+    protected URL jarContainingResource(String resourcePath) {
+        try {
+            if (resourcePath.startsWith("jar:")) {
+                resourcePath = resourcePath.substring(4);
+                int indexOfBang = resourcePath.indexOf("!");
+                if (indexOfBang != -1) {
+                    resourcePath = resourcePath.substring(0, indexOfBang);
+                }
+                return new URI(resourcePath).toURL();
+            }
+            // This code path only gets taken when running the tests against older versions of Gradle
+            // In all other circumstances, "path" will point at a jar file
+            return Paths.get(System.getProperty("jarLocationForTest")).toUri().toURL();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

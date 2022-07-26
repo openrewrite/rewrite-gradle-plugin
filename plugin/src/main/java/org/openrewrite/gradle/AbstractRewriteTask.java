@@ -22,7 +22,7 @@ import org.gradle.api.tasks.options.Option;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public abstract class AbstractRewriteTask extends DefaultTask {

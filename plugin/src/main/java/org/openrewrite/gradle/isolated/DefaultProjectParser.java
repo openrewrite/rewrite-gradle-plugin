@@ -224,7 +224,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public Collection<Path> listSources(Project project) {
+    public Collection<Path> listSources() {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
         ResourceParser rp = new ResourceParser(baseDir, project, extension);
         Set<Path> result;
@@ -683,7 +683,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @SuppressWarnings("unused")
-    public ResultsContainer listResults(boolean useAstCache, ExecutionContext ctx) {
+    protected ResultsContainer listResults(boolean useAstCache, ExecutionContext ctx) {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
         if(recipe.getRecipeList().size() == 0) {
