@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.openrewrite.gradle.ui;
+package org.openrewrite.gradle.isolated.ui;
 
 import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.openrewrite.config.RecipeDescriptor;

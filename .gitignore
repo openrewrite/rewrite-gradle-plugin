@@ -4,6 +4,3 @@ out/
 !*/src/**/build
 .gradle/
 .idea/
-plugin/src/main/resources/versions.properties
-plugin/src/test/resources/plugin-classpath.txt
-plugin/src/test/resources/plugin-version.txt
