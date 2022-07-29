@@ -25,7 +25,6 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,12 +33,10 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-@SuppressWarnings("unchecked")
 public class DelegatingProjectParser implements GradleProjectParser {
     protected final GradleProjectParser gpp;
     protected static List<URL> rewriteClasspath;
     protected static RewriteClassLoader rewriteClassLoader;
-    protected static final Map<String, Object> astCache = new HashMap<>();
 
     public DelegatingProjectParser(Project project, RewriteExtension extension, Set<Path> classpath) {
         try {
@@ -65,13 +62,12 @@ public class DelegatingProjectParser implements GradleProjectParser {
                 }
                 rewriteClassLoader = new RewriteClassLoader(classpathUrls);
                 rewriteClasspath = classpathUrls;
-                astCache.clear();
             }
 
             Class<?> gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, rewriteClassLoader);
             assert (gppClass.getClassLoader() == rewriteClassLoader) : "DefaultProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's classpath";
-            gpp = (GradleProjectParser) gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class, Map.class)
-                    .newInstance(project, extension, astCache);
+            gpp = (GradleProjectParser) gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class)
+                    .newInstance(project, extension);
 
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -107,25 +103,17 @@ public class DelegatingProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void run(boolean useAstCache, Consumer<Throwable> onError) {
+    public void run(Consumer<Throwable> onError) {
         unwrapInvocationException(() -> {
-            gpp.run(useAstCache, onError);
+            gpp.run(onError);
             return null;
         });
     }
 
     @Override
-    public void dryRun(Path reportPath, boolean dumpGcActivity, boolean useAstCache, Consumer<Throwable> onError) {
+    public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
         unwrapInvocationException(() -> {
-            gpp.dryRun(reportPath, dumpGcActivity, useAstCache, onError);
-            return null;
-        });
-    }
-
-    @Override
-    public void clearAstCache() {
-        unwrapInvocationException(() -> {
-            gpp.clearAstCache();
+            gpp.dryRun(reportPath, dumpGcActivity, onError);
             return null;
         });
     }

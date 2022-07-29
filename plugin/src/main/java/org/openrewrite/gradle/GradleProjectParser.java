@@ -33,11 +33,9 @@ public interface GradleProjectParser {
 
     Collection<Path> listSources();
 
-    void run(boolean useAstCache, Consumer<Throwable> onError);
+    void run(Consumer<Throwable> onError);
 
-    void dryRun(Path reportPath, boolean dumpGcActivity, boolean useAstCache, Consumer<Throwable> onError);
-
-    void clearAstCache();
+    void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError);
 
     void shutdownRewrite();
 }

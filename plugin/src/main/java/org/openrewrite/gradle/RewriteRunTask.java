@@ -33,14 +33,9 @@ public class RewriteRunTask extends AbstractRewriteTask {
         setDescription("Apply the active refactoring recipes");
     }
 
-    @Input
-    public boolean isUseAstCache() {
-        return useAstCache;
-    }
-
     @TaskAction
     public void run() {
-        getProjectParser().run(useAstCache, throwable -> logger.warn("Error during rewrite run", throwable));
+        getProjectParser().run(throwable -> logger.warn("Error during rewrite run", throwable));
     }
 
 }

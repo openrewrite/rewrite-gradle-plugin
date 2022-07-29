@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 public abstract class AbstractRewriteTask extends DefaultTask {
     protected ResolveRewriteDependenciesTask resolveDependenciesTask;
     protected boolean dumpGcActivity;
-    protected boolean useAstCache;
     protected GradleProjectParser gpp;
     protected RewriteExtension extension;
 
@@ -43,16 +42,6 @@ public abstract class AbstractRewriteTask extends DefaultTask {
         this.dependsOn(resolveDependenciesTask);
         //noinspection unchecked
         return (T) this;
-    }
-
-    @Option(description = "Cache the AST results in-memory when using the Gradle daemon.", option = "useAstCache")
-    public void setUseAstCache(boolean useAstCache) {
-        this.useAstCache = useAstCache;
-    }
-
-    @Input
-    public boolean isUseAstCache() {
-        return useAstCache;
     }
 
     @Option(description = "Dump GC activity related to parsing.", option = "dumpGcActivity")
@@ -95,10 +84,6 @@ public abstract class AbstractRewriteTask extends DefaultTask {
 
     protected void shutdownRewrite() {
         getProjectParser().shutdownRewrite();
-    }
-
-    protected void clearAstCache() {
-        getProjectParser().clearAstCache();
     }
 
 }
