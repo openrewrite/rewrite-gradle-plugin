@@ -302,7 +302,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
     public List<String> getPlainTextMasks() {
         if (plainTextMasks.isEmpty()) {
             plainTextMasks.addAll(Arrays.asList(
-                    "gradlew",
+                    "**/gradlew",
                     "**/META-INF/services/**",
                     "**/.gitignore",
                     "**/.gitattributes",

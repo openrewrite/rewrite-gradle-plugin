@@ -251,8 +251,12 @@ public class ResourceParser {
 
     private boolean isParsedAsPlainText(Path path) {
         if (!plainTextMasks.isEmpty()) {
+            Path computed = baseDir.relativize(path);
+            if (!computed.startsWith("/")) {
+                computed = Paths.get("/").resolve(computed);
+            }
             for (PathMatcher matcher : plainTextMasks) {
-                if (matcher.matches(baseDir.relativize(path))) {
+                if (matcher.matches(computed)) {
                     return true;
                 }
             }
