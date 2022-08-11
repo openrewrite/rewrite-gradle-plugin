@@ -48,11 +48,15 @@ public class ResourceParser {
     private static final Logger logger = Logging.getLogger(ResourceParser.class);
     private final Path baseDir;
     private final Collection<PathMatcher> exclusions;
+
+    private final Collection<PathMatcher> plainTextMasks;
+
     private final int sizeThresholdMb;
 
     public ResourceParser(Path baseDir, Project project, RewriteExtension extension) {
         this.baseDir = baseDir;
-        this.exclusions = exclusionMatchers(baseDir, mergeExclusions(project, extension));
+        this.exclusions = pathMatchers(baseDir, mergeExclusions(project, extension));
+        this.plainTextMasks = pathMatchers(baseDir, extension.getPlainTextMasks());
         this.sizeThresholdMb = extension.getSizeThresholdMb();
     }
 
@@ -64,9 +68,9 @@ public class ResourceParser {
         ).collect(toList());
     }
 
-    private Collection<PathMatcher> exclusionMatchers(Path baseDir, Collection<String> exclusions) {
-        return exclusions.stream()
-                .map(o -> baseDir.getFileSystem().getPathMatcher("glob:" + o))
+    private Collection<PathMatcher> pathMatchers(Path basePath, Collection<String> pathExpressions) {
+        return pathExpressions.stream()
+                .map(o -> basePath.getFileSystem().getPathMatcher("glob:" + o))
                 .collect(Collectors.toList());
     }
 
@@ -151,6 +155,7 @@ public class ResourceParser {
                                 "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
                         quarkPaths.add(file);
                     } else if (isParsedAsPlainText(file)) {
+                        System.out.println("Plain Text :" + file);
                         plainTextPaths.add(file);
                     } else {
                         resources.add(file);
@@ -234,24 +239,29 @@ public class ResourceParser {
     }
 
     private boolean isExcluded(Path path) {
-        for (PathMatcher excluded : exclusions) {
-            if (excluded.matches(baseDir.relativize(path))) {
-                return true;
+        if (!exclusions.isEmpty()) {
+            for (PathMatcher excluded : exclusions) {
+                if (excluded.matches(baseDir.relativize(path).toAbsolutePath())) {
+                    return true;
+                }
             }
         }
         return false;
     }
 
     private boolean isParsedAsPlainText(Path path) {
-        String pathString = path.toString();
-
-        return  pathString.contains("/META-INF/services") ||
-                pathString.endsWith(".gitignore")||
-                pathString.endsWith(".gitattributes")||
-                pathString.endsWith(".java-version")||
-                pathString.endsWith(".sdkmanrc") ||
-                pathString.endsWith("gradlew") ||
-                pathString.endsWith("gradlew.bat");
+        if (!plainTextMasks.isEmpty()) {
+            Path computed = baseDir.relativize(path);
+            if (!computed.startsWith("/")) {
+                computed = Paths.get("/").resolve(computed);
+            }
+            for (PathMatcher matcher : plainTextMasks) {
+                if (matcher.matches(computed)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean isIgnoredDirectory(Path searchDir, Path path) {

@@ -22,10 +22,7 @@ import javax.inject.Provider;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.PathMatcher;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
@@ -44,6 +41,8 @@ public class DefaultRewriteExtension implements RewriteExtension {
     private String metricsUri = magicalMetricsLogString;
     private boolean enableExperimentalGradleBuildScriptParsing = true;
     private final List<String> exclusions = new ArrayList<>();
+    private final List<String> plainTextMasks = new ArrayList<>();
+
     private int sizeThresholdMb = 10;
 
     @Nullable
@@ -297,6 +296,37 @@ public class DefaultRewriteExtension implements RewriteExtension {
     @Override
     public void exclusion(Collection<String> exclusions) {
         this.exclusions.addAll(exclusions);
+    }
+
+    @Override
+    public List<String> getPlainTextMasks() {
+        if (plainTextMasks.isEmpty()) {
+            plainTextMasks.addAll(Arrays.asList(
+                    "**/gradlew",
+                    "**/META-INF/services/**",
+                    "**/.gitignore",
+                    "**/.gitattributes",
+                    "**/.java-version",
+                    "**/.sdkmanrc",
+                    "**/*.sh",
+                    "**/*.bash",
+                    "**/*.bat",
+                    "**/*.ksh",
+                    "**/*.txt",
+                    "**/*.jsp"
+            ));
+        }
+        return plainTextMasks;
+    }
+
+    @Override
+    public void plainTextMask(String... masks) {
+        this.plainTextMasks.addAll(asList(masks));
+    }
+
+    @Override
+    public void plainTextMask(Collection<String> masks) {
+        this.plainTextMasks.addAll(masks);
     }
 
     @Override

@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("unused")
 public interface RewriteExtension {
     void setConfigFile(File configFile);
 
@@ -97,6 +98,12 @@ public interface RewriteExtension {
     void exclusion(String... exclusions);
 
     void exclusion(Collection<String> exclusions);
+
+    List<String> getPlainTextMasks();
+
+    void plainTextMask(String... masks);
+
+    void plainTextMask(Collection<String> masks);
 
     int getSizeThresholdMb();
 
