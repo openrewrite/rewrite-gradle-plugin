@@ -302,18 +302,18 @@ public class DefaultRewriteExtension implements RewriteExtension {
     public List<String> getPlainTextMasks() {
         if (plainTextMasks.isEmpty()) {
             plainTextMasks.addAll(Arrays.asList(
-                    "**/gradlew",
-                    "**/META-INF/services/**",
-                    "**/.gitignore",
-                    "**/.gitattributes",
-                    "**/.java-version",
-                    "**/.sdkmanrc",
-                    "**/*.sh",
-                    "**/*.bash",
-                    "**/*.bat",
-                    "**/*.ksh",
-                    "**/*.txt",
-                    "**/*.jsp"
+                    "**gradlew",
+                    "**META-INF/services/**",
+                    "**.gitignore",
+                    "**.gitattributes",
+                    "**.java-version",
+                    "**.sdkmanrc",
+                    "**.sh",
+                    "**.bash",
+                    "**.bat",
+                    "**.ksh",
+                    "**.txt",
+                    "**.jsp"
             ));
         }
         return plainTextMasks;

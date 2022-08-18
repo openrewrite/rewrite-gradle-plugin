@@ -63,7 +63,7 @@ public class ResourceParser {
     private static Collection<String> mergeExclusions(Project project, RewriteExtension extension) {
         return Stream.concat(
                 project.getSubprojects().stream()
-                        .map(subproject -> project.getProjectDir().toPath().relativize(subproject.getProjectDir().toPath()) + "/**"),
+                        .map(subproject -> project.getProjectDir().toPath().relativize(subproject.getProjectDir().toPath()).toString()),
                 extension.getExclusions().stream()
         ).collect(toList());
     }
@@ -240,8 +240,9 @@ public class ResourceParser {
 
     private boolean isExcluded(Path path) {
         if (!exclusions.isEmpty()) {
+            Path relative = baseDir.relativize(path);
             for (PathMatcher excluded : exclusions) {
-                if (excluded.matches(baseDir.relativize(path).toAbsolutePath())) {
+                if (excluded.matches(relative)) {
                     return true;
                 }
             }
@@ -252,9 +253,6 @@ public class ResourceParser {
     private boolean isParsedAsPlainText(Path path) {
         if (!plainTextMasks.isEmpty()) {
             Path computed = baseDir.relativize(path);
-            if (!computed.startsWith("/")) {
-                computed = Paths.get("/").resolve(computed);
-            }
             for (PathMatcher matcher : plainTextMasks) {
                 if (matcher.matches(computed)) {
                     return true;
