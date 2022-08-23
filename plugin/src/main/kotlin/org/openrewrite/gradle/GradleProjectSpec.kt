@@ -130,7 +130,7 @@ class GradleSourceSetSpec(
             } else {
                 ""
             }.replace(".", "/")
-            val clazz = ".+(class|interface|enum)\\s+([a-zA-Z0-9-_]+).+".toRegex(RegexOption.MULTILINE).find(javaSource)!!.groupValues[2]
+            val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+).+".toRegex(RegexOption.MULTILINE).find(javaSource)!!.groupValues[2]
             File(dir, "$name/java/$peckage/$clazz.java").apply {
                 parentFile.mkdirs()
                 writeText(javaSource)
