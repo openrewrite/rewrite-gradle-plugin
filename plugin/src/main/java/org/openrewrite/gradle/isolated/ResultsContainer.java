@@ -15,35 +15,40 @@
  */
 package org.openrewrite.gradle.isolated;
 
+import org.openrewrite.RecipeRun;
 import org.openrewrite.Result;
+import org.openrewrite.internal.lang.Nullable;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 public class ResultsContainer {
     final Path projectRoot;
+    final RecipeRun recipeRun;
     final List<Result> generated = new ArrayList<>();
     final List<Result> deleted = new ArrayList<>();
     final List<Result> moved = new ArrayList<>();
     final List<Result> refactoredInPlace = new ArrayList<>();
 
-    public ResultsContainer(Path projectRoot, Collection<Result> results) {
+    public ResultsContainer(Path projectRoot, @Nullable RecipeRun recipeRun) {
         this.projectRoot = projectRoot;
-        for (Result result : results) {
-            if (result.getBefore() == null && result.getAfter() == null) {
-                // This situation shouldn't happen / makes no sense
-                continue;
-            }
-            if (result.getBefore() == null && result.getAfter() != null) {
-                generated.add(result);
-            } else if (result.getBefore() != null && result.getAfter() == null) {
-                deleted.add(result);
-            } else if (result.getBefore() != null && !result.getBefore().getSourcePath().equals(result.getAfter().getSourcePath())) {
-                moved.add(result);
-            } else {
-                refactoredInPlace.add(result);
+        this.recipeRun = recipeRun;
+        if (recipeRun != null) {
+            for (Result result : recipeRun.getResults()) {
+                if (result.getBefore() == null && result.getAfter() == null) {
+                    // This situation shouldn't happen / makes no sense
+                    continue;
+                }
+                if (result.getBefore() == null && result.getAfter() != null) {
+                    generated.add(result);
+                } else if (result.getBefore() != null && result.getAfter() == null) {
+                    deleted.add(result);
+                } else if (result.getBefore() != null && !result.getBefore().getSourcePath().equals(result.getAfter().getSourcePath())) {
+                    moved.add(result);
+                } else {
+                    refactoredInPlace.add(result);
+                }
             }
         }
     }
