@@ -413,5 +413,52 @@ class RewriteRunTest : RewritePluginTest {
         val gradleWrapperJar = File(projectDir, "gradle/wrapper/gradle-wrapper.jar")
         assertThat(gradleWrapperJar.exists()).isTrue
     }
+
+    @Test
+    fun gradleScriptWhichDefinesMethod(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            rewriteYaml("""
+                ---
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.RenameBuildGradle
+                displayName: Rename build.gradle to build.gradle.kts
+                description: Rename build.gradle to build.gradle.kts
+                recipeList:
+                  - org.openrewrite.RenameFile:
+                      fileMatcher: build.gradle
+                      fileName: build.gradle.kts
+            """)
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                def foo() {}
+                class A {}
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.test.RenameBuildGradle")
+                }
+            """)
+        }
+
+        val result = runGradle(projectDir, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        assertThat(projectDir.resolve("build.gradle.kts").exists()).isTrue
+    }
+
 }
 
