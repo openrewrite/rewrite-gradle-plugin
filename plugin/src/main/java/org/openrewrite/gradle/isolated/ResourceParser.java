@@ -155,7 +155,6 @@ public class ResourceParser {
                                 "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
                         quarkPaths.add(file);
                     } else if (isParsedAsPlainText(file)) {
-                        System.out.println("Plain Text :" + file);
                         plainTextPaths.add(file);
                     } else {
                         resources.add(file);
