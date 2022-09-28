@@ -460,5 +460,74 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(projectDir.resolve("build.gradle.kts").exists()).isTrue
     }
 
+    @Test
+    fun mergeConfiguredAndAutodetectedStyles(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            propertiesFile("gradle.properties", "systemProp.rewrite.activeStyles=org.openrewrite.testStyle")
+            rewriteYaml("""
+                ---
+                type: specs.openrewrite.org/v1beta/style
+                name: org.openrewrite.testStyle
+                styleConfigs:
+                  - org.openrewrite.java.style.TabsAndIndentsStyle:
+                      useTabCharacter: true
+            """)
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+
+                rewrite {
+                    activeRecipe("org.openrewrite.java.format.AutoFormat")
+                }
+            """)
+            sourceSet("main") {
+                java("""
+                    package com.foo;
+                    
+                    class A {
+                        void bar() {
+                            System.out.println("Hello world");
+                            // Autodetect should determine no spaces before if-statement parens
+                            if(true) {}
+                            if(true) {}
+                        }
+                    }
+                """)
+            }
+        }
+        val result = runGradle(projectDir, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val aFile = projectDir.resolve("src/main/java/com/foo/A.java")
+        //language=java
+        val expected = """
+            package com.foo;
+
+            class A {
+            	void bar() {
+            		System.out.println("Hello world");
+            		// Autodetect should determine no spaces before if-statement parens
+            		if(true) {
+            		}
+            		if(true) {
+            		}
+            	}
+            }
+        """.trimIndent()
+        val aText = aFile.readText()
+
+        assertThat(aText).isEqualTo(expected)
+    }
 }
 

@@ -49,6 +49,7 @@ import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.*;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.Space;
 import org.openrewrite.marker.BuildTool;
 import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
@@ -57,6 +58,7 @@ import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.shaded.jgit.api.Git;
+import org.openrewrite.style.GeneralFormatStyle;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.tree.ParsingExecutionContextView;
 
@@ -119,22 +121,38 @@ public class DefaultProjectParser implements GradleProjectParser {
         return null;
     }
 
-    public SortedSet<String> getActiveRecipes() {
-        String activeRecipeProp = System.getProperty("activeRecipe");
-        if (activeRecipeProp == null) {
-            return new TreeSet<>(extension.getActiveRecipes());
-        } else {
-            return new TreeSet<>(singleton(activeRecipeProp));
+
+    // By accident, we were inconsistent with the names of these properties between this and the maven plugin
+    // Check all variants of the name, preferring more-fully-qualified names
+    @Nullable
+    private String getPropertyWithVariantNames(String property) {
+        String maybeProp = System.getProperty("rewrite." + property + "s");
+        if(maybeProp == null) {
+            maybeProp = System.getProperty("rewrite." + property);
         }
+        if(maybeProp == null) {
+            maybeProp = System.getProperty(property + "s");
+        }
+        if(maybeProp == null) {
+            maybeProp = System.getProperty(property);
+        }
+        return maybeProp;
+    }
+
+    public SortedSet<String> getActiveRecipes() {
+        String activeRecipe = getPropertyWithVariantNames("activeRecipe");
+        if(activeRecipe == null) {
+            return new TreeSet<>(extension.getActiveRecipes());
+        }
+        return new TreeSet<>(Arrays.asList(activeRecipe.split(",")));
     }
 
     public SortedSet<String> getActiveStyles() {
-        String activeStyleProp = System.getProperty("activeStyle");
-        if(activeStyleProp == null) {
+        String activeStyle = getPropertyWithVariantNames("activeStyle");
+        if(activeStyle == null) {
             return new TreeSet<>(extension.getActiveStyles());
-        } else {
-            return new TreeSet<>(singleton(activeStyleProp));
         }
+        return new TreeSet<>(Arrays.asList(activeStyle.split(",")));
     }
 
     public SortedSet<String> getAvailableStyles() {
@@ -718,29 +736,17 @@ public class DefaultProjectParser implements GradleProjectParser {
         Git.shutdown();
     }
 
-    private List<J.CompilationUnit> maybeAutodetectStyles(List<J.CompilationUnit> sourceFiles, @Nullable Collection<NamedStyles> styles) {
-        if (styles != null) {
+    private List<J.CompilationUnit> maybeAutodetectStyles(List<J.CompilationUnit> sourceFiles, List<NamedStyles> styles) {
+        ImportLayoutStyle importLayout = NamedStyles.merge(ImportLayoutStyle.class, styles);
+        SpacesStyle spacesStyle = NamedStyles.merge(SpacesStyle.class, styles);
+        TabsAndIndentsStyle tabsStyle = NamedStyles.merge(TabsAndIndentsStyle.class, styles);
+        GeneralFormatStyle generalStyle = NamedStyles.merge(GeneralFormatStyle.class, styles);
+        if(importLayout != null && spacesStyle != null && tabsStyle != null && generalStyle != null) {
+            // No need to autodetect if all the styles it would detect are already present
             return sourceFiles;
         }
-
         Autodetect autodetect = Autodetect.detect(sourceFiles);
-
-        Collection<NamedStyles> namedStyles;
-        namedStyles = Collections.singletonList(autodetect);
-
-        ImportLayoutStyle importLayout = NamedStyles.merge(ImportLayoutStyle.class, namedStyles);
-        logger.debug("Auto-detected import layout:\n{}", importLayout);
-
-        SpacesStyle spacesStyle = NamedStyles.merge(SpacesStyle.class, namedStyles);
-        logger.debug("Auto-detected spaces style:\n{}", spacesStyle);
-
-        TabsAndIndentsStyle tabsStyle = NamedStyles.merge(TabsAndIndentsStyle.class, namedStyles);
-        logger.debug("Auto-detected tabs and indents:\n{}", tabsStyle);
-
-        return map(sourceFiles, cu -> {
-            List<Marker> markers = ListUtils.concat(map(cu.getMarkers().getMarkers(), m -> m instanceof NamedStyles ? null : m), autodetect);
-            return cu.withMarkers(cu.getMarkers().withMarkers(markers));
-        });
+        return map(sourceFiles, cu -> cu.withMarkers(cu.getMarkers().add(autodetect)));
     }
 
     private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {
