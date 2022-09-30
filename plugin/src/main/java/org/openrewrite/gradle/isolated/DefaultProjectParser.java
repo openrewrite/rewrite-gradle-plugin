@@ -546,7 +546,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
         sourceFiles.addAll(parse(project, alreadyParsed, ctx));
-        sourceFiles.addAll(ParsingExecutionContextView.view(ctx).pollParseFailures());
         return sourceFiles;
     }
 
@@ -667,7 +666,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
             sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
-
+            sourceFiles.addAll(ParsingExecutionContextView.view(ctx).pollParseFailures());
             return sourceFiles;
         } catch (Exception e) {
             throw new RuntimeException(e);

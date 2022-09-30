@@ -491,6 +491,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
             """)
             sourceSet("main") {
+                // Uses spaces, to be converted to tabs
                 java("""
                     package com.foo;
                     
@@ -523,6 +524,66 @@ class RewriteRunTest : RewritePluginTest {
             		if(true) {
             		}
             	}
+            }
+        """.trimIndent()
+        val aText = aFile.readText()
+
+        assertThat(aText).isEqualTo(expected)
+    }
+
+    @Test
+    fun reformatToIntelliJStyle(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+
+                rewrite {
+                    activeRecipe("org.openrewrite.java.format.AutoFormat")
+                    activeStyle("org.openrewrite.java.IntelliJ")
+                }
+            """)
+            sourceSet("main") {
+                java("""
+                    package com.foo;
+                    
+                    class A {
+                    	void bar() {
+                    		System.out.println("Hello world");
+                    		if(true) {}
+                    		if(true) {}
+                    	}
+                    }
+                """)
+            }
+        }
+        val result = runGradle(projectDir, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val aFile = projectDir.resolve("src/main/java/com/foo/A.java")
+        //language=java
+        val expected = """
+            package com.foo;
+            
+            class A {
+                void bar() {
+                    System.out.println("Hello world");
+                    if (true) {
+                    }
+                    if (true) {
+                    }
+                }
             }
         """.trimIndent()
         val aText = aFile.readText()
