@@ -57,7 +57,6 @@ import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.shaded.jgit.api.Git;
-import org.openrewrite.style.GeneralFormatStyle;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.tree.ParsingExecutionContextView;
 
@@ -631,7 +630,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         }
                         return cu;
                     });
-                    sourceFiles.addAll(map(maybeAutodetectStyles(cus, styles), addProvenance(projectProvenance, null)));
+                    sourceFiles.addAll(map(autodetectStyles(cus, styles), addProvenance(projectProvenance, null)));
                     sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
                 }
 
@@ -734,17 +733,8 @@ public class DefaultProjectParser implements GradleProjectParser {
         Git.shutdown();
     }
 
-    private List<J.CompilationUnit> maybeAutodetectStyles(List<J.CompilationUnit> sourceFiles, List<NamedStyles> styles) {
-        ImportLayoutStyle importLayout = NamedStyles.merge(ImportLayoutStyle.class, styles);
-        SpacesStyle spacesStyle = NamedStyles.merge(SpacesStyle.class, styles);
-        TabsAndIndentsStyle tabsStyle = NamedStyles.merge(TabsAndIndentsStyle.class, styles);
-        GeneralFormatStyle generalStyle = NamedStyles.merge(GeneralFormatStyle.class, styles);
-        if(importLayout != null && spacesStyle != null && tabsStyle != null && generalStyle != null) {
-            // No need to autodetect if all the styles it would detect are already present
-            return sourceFiles;
-        }
-        Autodetect autodetect = Autodetect.detect(sourceFiles);
-        return map(sourceFiles, cu -> cu.withMarkers(cu.getMarkers().add(autodetect)));
+    private List<J.CompilationUnit> autodetectStyles(List<J.CompilationUnit> sourceFiles, List<NamedStyles> styles) {
+        return map(sourceFiles, cu -> cu.withMarkers(cu.getMarkers().add(Autodetect.detect(sourceFiles))));
     }
 
     private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {

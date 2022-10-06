@@ -557,12 +557,20 @@ class RewriteRunTest : RewritePluginTest {
                 java("""
                     package com.foo;
                     
-                    class A {
-                    	void bar() {
-                    		System.out.println("Hello world");
-                    		if(true) {}
-                    		if(true) {}
-                    	}
+                    class A { 
+                      void bar() {
+                        System.out.println("Hello world");
+                        if(true) {
+                        }
+                        if(true) {
+                        }
+                      }
+                      void baz() {
+                        bar();
+                        if(true) {
+                          baz();
+                        }
+                      }
                     }
                 """)
             }
@@ -582,6 +590,13 @@ class RewriteRunTest : RewritePluginTest {
                     if (true) {
                     }
                     if (true) {
+                    }
+                }
+            
+                void baz() {
+                    bar();
+                    if (true) {
+                        baz();
                     }
                 }
             }
