@@ -58,6 +58,7 @@ import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.shaded.jgit.api.Git;
 import org.openrewrite.style.NamedStyles;
+import org.openrewrite.style.Style;
 import org.openrewrite.tree.ParsingExecutionContextView;
 
 import java.io.*;
@@ -612,7 +613,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 if (javaPaths.size() > 0) {
                     logger.info("Parsing {} Java sources from {}/{}", javaPaths.size(), project.getName(), sourceSet.getName());
                     JavaParser jp = JavaParser.fromJavaVersion()
-                            .styles(styles)
                             .classpath(dependencyPaths)
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
@@ -630,7 +630,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         }
                         return cu;
                     });
-                    sourceFiles.addAll(map(autodetectStyles(cus, styles), addProvenance(projectProvenance, null)));
+                    sourceFiles.addAll(map(applyStyles(cus, styles), addProvenance(projectProvenance, null)));
                     sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
                 }
 
@@ -733,8 +733,13 @@ public class DefaultProjectParser implements GradleProjectParser {
         Git.shutdown();
     }
 
-    private List<J.CompilationUnit> autodetectStyles(List<J.CompilationUnit> sourceFiles, List<NamedStyles> styles) {
-        return map(sourceFiles, cu -> cu.withMarkers(cu.getMarkers().add(Autodetect.detect(sourceFiles))));
+    private List<J.CompilationUnit> applyStyles(List<J.CompilationUnit> sourceFiles, List<NamedStyles> styles) {
+        Autodetect autodetect = Autodetect.detect(sourceFiles);
+        NamedStyles merged = NamedStyles.merge(ListUtils.concat(styles, autodetect));
+        if(merged == null) {
+            return sourceFiles;
+        }
+        return map(sourceFiles, cu -> cu.withMarkers(cu.getMarkers().add(merged)));
     }
 
     private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {
