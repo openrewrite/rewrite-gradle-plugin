@@ -136,6 +136,8 @@ tasks.register<Test>("testGradleNightlies") {
 
 tasks.withType<Test>() {
     useJUnitPlatform()
+    // Remove this once we've fixed https://github.com/openrewrite/rewrite-gradle-plugin/issues/132
+    setForkEvery(1)
 }
 
 val gVP = tasks.register("generateVersionsProperties") {
