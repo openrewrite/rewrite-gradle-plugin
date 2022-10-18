@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("UnusedProperty")
+@file:Suppress("UnusedProperty", "GrPackage", "GrMethodMayBeStatic", "ConstantConditions", "StatementWithEmptyBody",
+    "InfiniteRecursion"
+)
 
 package org.openrewrite.gradle
 
@@ -604,6 +606,81 @@ class RewriteRunTest : RewritePluginTest {
         val aText = aFile.readText()
 
         assertThat(aText).isEqualTo(expected)
+    }
+
+    @Test
+    fun groovySourceGetsTypesFromJavaSource(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            rewriteYaml("""
+                ---
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.FindA
+                displayName: Rename build.gradle to build.gradle.kts
+                description: Rename build.gradle to build.gradle.kts
+                recipeList:
+                  - org.openrewrite.java.search.FindTypes:
+                      fullyQualifiedTypeName: com.foo.A
+            """)
+            buildGradle("""
+                plugins {
+                    id("groovy")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+
+                rewrite {
+                    activeRecipe("org.openrewrite.test.FindA")
+                }
+                
+                dependencies {
+                    implementation(localGroovy())
+                }
+                
+            """)
+            sourceSet("main") {
+                java("""
+                    package com.foo;
+                    
+                    public class A { 
+                        public static void foo() {
+                        }
+                    }
+                """)
+                groovyClass("""
+                    package com.foo
+                    
+                    class B {
+                        def bar() {
+                            new A().foo()
+                        }
+                    }
+                """)
+            }
+        }
+
+        val result = runGradle(projectDir, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val bFile = projectDir.resolve("src/main/groovy/com/foo/B.groovy")
+        //language=groovy
+        val bExpected = """
+            package com.foo
+            
+            class B {
+                def bar() {
+                    new /*~~>*/A().foo()
+                }
+            }
+        """.trimIndent()
+        assertThat(bFile.readText()).isEqualTo(bExpected)
     }
 }
 

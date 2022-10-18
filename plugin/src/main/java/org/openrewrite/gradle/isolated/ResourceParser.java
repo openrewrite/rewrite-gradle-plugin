@@ -21,6 +21,7 @@ import org.gradle.api.logging.Logging;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.SourceFile;
 import org.openrewrite.gradle.RewriteExtension;
+import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.hcl.HclParser;
 import org.openrewrite.json.JsonParser;
 import org.openrewrite.properties.PropertiesParser;
@@ -99,6 +100,7 @@ public class ResourceParser {
         PropertiesParser propertiesParser = new PropertiesParser();
         ProtoParser protoParser = new ProtoParser();
         HclParser hclParser = HclParser.builder().build();
+        GroovyParser groovyParser = GroovyParser.builder().build();
 
         List<Path> resources = new ArrayList<>();
         Files.walkFileTree(searchDir, Collections.emptySet(), 16, new SimpleFileVisitor<Path>() {
@@ -118,7 +120,8 @@ public class ResourceParser {
                             yamlParser.accept(file) ||
                             propertiesParser.accept(file) ||
                             protoParser.accept(file) ||
-                            hclParser.accept(file)) {
+                            hclParser.accept(file) ||
+                            groovyParser.accept(file)) {
                         resources.add(file);
                     }
                 }
@@ -184,6 +187,11 @@ public class ResourceParser {
         HclParser hclParser = HclParser.builder().build();
         List<Path> hclPaths = new ArrayList<>();
 
+        GroovyParser groovyParser = GroovyParser.builder()
+                .logCompilationWarningsAndErrors(false)
+                .build();
+        List<Path> groovyPaths = new ArrayList<>();
+
         PlainTextParser plainTextParser = new PlainTextParser();
 
         QuarkParser quarkParser = new QuarkParser();
@@ -201,6 +209,8 @@ public class ResourceParser {
                 protoPaths.add(path);
             } else if (hclParser.accept(path)) {
                 hclPaths.add(path);
+            } else if (groovyParser.accept(path)) {
+                groovyPaths.add(path);
             } else if (quarkParser.accept(path)) {
                 quarkPaths.add(path);
             }
@@ -223,6 +233,9 @@ public class ResourceParser {
 
         sourceFiles.addAll((List<S>) hclParser.parse(hclPaths, baseDir, ctx));
         alreadyParsed.addAll(hclPaths);
+
+        sourceFiles.addAll((List<S>) groovyParser.parse(groovyPaths, baseDir, ctx));
+        alreadyParsed.addAll(groovyPaths);
 
         sourceFiles.addAll((List<S>) plainTextParser.parse(plainTextPaths, baseDir, ctx));
         alreadyParsed.addAll(plainTextPaths);

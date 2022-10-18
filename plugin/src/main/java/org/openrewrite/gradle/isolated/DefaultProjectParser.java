@@ -24,6 +24,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.internal.service.ServiceRegistry;
@@ -39,6 +40,7 @@ import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.gradle.isolated.ui.RecipeDescriptorTreePrompter;
 import org.openrewrite.groovy.GroovyParser;
+import org.openrewrite.groovy.tree.G;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.ipc.http.HttpUrlConnectionSender;
@@ -49,6 +51,7 @@ import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.*;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.JavaSourceFile;
 import org.openrewrite.marker.BuildTool;
 import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
@@ -58,7 +61,6 @@ import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.shaded.jgit.api.Git;
 import org.openrewrite.style.NamedStyles;
-import org.openrewrite.style.Style;
 import org.openrewrite.tree.ParsingExecutionContextView;
 
 import java.io.*;
@@ -268,32 +270,34 @@ public class DefaultProjectParser implements GradleProjectParser {
         ParsingExecutionContextView ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(onError));
         if (dumpGcActivity) {
             SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
-            new JvmHeapPressureMetrics().bindTo(meterRegistry);
-            new JvmMemoryMetrics().bindTo(meterRegistry);
+            try (JvmHeapPressureMetrics heapMetrics = new JvmHeapPressureMetrics()) {
+                heapMetrics.bindTo(meterRegistry);
+                new JvmMemoryMetrics().bindTo(meterRegistry);
 
-            File rewriteBuildDir = new File(project.getBuildDir(), "/rewrite");
-            if (rewriteBuildDir.exists() || rewriteBuildDir.mkdirs()) {
-                File rewriteGcLog = new File(rewriteBuildDir, "rewrite-gc.csv");
-                try (FileOutputStream fos = new FileOutputStream(rewriteGcLog, false);
-                     BufferedWriter logWriter = new BufferedWriter(new PrintWriter(fos))) {
-                    logWriter.write("file,jvm.gc.overhead,g1.old.gen.size\n");
-                    ctx.setParsingListener((input, sourceFile) -> {
-                        try {
-                            logWriter.write(input.getPath() + ",");
-                            logWriter.write(meterRegistry.get("jvm.gc.overhead").gauge().value() + ",");
-                            Gauge g1Used = meterRegistry.find("jvm.memory.used").tag("id", "G1 Old Gen").gauge();
-                            logWriter.write((g1Used == null ? "" : Double.toString(g1Used.value())) + "\n");
-                        } catch (IOException e) {
-                            logger.error("Unable to write rewrite GC log");
-                            throw new UncheckedIOException(e);
-                        }
-                    });
-                    dryRun(reportPath, listResults(ctx));
-                    logWriter.flush();
-                    logger.lifecycle("Wrote rewrite GC log: {}", rewriteGcLog.getAbsolutePath());
-                } catch (IOException e) {
-                    logger.error("Unable to write rewrite GC log", e);
-                    throw new UncheckedIOException(e);
+                File rewriteBuildDir = new File(project.getBuildDir(), "/rewrite");
+                if (rewriteBuildDir.exists() || rewriteBuildDir.mkdirs()) {
+                    File rewriteGcLog = new File(rewriteBuildDir, "rewrite-gc.csv");
+                    try (FileOutputStream fos = new FileOutputStream(rewriteGcLog, false);
+                         BufferedWriter logWriter = new BufferedWriter(new PrintWriter(fos))) {
+                        logWriter.write("file,jvm.gc.overhead,g1.old.gen.size\n");
+                        ctx.setParsingListener((input, sourceFile) -> {
+                            try {
+                                logWriter.write(input.getPath() + ",");
+                                logWriter.write(meterRegistry.get("jvm.gc.overhead").gauge().value() + ",");
+                                Gauge g1Used = meterRegistry.find("jvm.memory.used").tag("id", "G1 Old Gen").gauge();
+                                logWriter.write((g1Used == null ? "" : Double.toString(g1Used.value())) + "\n");
+                            } catch (IOException e) {
+                                logger.error("Unable to write rewrite GC log");
+                                throw new UncheckedIOException(e);
+                            }
+                        });
+                        dryRun(reportPath, listResults(ctx));
+                        logWriter.flush();
+                        logger.lifecycle("Wrote rewrite GC log: {}", rewriteGcLog.getAbsolutePath());
+                    } catch (IOException e) {
+                        logger.error("Unable to write rewrite GC log", e);
+                        throw new UncheckedIOException(e);
+                    }
                 }
             }
         } else {
@@ -572,9 +576,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceSets = javaConvention.getSourceSets();
             }
 
-            ResourceParser rp = new ResourceParser(baseDir, project, extension);
+            ResourceParser rp = new ResourceParser(baseDir, subproject, extension);
             Collection<PathMatcher> exclusions = extension.getExclusions().stream()
-                    .map(pattern -> project.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
+                    .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
                     .collect(toList());
             List<SourceFile> sourceFiles = new ArrayList<>();
             for (SourceSet sourceSet : sourceSets) {
@@ -611,7 +615,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 JavaSourceSet sourceSetProvenance = null;
                 if (javaPaths.size() > 0) {
-                    logger.info("Parsing {} Java sources from {}/{}", javaPaths.size(), project.getName(), sourceSet.getName());
+                    logger.info("Parsing {} Java sources from {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
                     JavaParser jp = JavaParser.fromJavaVersion()
                             .classpath(dependencyPaths)
                             .typeCache(javaTypeCache)
@@ -621,15 +625,15 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Instant start = Instant.now();
                     List<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx);
                     alreadyParsed.addAll(javaPaths);
-                    Duration parseDuration = Duration.between(start, Instant.now());
-                    logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
-                            project.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
                     cus = ListUtils.map(cus, cu -> {
                         if(isExcluded(exclusions, cu.getSourcePath())) {
                             return null;
                         }
                         return cu;
                     });
+                    Duration parseDuration = Duration.between(start, Instant.now());
+                    logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
+                            subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
                     sourceFiles.addAll(map(applyStyles(cus, styles), addProvenance(projectProvenance, null)));
                     sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
                 }
@@ -642,6 +646,44 @@ public class DefaultProjectParser implements GradleProjectParser {
                             sourceSetProvenance = new JavaSourceSet(randomId(), sourceSet.getName(), emptyList());
                         }
                         sourceFiles.addAll(map(rp.parse(resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, sourceSetProvenance)));
+                    }
+                }
+
+                if(subproject.getPlugins().hasPlugin(GroovyPlugin.class)) {
+                    List<Path> groovyPaths = sourceSet.getAllSource().getFiles().stream()
+                            .filter(it -> it.isFile() && it.getName().endsWith(".groovy"))
+                            .map(File::toPath)
+                            .map(Path::toAbsolutePath)
+                            .map(Path::normalize)
+                            .collect(toList());
+
+                    if(groovyPaths.size() > 0) {
+                        // Groovy sources are aware of java types that are intermixed in the same directory/sourceSet
+                        // Include the build directory containing class files so these definitions are available
+                        List<Path> dependenciesWithBuildDirs = Stream.concat(
+                                dependencyPaths.stream(),
+                                sourceSet.getOutput().getClassesDirs().getFiles().stream().map(File::toPath)
+                            ).collect(toList());
+
+                        logger.info("Parsing {} Groovy sources from {}/{}", groovyPaths.size(), subproject.getName(), sourceSet.getName());
+                        GroovyParser gp = GroovyParser.builder()
+                                .classpath(dependenciesWithBuildDirs)
+                                .typeCache(javaTypeCache)
+                                .logCompilationWarningsAndErrors(false)
+                                .build();
+                        Instant start = Instant.now();
+                        List<G.CompilationUnit> cus = gp.parse(groovyPaths, baseDir, ctx);
+                        cus = ListUtils.map(cus, cu -> {
+                            if(isExcluded(exclusions, cu.getSourcePath())) {
+                                return null;
+                            }
+                            return cu;
+                        });
+                        sourceFiles.addAll(map(applyStyles(cus, styles), addProvenance(projectProvenance, null)));
+                        alreadyParsed.addAll(groovyPaths);
+                        Duration parseDuration = Duration.between(start, Instant.now());
+                        logger.info("Finished parsing Groovy sources from {}/{} in {} ({} per source)",
+                                subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(groovyPaths.size())));
                     }
                 }
             }
@@ -733,7 +775,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         Git.shutdown();
     }
 
-    private List<J.CompilationUnit> applyStyles(List<J.CompilationUnit> sourceFiles, List<NamedStyles> styles) {
+    private <T extends JavaSourceFile> List<T> applyStyles(List<T> sourceFiles, List<NamedStyles> styles) {
         Autodetect autodetect = Autodetect.detect(sourceFiles);
         NamedStyles merged = NamedStyles.merge(ListUtils.concat(styles, autodetect));
         if(merged == null) {

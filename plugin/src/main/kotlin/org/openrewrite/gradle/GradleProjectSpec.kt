@@ -119,6 +119,11 @@ class GradleSourceSetSpec(
         propertiesFiles[name] = text
     }
 
+    val groovyClassses: MutableList<String> = mutableListOf()
+    fun groovyClass(@Language("groovy") source: String) {
+        groovyClassses.add(source.trimIndent())
+    }
+
     @Suppress("RegExpSimplifiable")
     fun build(dir: File): GradleSourceSetSpec {
         dir.mkdirs()
@@ -131,9 +136,33 @@ class GradleSourceSetSpec(
                 ""
             }.replace(".", "/")
             val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+)".toRegex(RegexOption.MULTILINE).find(javaSource)!!.groupValues[2]
-            File(dir, "$name/java/$peckage/$clazz.java").apply {
+            val path = if(peckage.isEmpty()) {
+                "$name/java/$clazz.java"
+            } else {
+                "$name/java/$peckage/$clazz.java"
+            }
+            File(dir, path).apply {
                 parentFile.mkdirs()
                 writeText(javaSource)
+            }
+        }
+        for(groovySource in groovyClassses) {
+            val peckage = if(groovySource.startsWith("package")) {
+                "package\\s+([a-zA-Z0-9.]+);?".toRegex(RegexOption.MULTILINE)
+                    .find(groovySource)!!
+                    .groupValues[1]
+            } else {
+                ""
+            }.replace(".", "/")
+            val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+)".toRegex(RegexOption.MULTILINE).find(groovySource)!!.groupValues[2]
+            val path = if(peckage.isEmpty()) {
+                "$name/groovy/$clazz.groovy"
+            } else {
+                "$name/groovy/$peckage/$clazz.groovy"
+            }
+            File(dir, path).apply {
+                parentFile.mkdirs()
+                writeText(groovySource)
             }
         }
         if(propertiesFiles.isNotEmpty()) {
