@@ -618,6 +618,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     logger.info("Parsing {} Java sources from {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
                     JavaParser jp = JavaParser.fromJavaVersion()
                             .classpath(dependencyPaths)
+                            .styles(styles)
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
@@ -634,7 +635,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Duration parseDuration = Duration.between(start, Instant.now());
                     logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
                             subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
-                    sourceFiles.addAll(map(applyStyles(cus, styles), addProvenance(projectProvenance, null)));
+                    sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
                     sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
                 }
 
@@ -668,6 +669,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         logger.info("Parsing {} Groovy sources from {}/{}", groovyPaths.size(), subproject.getName(), sourceSet.getName());
                         GroovyParser gp = GroovyParser.builder()
                                 .classpath(dependenciesWithBuildDirs)
+                                .styles(styles)
                                 .typeCache(javaTypeCache)
                                 .logCompilationWarningsAndErrors(false)
                                 .build();
@@ -679,7 +681,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             }
                             return cu;
                         });
-                        sourceFiles.addAll(map(applyStyles(cus, styles), addProvenance(projectProvenance, null)));
+                        sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
                         alreadyParsed.addAll(groovyPaths);
                         Duration parseDuration = Duration.between(start, Instant.now());
                         logger.info("Finished parsing Groovy sources from {}/{} in {} ({} per source)",
@@ -775,13 +777,9 @@ public class DefaultProjectParser implements GradleProjectParser {
         Git.shutdown();
     }
 
-    private <T extends JavaSourceFile> List<T> applyStyles(List<T> sourceFiles, List<NamedStyles> styles) {
+    private <T extends JavaSourceFile> List<T> autodetectStyle(List<T> sourceFiles) {
         Autodetect autodetect = Autodetect.detect(sourceFiles);
-        NamedStyles merged = NamedStyles.merge(ListUtils.concat(styles, autodetect));
-        if(merged == null) {
-            return sourceFiles;
-        }
-        return map(sourceFiles, cu -> cu.withMarkers(cu.getMarkers().add(merged)));
+        return map(sourceFiles, cu -> cu.withMarkers(cu.getMarkers().add(autodetect)));
     }
 
     private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {

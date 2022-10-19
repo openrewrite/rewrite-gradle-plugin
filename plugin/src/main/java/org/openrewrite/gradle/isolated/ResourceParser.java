@@ -23,12 +23,16 @@ import org.openrewrite.SourceFile;
 import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.hcl.HclParser;
+import org.openrewrite.internal.ListUtils;
 import org.openrewrite.json.JsonParser;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.protobuf.ProtoParser;
 import org.openrewrite.quark.QuarkParser;
+import org.openrewrite.style.NamedStyles;
 import org.openrewrite.text.PlainTextParser;
 import org.openrewrite.xml.XmlParser;
+import org.openrewrite.xml.style.Autodetect;
+import org.openrewrite.xml.tree.Xml;
 import org.openrewrite.yaml.YamlParser;
 
 import java.io.IOException;
@@ -76,11 +80,15 @@ public class ResourceParser {
     }
 
     public List<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, ExecutionContext ctx) {
+        return parse(projectDir, alreadyParsed, Collections.emptyList(), Collections.emptyList(), ctx);
+    }
+
+    public List<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) {
         List<SourceFile> sourceFiles;
         logger.info("Parsing other sources from {}", projectDir);
         Instant start = Instant.now();
         try {
-            sourceFiles = new ArrayList<>(parseSourceFiles(projectDir, alreadyParsed, ctx));
+            sourceFiles = new ArrayList<>(parseSourceFiles(projectDir, alreadyParsed, classpath, styles, ctx));
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
             throw new UncheckedIOException(e);
@@ -131,11 +139,9 @@ public class ResourceParser {
         return resources;
     }
 
-    @SuppressWarnings({"DuplicatedCode", "unchecked"})
-    public <S extends SourceFile> List<S> parseSourceFiles(
-            Path searchDir,
-            Collection<Path> alreadyParsed,
-            ExecutionContext ctx) throws IOException {
+    @SuppressWarnings({"DuplicatedCode"})
+    public List<SourceFile> parseSourceFiles(Path searchDir, Collection<Path> alreadyParsed,
+            List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) throws IOException {
 
         List<Path> resources = new ArrayList<>();
         List<Path> quarkPaths = new ArrayList<>();
@@ -167,7 +173,7 @@ public class ResourceParser {
             }
         });
 
-        List<S> sourceFiles = new ArrayList<>(resources.size());
+        List<SourceFile> sourceFiles = new ArrayList<>(resources.size());
 
         JsonParser jsonParser = new JsonParser();
         List<Path> jsonPaths = new ArrayList<>();
@@ -188,6 +194,8 @@ public class ResourceParser {
         List<Path> hclPaths = new ArrayList<>();
 
         GroovyParser groovyParser = GroovyParser.builder()
+                .classpath(classpath)
+                .styles(styles)
                 .logCompilationWarningsAndErrors(false)
                 .build();
         List<Path> groovyPaths = new ArrayList<>();
@@ -216,31 +224,31 @@ public class ResourceParser {
             }
         });
 
-        sourceFiles.addAll((List<S>) jsonParser.parse(jsonPaths, baseDir, ctx));
+        sourceFiles.addAll(jsonParser.parse(jsonPaths, baseDir, ctx));
         alreadyParsed.addAll(jsonPaths);
 
-        sourceFiles.addAll((List<S>) xmlParser.parse(xmlPaths, baseDir, ctx));
+        sourceFiles.addAll(autodetectXmlStyles(xmlParser.parse(xmlPaths, baseDir, ctx)));
         alreadyParsed.addAll(xmlPaths);
 
-        sourceFiles.addAll((List<S>) yamlParser.parse(yamlPaths, baseDir, ctx));
+        sourceFiles.addAll(yamlParser.parse(yamlPaths, baseDir, ctx));
         alreadyParsed.addAll(yamlPaths);
 
-        sourceFiles.addAll((List<S>) propertiesParser.parse(propertiesPaths, baseDir, ctx));
+        sourceFiles.addAll(propertiesParser.parse(propertiesPaths, baseDir, ctx));
         alreadyParsed.addAll(propertiesPaths);
 
-        sourceFiles.addAll((List<S>) protoParser.parse(protoPaths, baseDir, ctx));
+        sourceFiles.addAll(protoParser.parse(protoPaths, baseDir, ctx));
         alreadyParsed.addAll(protoPaths);
 
-        sourceFiles.addAll((List<S>) hclParser.parse(hclPaths, baseDir, ctx));
+        sourceFiles.addAll(hclParser.parse(hclPaths, baseDir, ctx));
         alreadyParsed.addAll(hclPaths);
 
-        sourceFiles.addAll((List<S>) groovyParser.parse(groovyPaths, baseDir, ctx));
+        sourceFiles.addAll(groovyParser.parse(groovyPaths, baseDir, ctx));
         alreadyParsed.addAll(groovyPaths);
 
-        sourceFiles.addAll((List<S>) plainTextParser.parse(plainTextPaths, baseDir, ctx));
+        sourceFiles.addAll(plainTextParser.parse(plainTextPaths, baseDir, ctx));
         alreadyParsed.addAll(plainTextPaths);
 
-        sourceFiles.addAll((List<S>) quarkParser.parse(quarkPaths, baseDir, ctx));
+        sourceFiles.addAll(quarkParser.parse(quarkPaths, baseDir, ctx));
         alreadyParsed.addAll(quarkPaths);
 
         return sourceFiles;
@@ -281,5 +289,10 @@ public class ResourceParser {
             }
         }
         return false;
+    }
+
+    private List<Xml.Document> autodetectXmlStyles(List<Xml.Document> xmls) {
+        Autodetect xmlStyle = Autodetect.detect(xmls);
+        return ListUtils.map(xmls, xml -> xml.withMarkers(xml.getMarkers().add(xmlStyle)));
     }
 }
