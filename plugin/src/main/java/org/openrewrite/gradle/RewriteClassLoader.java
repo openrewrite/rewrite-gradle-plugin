@@ -49,7 +49,6 @@ public class RewriteClassLoader extends URLClassLoader {
      * by this ClassLoader <strong>only</strong>. But we want classes required to run recipes to continue
      * to be loaded by their parent ClassLoader to avoid <code>ClassCastException</code>s.
      */
-    @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         Class<?> foundClass = findLoadedClass(name);
         if (foundClass == null) {

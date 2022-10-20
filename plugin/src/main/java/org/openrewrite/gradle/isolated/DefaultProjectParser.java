@@ -34,7 +34,6 @@ import org.openrewrite.config.Environment;
 import org.openrewrite.config.OptionDescriptor;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
-import org.openrewrite.gradle.DefaultRewriteExtension;
 import org.openrewrite.gradle.GradleParser;
 import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
@@ -160,7 +159,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         return environment().listStyles().stream().map(NamedStyles::getName).collect(Collectors.toCollection(TreeSet::new));
     }
 
-    @Override
     public void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
         Collection<RecipeDescriptor> availableRecipeDescriptors = this.listRecipeDescriptors();
 
@@ -240,7 +238,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         return buffer;
     }
 
-    @Override
     public Collection<Path> listSources() {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
         ResourceParser rp = new ResourceParser(baseDir, project, extension);
@@ -265,7 +262,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         return result;
     }
 
-    @Override
     public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
         ParsingExecutionContextView ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(onError));
         if (dumpGcActivity) {
@@ -352,7 +348,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 logger.warn("    " + reportPath.normalize());
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
-                if (project.getExtensions().getByType(DefaultRewriteExtension.class).getFailOnDryRunResults()) {
+                if (project.getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
                     throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
                 }
             } else {
@@ -363,7 +359,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
-    @Override
     public void run(Consumer<Throwable> onError) {
         run(listResults(new InMemoryExecutionContext(onError)));
     }
@@ -771,7 +766,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         return new ResultsContainer(baseDir, recipeRun);
     }
 
-    @Override
     public void shutdownRewrite() {
         J.clearCaches();
         Git.shutdown();

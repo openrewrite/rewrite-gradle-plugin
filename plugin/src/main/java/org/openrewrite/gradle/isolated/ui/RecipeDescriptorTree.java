@@ -97,7 +97,6 @@ public class RecipeDescriptorTree implements Comparable<RecipeDescriptorTree> {
         }
     }
 
-    @Override
     public int compareTo(RecipeDescriptorTree o) {
         return this.children.size() - o.children.size();
     }

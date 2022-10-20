@@ -45,7 +45,6 @@ public class GradleLoggingMeterRegistry extends MeterRegistry {
         this.log = log;
     }
 
-    @Override
     public void close() {
         getMeters().stream()
                 .sorted((m1, m2) -> {
@@ -122,47 +121,38 @@ public class GradleLoggingMeterRegistry extends MeterRegistry {
                 .collect(joining(", ", print.id() + " ", ""));
     }
 
-    @Override
     protected Timer newTimer(Meter.Id id, DistributionStatisticConfig distributionStatisticConfig, PauseDetector pauseDetector) {
         return new CumulativeTimer(id, clock, distributionStatisticConfig, pauseDetector, getBaseTimeUnit(), false);
     }
 
-    @Override
     protected DistributionSummary newDistributionSummary(Meter.Id id, DistributionStatisticConfig distributionStatisticConfig, double scale) {
         return new CumulativeDistributionSummary(id, clock, distributionStatisticConfig, scale, false);
     }
 
-    @Override
     protected Counter newCounter(Meter.Id id) {
         return new CumulativeCounter(id);
     }
 
-    @Override
     protected <T> Gauge newGauge(Meter.Id id, T obj, ToDoubleFunction<T> valueFunction) {
         return new DefaultGauge<>(id, obj, valueFunction);
     }
 
-    @Override
     protected <T> FunctionTimer newFunctionTimer(Meter.Id id, T obj, ToLongFunction<T> countFunction, ToDoubleFunction<T> totalTimeFunction, TimeUnit totalTimeFunctionUnit) {
         return new CumulativeFunctionTimer<>(id, obj, countFunction, totalTimeFunction, totalTimeFunctionUnit, getBaseTimeUnit());
     }
 
-    @Override
     protected <T> FunctionCounter newFunctionCounter(Meter.Id id, T obj, ToDoubleFunction<T> countFunction) {
         return new CumulativeFunctionCounter<>(id, obj, countFunction);
     }
 
-    @Override
     protected LongTaskTimer newLongTaskTimer(Meter.Id id, DistributionStatisticConfig distributionStatisticConfig) {
         return new DefaultLongTaskTimer(id, clock, getBaseTimeUnit(), distributionStatisticConfig, false);
     }
 
-    @Override
     protected Meter newMeter(Meter.Id id, Meter.Type type, Iterable<Measurement> measurements) {
         return new DefaultMeter(id, type, measurements);
     }
 
-    @Override
     protected DistributionStatisticConfig defaultHistogramConfig() {
         return DistributionStatisticConfig.builder()
                 .expiry(Duration.ofMinutes(1))
@@ -217,7 +207,6 @@ public class GradleLoggingMeterRegistry extends MeterRegistry {
         }
     }
 
-    @Override
     protected TimeUnit getBaseTimeUnit() {
         return TimeUnit.MILLISECONDS;
     }

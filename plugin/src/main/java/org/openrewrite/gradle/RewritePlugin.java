@@ -22,6 +22,11 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 /**
  * When applied to the root project of a multi-project build, applies to all subprojects.
  * When applied to the root project the "rewrite" configuration and "rewrite" DSL created in the root project apply to
@@ -33,13 +38,12 @@ import org.gradle.api.plugins.quality.CheckstylePlugin;
 @SuppressWarnings("unused")
 public class RewritePlugin implements Plugin<Project> {
 
-    @Override
     public void apply(Project project) {
         boolean isRootProject = project == project.getRootProject();
         if (!isRootProject && project.getRootProject().getPluginManager().hasPlugin("org.openrewrite.rewrite")) {
             return;
         }
-        DefaultRewriteExtension extension = project.getExtensions().create("rewrite", DefaultRewriteExtension.class, project);
+        RewriteExtension extension = project.getExtensions().create("rewrite", RewriteExtension.class, project);
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
@@ -69,7 +73,7 @@ public class RewritePlugin implements Plugin<Project> {
         }
     }
 
-    private static void configureProject(Project project, DefaultRewriteExtension extension, RewriteDryRunTask rewriteDryRun, RewriteRunTask rewriteRun) {
+    private static void configureProject(Project project, RewriteExtension extension, RewriteDryRunTask rewriteDryRun, RewriteRunTask rewriteRun) {
         // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
         // Do not replace all() with any form of collection iteration which does not share this important property
         project.getPlugins().all(plugin -> {
@@ -77,8 +81,8 @@ public class RewritePlugin implements Plugin<Project> {
                 // A multi-project build could hypothetically have different checkstyle configuration per-project
                 // In practice all projects tend to have the same configuration
                 CheckstyleExtension checkstyleExtension = project.getExtensions().getByType(CheckstyleExtension.class);
-                extension.checkstyleConfigProvider = checkstyleExtension::getConfigFile;
-                extension.checkstylePropertiesProvider = checkstyleExtension::getConfigProperties;
+                extension.setCheckstyleConfigProvider(checkstyleExtension::getConfigFile);
+                extension.setCheckstylePropertiesProvider(checkstyleExtension::getConfigProperties);
             }
             if(!(plugin instanceof JavaBasePlugin)) {
                 return;
@@ -88,10 +92,8 @@ public class RewritePlugin implements Plugin<Project> {
             //Using the older javaConvention because we need to support older versions of gradle.
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
-
             javaConvention.getSourceSets().all(sourceSet -> {
-                // This is intended to ensure that any Groovy/Kotlin/etc. sources are available for type attribution during parsing
-                // This may not be necessary if sourceSet.getCompileClasspath() guarantees that such sources will have been compiled
+                // This is intended to ensure that any Groovy/Kotlin/etc. and dependent project sources are available
                 Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());
                 rewriteRun.dependsOn(compileTask);
                 rewriteDryRun.dependsOn(compileTask);

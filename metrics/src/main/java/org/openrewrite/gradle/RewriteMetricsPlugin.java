@@ -47,7 +47,6 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
     private RewriteMetricsExtension extension;
     private final PrometheusMeterRegistry rootProjectMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
 
-    @Override
     public void apply(Project project) {
         if (project.getRootProject() == project) {
             this.extension = project.getExtensions().create("rewriteMetrics", RewriteMetricsExtension.class);
@@ -116,8 +115,7 @@ public class RewriteMetricsPlugin implements Plugin<Project> {
                     .connect();
 
             project.getGradle().addBuildListener(new BuildAdapter() {
-                @Override
-                public void buildFinished(BuildResult result) {
+                            public void buildFinished(BuildResult result) {
                     try {
                         // The push and close will block for one second. If the daemon dies before the dying push can happen, so be it.
                         metricsClient.pushAndClose();
