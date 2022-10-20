@@ -37,6 +37,7 @@ import org.openrewrite.config.YamlResourceLoader;
 import org.openrewrite.gradle.GradleParser;
 import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
+import org.openrewrite.gradle.SanitizedMarkerPrinter;
 import org.openrewrite.gradle.isolated.ui.RecipeDescriptorTreePrompter;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.groovy.tree.G;
@@ -303,6 +304,12 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public void dryRun(Path reportPath, ResultsContainer results) {
         try {
+            RecipeRunException firstException = results.getFirstException();
+            if (firstException != null) {
+                logger.error("The recipe produced an error. Please report this to the recipe author.");
+                throw firstException;
+            }
+
             if (results.isNotEmpty()) {
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
@@ -366,6 +373,12 @@ public class DefaultProjectParser implements GradleProjectParser {
     public void run(ResultsContainer results) {
         try {
             if (results.isNotEmpty()) {
+                RecipeRunException firstException = results.getFirstException();
+                if (firstException != null) {
+                    logger.error("The recipe produced an error. Please report this to the recipe author.");
+                    throw firstException;
+                }
+
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
                     logger.lifecycle("Generated new file " +
@@ -482,7 +495,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         } else {
             Charset charset = result.getAfter().getCharset() == null ? StandardCharsets.UTF_8 : result.getAfter().getCharset();
             try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(targetPath, charset)) {
-                sourceFileWriter.write(new String(result.getAfter().printAll().getBytes(charset), charset));
+                sourceFileWriter.write(new String(result.getAfter().printAll(new SanitizedMarkerPrinter()).getBytes(charset), charset));
             } catch (IOException e) {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
             }

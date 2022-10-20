@@ -16,6 +16,7 @@
 package org.openrewrite.gradle.isolated;
 
 import org.openrewrite.RecipeRun;
+import org.openrewrite.RecipeRunException;
 import org.openrewrite.Result;
 import org.openrewrite.internal.lang.Nullable;
 
@@ -51,6 +52,31 @@ public class ResultsContainer {
                 }
             }
         }
+    }
+
+    @Nullable
+    public RecipeRunException getFirstException() {
+        for (Result result : generated) {
+            for (RecipeRunException recipeError : result.getRecipeErrors()) {
+                return recipeError;
+            }
+        }
+        for (Result result : deleted) {
+            for (RecipeRunException recipeError : result.getRecipeErrors()) {
+                return recipeError;
+            }
+        }
+        for (Result result : moved) {
+            for (RecipeRunException recipeError : result.getRecipeErrors()) {
+                return recipeError;
+            }
+        }
+        for (Result result : refactoredInPlace) {
+            for (RecipeRunException recipeError : result.getRecipeErrors()) {
+                return recipeError;
+            }
+        }
+        return null;
     }
 
     public Path getProjectRoot() {
