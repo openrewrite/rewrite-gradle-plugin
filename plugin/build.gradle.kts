@@ -90,6 +90,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-core")
     "rewriteDependencies"("org.openrewrite:rewrite-hcl")
     "rewriteDependencies"("org.openrewrite:rewrite-java")
+    "rewriteDependencies"("org.openrewrite:rewrite-java-17")
     "rewriteDependencies"("org.openrewrite:rewrite-java-11")
     "rewriteDependencies"("org.openrewrite:rewrite-java-8")
     "rewriteDependencies"("org.openrewrite:rewrite-json")
