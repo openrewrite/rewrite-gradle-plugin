@@ -304,10 +304,14 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public void dryRun(Path reportPath, ResultsContainer results) {
         try {
-            RecipeRunException firstException = results.getFirstException();
+            Throwable firstException = results.getFirstException();
             if (firstException != null) {
                 logger.error("The recipe produced an error. Please report this to the recipe author.");
-                throw firstException;
+                if(firstException instanceof RuntimeException) {
+                    throw (RuntimeException)firstException;
+                } else {
+                    throw new RuntimeException(firstException);
+                }
             }
 
             if (results.isNotEmpty()) {
@@ -373,10 +377,14 @@ public class DefaultProjectParser implements GradleProjectParser {
     public void run(ResultsContainer results) {
         try {
             if (results.isNotEmpty()) {
-                RecipeRunException firstException = results.getFirstException();
+                Throwable firstException = results.getFirstException();
                 if (firstException != null) {
                     logger.error("The recipe produced an error. Please report this to the recipe author.");
-                    throw firstException;
+                    if(firstException instanceof RuntimeException) {
+                        throw (RuntimeException)firstException;
+                    } else {
+                        throw new RuntimeException(firstException);
+                    }
                 }
 
                 for (Result result : results.generated) {

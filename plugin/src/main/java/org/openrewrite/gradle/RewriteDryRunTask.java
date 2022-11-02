@@ -19,20 +19,22 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.nio.file.Path;
 
 public class RewriteDryRunTask extends AbstractRewriteTask {
 
     private static final Logger logger = Logging.getLogger(RewriteDryRunTask.class);
 
-    // This @Internal is a lie, the correct annotation here would be @OutputFile
-    // On Gradle 4.0 annotating this with @OutputFile triggers a bug that deadlocks Gradle and the task can never begin executing
-    @Internal
-    public Path getReportPath() {
-        return getProject().getBuildDir().toPath().resolve("reports").resolve("rewrite").resolve("rewrite.patch");
+    // This must return File, rather than Path.
+    // On Gradle 4.0 annotating something returning a Path with @OutputFile triggers a bug that deadlocks Gradle
+    @OutputFile
+    public File getReportPath() {
+        return getProject().getBuildDir().toPath().resolve("reports").resolve("rewrite").resolve("rewrite.patch").toFile();
     }
 
     @Inject
@@ -44,6 +46,6 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        getProjectParser().dryRun(getReportPath(), dumpGcActivity, throwable -> logger.warn("Error during rewrite dry run", throwable));
+        getProjectParser().dryRun(getReportPath().toPath(), dumpGcActivity, throwable -> logger.warn("Error during rewrite dry run", throwable));
     }
 }
