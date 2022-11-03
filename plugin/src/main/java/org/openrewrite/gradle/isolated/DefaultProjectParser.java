@@ -708,15 +708,22 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             if (extension.isEnableExperimentalGradleBuildScriptParsing()) {
                 File buildScriptFile = subproject.getBuildFile();
+                File settingsFile = subproject.file("settings.gradle");
+                List<Path> gradleScripts = Stream.of(subproject.getBuildFile(), subproject.file("settings.gradle"))
+                        .filter(it -> it.getName().endsWith(".gradle"))
+                        .filter(File::exists)
+                        .map(File::toPath)
+                        .filter(it -> !isExcluded(exclusions, it))
+                        .collect(toList());
                 try {
-                    if (buildScriptFile.toString().toLowerCase().endsWith(".gradle") && buildScriptFile.exists() && !isExcluded(exclusions, buildScriptFile.toPath())) {
+                    if (!gradleScripts.isEmpty()) {
                         GradleParser gradleParser = new GradleParser(
                                 GroovyParser.builder()
                                         .styles(styles)
                                         .typeCache(javaTypeCache)
                                         .logCompilationWarningsAndErrors(false));
-                        sourceFiles.addAll(gradleParser.parse(singleton(buildScriptFile.toPath()), baseDir, ctx));
-                        alreadyParsed.add(buildScriptFile.toPath());
+                        sourceFiles.addAll(gradleParser.parse(gradleScripts, baseDir, ctx));
+                        alreadyParsed.addAll(gradleScripts);
                     }
                 } catch (Exception e) {
                     logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath() + "\" : ", e);
