@@ -707,8 +707,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             if (extension.isEnableExperimentalGradleBuildScriptParsing()) {
-                File buildScriptFile = subproject.getBuildFile();
-                File settingsFile = subproject.file("settings.gradle");
                 List<Path> gradleScripts = Stream.of(subproject.getBuildFile(), subproject.file("settings.gradle"))
                         .filter(it -> it.getName().endsWith(".gradle"))
                         .filter(File::exists)
@@ -726,7 +724,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         alreadyParsed.addAll(gradleScripts);
                     }
                 } catch (Exception e) {
-                    logger.warn("Problem with parsing gradle script at \"" + buildScriptFile.getAbsolutePath() + "\" : ", e);
+                    logger.warn("Problem with parsing gradle script in project \"" + subproject.getPath() + "\" : ", e);
                 }
             }
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
