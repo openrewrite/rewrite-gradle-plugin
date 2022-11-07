@@ -268,6 +268,8 @@ public class RewriteExtension {
             plainTextMasks.addAll(Arrays.asList(
                     "**gradlew",
                     "**META-INF/services/**",
+                    "**/META-INF/spring.factories",
+                    "**/META-INF/spring/**",
                     "**.gitignore",
                     "**.gitattributes",
                     "**.java-version",
@@ -277,7 +279,8 @@ public class RewriteExtension {
                     "**.bat",
                     "**.ksh",
                     "**.txt",
-                    "**.jsp"
+                    "**.jsp",
+                    "Dockerfile"
             ));
         }
         return plainTextMasks;
