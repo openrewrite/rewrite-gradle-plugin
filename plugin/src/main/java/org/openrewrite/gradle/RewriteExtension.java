@@ -280,6 +280,7 @@ public class RewriteExtension {
                     "**.ksh",
                     "**.txt",
                     "**.jsp",
+                    "**.sql",
                     "Dockerfile"
             ));
         }
