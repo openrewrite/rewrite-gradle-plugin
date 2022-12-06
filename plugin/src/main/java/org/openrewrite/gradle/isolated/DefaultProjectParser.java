@@ -61,6 +61,7 @@ import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.shaded.jgit.api.Git;
 import org.openrewrite.style.NamedStyles;
+import org.openrewrite.text.PlainText;
 import org.openrewrite.tree.ParsingExecutionContextView;
 
 import java.io.*;
@@ -729,7 +730,15 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
             sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
-            sourceFiles.addAll(ParsingExecutionContextView.view(ctx).pollParseFailures());
+            List<PlainText> parseFailures = ParsingExecutionContextView.view(ctx).pollParseFailures();
+            if(parseFailures.size() > 0) {
+                logger.warn("There were problems parsing {} sources:", parseFailures.size());
+                for(PlainText parseFailure : parseFailures) {
+                    logger.warn("  {}", parseFailure.getSourcePath());
+                }
+                logger.warn("Execution will continue but these files are unlikely to be affected by refactoring recipes");
+                sourceFiles.addAll(parseFailures);
+            }
             return sourceFiles;
         } catch (Exception e) {
             throw new RuntimeException(e);
