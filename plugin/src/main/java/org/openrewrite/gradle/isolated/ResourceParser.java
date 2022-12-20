@@ -15,15 +15,18 @@
  */
 package org.openrewrite.gradle.isolated;
 
+import org.apache.tools.ant.taskdefs.Java;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.SourceFile;
+import org.openrewrite.gradle.GradleParser;
 import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.hcl.HclParser;
 import org.openrewrite.internal.ListUtils;
+import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.json.JsonParser;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.protobuf.ProtoParser;
@@ -54,14 +57,17 @@ public class ResourceParser {
     private final Path baseDir;
     private final Collection<PathMatcher> exclusions;
 
+    private final JavaTypeCache typeCache;
+
     private final Collection<PathMatcher> plainTextMasks;
 
     private final int sizeThresholdMb;
 
-    public ResourceParser(Path baseDir, Project project, RewriteExtension extension) {
+    public ResourceParser(Path baseDir, Project project, RewriteExtension extension, JavaTypeCache typeCache) {
         this.baseDir = baseDir;
         this.exclusions = pathMatchers(baseDir, mergeExclusions(project, extension));
         this.plainTextMasks = pathMatchers(baseDir, extension.getPlainTextMasks());
+        this.typeCache = typeCache;
         this.sizeThresholdMb = extension.getSizeThresholdMb();
     }
 
@@ -109,6 +115,7 @@ public class ResourceParser {
         ProtoParser protoParser = new ProtoParser();
         HclParser hclParser = HclParser.builder().build();
         GroovyParser groovyParser = GroovyParser.builder().build();
+        GradleParser gradleParser = GradleParser.builder().build();
 
         List<Path> resources = new ArrayList<>();
         Files.walkFileTree(searchDir, Collections.emptySet(), 16, new SimpleFileVisitor<Path>() {
@@ -127,7 +134,9 @@ public class ResourceParser {
                             propertiesParser.accept(file) ||
                             protoParser.accept(file) ||
                             hclParser.accept(file) ||
-                            groovyParser.accept(file)) {
+                            groovyParser.accept(file) ||
+                            gradleParser.accept(file)
+                    ) {
                         resources.add(file);
                     }
                 }
@@ -191,10 +200,19 @@ public class ResourceParser {
 
         GroovyParser groovyParser = GroovyParser.builder()
                 .classpath(classpath)
+                .typeCache(typeCache)
                 .styles(styles)
                 .logCompilationWarningsAndErrors(false)
                 .build();
         List<Path> groovyPaths = new ArrayList<>();
+
+        GradleParser gradleParser = GradleParser.builder()
+                .setGroovyParser(GroovyParser.builder()
+                        .typeCache(typeCache)
+                        .styles(styles)
+                        .logCompilationWarningsAndErrors(false))
+                .build();
+        List<Path> gradlePaths = new ArrayList<>();
 
         PlainTextParser plainTextParser = new PlainTextParser();
 
@@ -215,6 +233,8 @@ public class ResourceParser {
                 hclPaths.add(path);
             } else if (groovyParser.accept(path)) {
                 groovyPaths.add(path);
+            } else if(gradleParser.accept(path)) {
+                gradlePaths.add(path);
             } else if (quarkParser.accept(path)) {
                 quarkPaths.add(path);
             }
@@ -240,6 +260,9 @@ public class ResourceParser {
 
         sourceFiles.addAll(groovyParser.parse(groovyPaths, baseDir, ctx));
         alreadyParsed.addAll(groovyPaths);
+
+        sourceFiles.addAll(gradleParser.parse(gradlePaths, baseDir, ctx));
+        alreadyParsed.addAll(gradlePaths);
 
         sourceFiles.addAll(plainTextParser.parse(plainTextPaths, baseDir, ctx));
         alreadyParsed.addAll(plainTextPaths);

@@ -242,7 +242,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public Collection<Path> listSources() {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
-        ResourceParser rp = new ResourceParser(baseDir, project, extension);
+        ResourceParser rp = new ResourceParser(baseDir, project, extension, new JavaTypeCache());
         Set<Path> result;
         try {
             result = new TreeSet<>(rp.listSources(project.getProjectDir().toPath()));
@@ -593,7 +593,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceSets = javaConvention.getSourceSets();
             }
 
-            ResourceParser rp = new ResourceParser(baseDir, subproject, extension);
+            ResourceParser rp = new ResourceParser(baseDir, subproject, extension, javaTypeCache);
             Collection<PathMatcher> exclusions = extension.getExclusions().stream()
                     .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
                     .collect(toList());
@@ -707,27 +707,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
             }
 
-            if (extension.isEnableExperimentalGradleBuildScriptParsing()) {
-                List<Path> gradleScripts = Stream.of(subproject.getBuildFile(), subproject.file("settings.gradle"))
-                        .filter(it -> it.getName().endsWith(".gradle"))
-                        .filter(File::exists)
-                        .map(File::toPath)
-                        .filter(it -> !isExcluded(exclusions, it))
-                        .collect(toList());
-                try {
-                    if (!gradleScripts.isEmpty()) {
-                        GradleParser gradleParser = new GradleParser(
-                                GroovyParser.builder()
-                                        .styles(styles)
-                                        .typeCache(javaTypeCache)
-                                        .logCompilationWarningsAndErrors(false));
-                        sourceFiles.addAll(gradleParser.parse(gradleScripts, baseDir, ctx));
-                        alreadyParsed.addAll(gradleScripts);
-                    }
-                } catch (Exception e) {
-                    logger.warn("Problem with parsing gradle script in project \"" + subproject.getPath() + "\" : ", e);
-                }
-            }
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
             sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
             List<PlainText> parseFailures = ParsingExecutionContextView.view(ctx).pollParseFailures();
