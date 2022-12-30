@@ -17,7 +17,7 @@ package org.openrewrite.gradle;
 
 import java.time.Duration;
 
-public class TimeUtils {
+public final class TimeUtils {
     private TimeUtils() {}
     public static final int MINUTES_PER_HOUR = 60;
     public static final int SECONDS_PER_MINUTE = 60;

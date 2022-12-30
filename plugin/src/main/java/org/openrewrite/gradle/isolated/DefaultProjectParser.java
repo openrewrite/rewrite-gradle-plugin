@@ -752,7 +752,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     protected ResultsContainer listResults(ExecutionContext ctx) {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
-        if(recipe.getRecipeList().size() == 0) {
+        if(recipe.getRecipeList().isEmpty()) {
             logger.warn("No recipes were activated. " +
                     "Activate a recipe with rewrite.activeRecipe(\"com.fully.qualified.RecipeClassName\") in your build file, " +
                     "or on the command line with -DactiveRecipe=com.fully.qualified.RecipeClassName");
