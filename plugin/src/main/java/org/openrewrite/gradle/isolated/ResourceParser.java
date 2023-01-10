@@ -135,7 +135,8 @@ public class ResourceParser {
                             protoParser.accept(file) ||
                             hclParser.accept(file) ||
                             groovyParser.accept(file) ||
-                            gradleParser.accept(file)
+                            gradleParser.accept(file) ||
+                            isParsedAsPlainText(file)
                     ) {
                         resources.add(file);
                     }
