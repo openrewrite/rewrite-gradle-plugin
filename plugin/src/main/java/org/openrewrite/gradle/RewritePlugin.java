@@ -43,6 +43,10 @@ public class RewritePlugin implements Plugin<Project> {
         if (!isRootProject && project.getRootProject().getPluginManager().hasPlugin("org.openrewrite.rewrite")) {
             return;
         }
+        if(project.getRootProject().getPluginManager().hasPlugin("io.moderne.rewrite")) {
+            // Moderne plugin provides superset of rewrite plugin functionality, no need to apply both
+            return;
+        }
         RewriteExtension extension = project.getExtensions().create("rewrite", RewriteExtension.class, project);
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
