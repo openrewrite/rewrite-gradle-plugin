@@ -34,11 +34,10 @@ import org.openrewrite.config.Environment;
 import org.openrewrite.config.OptionDescriptor;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
-import org.openrewrite.gradle.GradleParser;
-import org.openrewrite.gradle.GradleProjectParser;
-import org.openrewrite.gradle.RewriteExtension;
-import org.openrewrite.gradle.SanitizedMarkerPrinter;
+import org.openrewrite.gradle.*;
 import org.openrewrite.gradle.isolated.ui.RecipeDescriptorTreePrompter;
+import org.openrewrite.gradle.marker.GradleProject;
+import org.openrewrite.gradle.marker.GradleProjectBuilder;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.groovy.tree.G;
 import org.openrewrite.internal.ListUtils;
@@ -569,6 +568,8 @@ public class DefaultProjectParser implements GradleProjectParser {
         return sourceFiles;
     }
 
+
+
     public List<SourceFile> parse(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
         try {
             logger.lifecycle("Parsing sources from project {}", subproject.getName());
@@ -718,6 +719,19 @@ public class DefaultProjectParser implements GradleProjectParser {
                 logger.warn("Execution will continue but these files are unlikely to be affected by refactoring recipes");
                 sourceFiles.addAll(parseFailures);
             }
+
+            // Attach GradleProject marker to the build script
+            if(project.getBuildscript().getSourceFile() != null) {
+                Path buildScriptPath = baseDir.relativize(project.getBuildscript().getSourceFile().toPath());
+                sourceFiles = ListUtils.map(sourceFiles, sourceFile -> {
+                    if (!sourceFile.getSourcePath().equals(buildScriptPath)) {
+                        return sourceFile;
+                    }
+                    GradleProject gp = GradleProjectBuilder.gradleProject(subproject);
+                    return sourceFile.withMarkers(sourceFile.getMarkers().add(gp));
+                });
+            }
+
             return sourceFiles;
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -783,6 +797,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     public void shutdownRewrite() {
         J.clearCaches();
         Git.shutdown();
+        GradleProjectBuilder.clearCaches();
     }
 
     private <T extends JavaSourceFile> List<T> autodetectStyle(List<T> sourceFiles) {

@@ -5,7 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
 plugins {
-    kotlin("jvm") version("1.6.20")
+    kotlin("jvm") version("1.8.0")
     id("com.gradle.plugin-publish") version "1.0.0"
     id("com.github.hierynomus.license") version "0.16.1"
 }

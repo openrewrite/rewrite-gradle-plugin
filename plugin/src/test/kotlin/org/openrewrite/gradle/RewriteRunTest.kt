@@ -170,6 +170,7 @@ class RewriteRunTest : RewritePluginTest {
             buildGradle("""
                 plugins {
                     id("org.openrewrite.rewrite")
+                    id("java")
                 }
                 
                 rewrite {
@@ -193,7 +194,8 @@ class RewriteRunTest : RewritePluginTest {
                     }
                 
                     dependencies {
-                        testImplementation("junit:junit:4.12")
+                        implementation(project(":"))
+                        implementation("junit:junit:4.12")
                     }
                 }
             """)
