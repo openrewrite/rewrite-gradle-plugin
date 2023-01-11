@@ -29,7 +29,7 @@ dependencies {
     api("io.rsocket:rsocket-transport-netty:latest.release")
 
     testImplementation(localGroovy())
-    testImplementation("org.spockframework:spock-core:2.0-groovy-3.0") {
+    testImplementation("org.spockframework:spock-core:2.3-groovy-4.0") {
         exclude(group = "org.codehaus.groovy")
     }
 }
