@@ -6,7 +6,7 @@ import java.util.*
 
 plugins {
     kotlin("jvm") version("1.8.0")
-    id("com.gradle.plugin-publish") version "1.0.0"
+    id("com.gradle.plugin-publish") version "1.1.0"
     id("com.github.hierynomus.license") version "0.16.1"
 }
 
