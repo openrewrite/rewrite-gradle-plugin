@@ -83,6 +83,45 @@ public final class GradleProjectBuilder {
         return null;
     }
 
+    private static final Map<GroupArtifact, GroupArtifact> groupArtifactCache = new HashMap<>();
+    private static GroupArtifact groupArtifact(org.openrewrite.maven.tree.Dependency dep) {
+        //noinspection ConstantConditions
+        return groupArtifactCache.computeIfAbsent(new GroupArtifact(dep.getGroupId(), dep.getArtifactId()), it -> it);
+    }
+    private static GroupArtifact groupArtifact(ResolvedDependency dep) {
+        return groupArtifactCache.computeIfAbsent(new GroupArtifact(dep.getModuleGroup(), dep.getModuleName()), it -> it);
+    }
+
+    private static final Map<GroupArtifactVersion, GroupArtifactVersion> groupArtifactVersionCache = new HashMap<>();
+    private static GroupArtifactVersion groupArtifactVersion(ResolvedDependency dep) {
+        return groupArtifactVersionCache.computeIfAbsent(
+                new GroupArtifactVersion(dep.getModuleGroup(), dep.getModuleName(), unspecifiedToNull(dep.getModuleVersion())),
+                it -> it);
+    }
+    private static GroupArtifactVersion groupArtifactVersion(Dependency dep) {
+        return groupArtifactVersionCache.computeIfAbsent(
+                new GroupArtifactVersion(dep.getGroup(), dep.getName(), unspecifiedToNull(dep.getVersion())), it -> it);
+    }
+
+    private static final Map<ResolvedGroupArtifactVersion, ResolvedGroupArtifactVersion> resolvedGroupArtifactVersionCache = new HashMap<>();
+    private static ResolvedGroupArtifactVersion resolvedGroupArtifactVersion(ResolvedDependency dep) {
+        return resolvedGroupArtifactVersionCache.computeIfAbsent(new ResolvedGroupArtifactVersion(
+                null, dep.getModuleGroup(), dep.getModuleName(), dep.getModuleVersion(), null),
+                it -> it);
+    }
+
+    /**
+     * Some Gradle dependency functions will have the String "unspecified" to indicate a missing value.
+     * Rewrite's dependency API represents these missing things as "null"
+     */
+    @Nullable
+    private static String unspecifiedToNull(String maybeUnspecified) {
+        if("unspecified".equals(maybeUnspecified)) {
+            return null;
+        }
+        return maybeUnspecified;
+    }
+
     private static Map<String, GradleDependencyConfiguration> dependencyConfigurations(Collection<Configuration> configurations) {
         Map<String, GradleDependencyConfiguration> results = new HashMap<>();
         for (Configuration conf : configurations) {
@@ -92,14 +131,16 @@ public final class GradleProjectBuilder {
 
             List<org.openrewrite.maven.tree.ResolvedDependency> resolved = Collections.emptyList();
             if (conf.isCanBeResolved()) {
-                ResolvedConfiguration resolvedConf = conf.getResolvedConfiguration();
-                //noinspection ConstantConditions
-                Map<GroupArtifact, org.openrewrite.maven.tree.Dependency> gaToRequested = requested.stream()
-                        .collect(Collectors.toMap(dep -> new GroupArtifact(dep.getGroupId(), dep.getArtifactId()), dep -> dep));
-                Map<GroupArtifact, ResolvedDependency> gaToResolved = resolvedConf.getFirstLevelModuleDependencies().stream()
-                        .collect(Collectors.toMap(dep -> new GroupArtifact(dep.getModuleGroup(),
-                                dep.getModuleName()), dep -> dep));
-                resolved = resolved(gaToRequested, gaToResolved);
+                try {
+                    ResolvedConfiguration resolvedConf = conf.getResolvedConfiguration();
+                    Map<GroupArtifact, org.openrewrite.maven.tree.Dependency> gaToRequested = requested.stream()
+                            .collect(Collectors.toMap(GradleProjectBuilder::groupArtifact, dep -> dep, (a, b) -> a));
+                    Map<GroupArtifact, ResolvedDependency> gaToResolved = resolvedConf.getFirstLevelModuleDependencies().stream()
+                            .collect(Collectors.toMap(GradleProjectBuilder::groupArtifact, dep -> dep, (a, b) -> a));
+                    resolved = resolved(gaToRequested, gaToResolved);
+                } catch (Exception e) {
+                    // Just because one configuration cannot be resolved don't give up on collecting others
+                }
             }
 
             GradleDependencyConfiguration dc = new GradleDependencyConfiguration(conf.getName(), conf.getDescription(),
@@ -124,11 +165,10 @@ public final class GradleProjectBuilder {
             requestedCache = new HashMap<>();
 
     private static org.openrewrite.maven.tree.Dependency dependency(Dependency dep, Configuration configuration) {
-        return requestedCache.computeIfAbsent(new org.openrewrite.maven.tree.Dependency(new GroupArtifactVersion(dep.getGroup(), dep.getName(), dep.getVersion()), null, "jar", configuration.getName(),
+        return requestedCache.computeIfAbsent(new org.openrewrite.maven.tree.Dependency(groupArtifactVersion(dep), null, "jar", configuration.getName(),
                         Collections.emptyList(), false),
                 (it) -> it);
     }
-
     private static final Map<org.openrewrite.maven.tree.ResolvedDependency, org.openrewrite.maven.tree.ResolvedDependency>
             resolvedCache = new HashMap<>();
     private static List<org.openrewrite.maven.tree.ResolvedDependency> resolved(
@@ -166,7 +206,7 @@ public final class GradleProjectBuilder {
     private static org.openrewrite.maven.tree.Dependency dependency(ResolvedDependency dep) {
         return requestedCache.computeIfAbsent(
                 new org.openrewrite.maven.tree.Dependency(
-                        new GroupArtifactVersion(dep.getModuleGroup(), dep.getModuleName(), dep.getModuleVersion()),
+                        groupArtifactVersion(dep),
                         null, "jar", dep.getConfiguration(), Collections.emptyList(), false),
                 it -> it);
     }
@@ -175,7 +215,7 @@ public final class GradleProjectBuilder {
         return resolvedCache.computeIfAbsent(
                 new org.openrewrite.maven.tree.ResolvedDependency(
                         null,
-                        new ResolvedGroupArtifactVersion(null, dep.getModuleGroup(), dep.getModuleName(), dep.getModuleVersion(), null),
+                        resolvedGroupArtifactVersion(dep),
                         dependency(dep),
                         dep.getChildren().stream()
                                 .map(child -> resolved(child, depth + 1))
@@ -188,5 +228,7 @@ public final class GradleProjectBuilder {
     public static void clearCaches() {
         requestedCache.clear();
         resolvedCache.clear();
+        groupArtifactCache.clear();
+        groupArtifactVersionCache.clear();
     }
 }
