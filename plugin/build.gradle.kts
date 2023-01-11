@@ -102,7 +102,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-gradle")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
-    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3")
+    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:10.6.0")
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
 
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
@@ -116,7 +116,7 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-json")
     compileOnly("org.openrewrite:rewrite-xml")
     compileOnly("org.openrewrite:rewrite-yaml")
-    compileOnly("com.puppycrawl.tools:checkstyle:9.3")
+    compileOnly("com.puppycrawl.tools:checkstyle:10.6.0")
 
     testImplementation(platform("org.junit:junit-bom:latest.release"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
