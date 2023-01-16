@@ -5,7 +5,7 @@ include("metrics")
 
 plugins {
     id("com.gradle.enterprise") version "3.12.2"
-    id("com.gradle.common-custom-user-data-gradle-plugin") version "1.6.2"
+    id("com.gradle.common-custom-user-data-gradle-plugin") version "1.8.2"
 }
 
 gradleEnterprise {
