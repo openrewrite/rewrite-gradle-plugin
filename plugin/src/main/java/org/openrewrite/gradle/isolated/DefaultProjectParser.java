@@ -712,11 +712,11 @@ public class DefaultProjectParser implements GradleProjectParser {
             sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
             List<PlainText> parseFailures = ParsingExecutionContextView.view(ctx).pollParseFailures();
             if(parseFailures.size() > 0) {
-                logger.warn("There were problems parsing {} sources:", parseFailures.size());
+                logger.warn("There were problems parsing {} sources, run with --info to see full stack traces:", parseFailures.size());
                 for(PlainText parseFailure : parseFailures) {
                     logger.warn("  {}", parseFailure.getSourcePath());
                 }
-                logger.warn("Execution will continue but these files are unlikely to be affected by refactoring recipes");
+                logger.warn("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
                 sourceFiles.addAll(parseFailures);
             }
 

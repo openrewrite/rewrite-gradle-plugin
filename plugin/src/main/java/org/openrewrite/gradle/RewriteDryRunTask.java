@@ -46,6 +46,6 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        getProjectParser().dryRun(getReportPath().toPath(), dumpGcActivity, throwable -> logger.warn("Error during rewrite dry run", throwable));
+        getProjectParser().dryRun(getReportPath().toPath(), dumpGcActivity, throwable -> logger.info("Error during rewrite dry run", throwable));
     }
 }

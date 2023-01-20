@@ -35,7 +35,7 @@ public class RewriteRunTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        getProjectParser().run(throwable -> logger.warn("Error during rewrite run", throwable));
+        getProjectParser().run(throwable -> logger.info("Error during rewrite run", throwable));
     }
 
 }
