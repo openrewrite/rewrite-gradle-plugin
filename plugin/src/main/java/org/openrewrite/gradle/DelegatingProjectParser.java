@@ -73,15 +73,15 @@ public class DelegatingProjectParser implements GradleProjectParser {
         }
     }
 
-    public SortedSet<String> getActiveRecipes() {
+    public List<String> getActiveRecipes() {
         return unwrapInvocationException(gpp::getActiveRecipes);
     }
 
-    public SortedSet<String> getActiveStyles() {
+    public List<String> getActiveStyles() {
         return unwrapInvocationException(gpp::getActiveStyles);
     }
 
-    public SortedSet<String> getAvailableStyles() {
+    public List<String> getAvailableStyles() {
         return unwrapInvocationException(gpp::getAvailableStyles);
     }
 

@@ -140,24 +140,24 @@ public class DefaultProjectParser implements GradleProjectParser {
         return maybeProp;
     }
 
-    public SortedSet<String> getActiveRecipes() {
+    public List<String> getActiveRecipes() {
         String activeRecipe = getPropertyWithVariantNames("activeRecipe");
         if(activeRecipe == null) {
-            return new TreeSet<>(extension.getActiveRecipes());
+            return new ArrayList<>(extension.getActiveRecipes());
         }
-        return new TreeSet<>(Arrays.asList(activeRecipe.split(",")));
+        return Arrays.asList(activeRecipe.split(","));
     }
 
-    public SortedSet<String> getActiveStyles() {
+    public List<String> getActiveStyles() {
         String activeStyle = getPropertyWithVariantNames("activeStyle");
         if(activeStyle == null) {
-            return new TreeSet<>(extension.getActiveStyles());
+            return new ArrayList<>(extension.getActiveStyles());
         }
-        return new TreeSet<>(Arrays.asList(activeStyle.split(",")));
+        return Arrays.asList(activeStyle.split(","));
     }
 
-    public SortedSet<String> getAvailableStyles() {
-        return environment().listStyles().stream().map(NamedStyles::getName).collect(Collectors.toCollection(TreeSet::new));
+    public List<String> getAvailableStyles() {
+        return environment().listStyles().stream().map(NamedStyles::getName).collect(Collectors.toList());
     }
 
     public void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
@@ -170,9 +170,9 @@ public class DefaultProjectParser implements GradleProjectParser {
             RecipeDescriptor rd = treePrompter.execute(availableRecipeDescriptors);
             writeRecipeDescriptor(rd);
         } else {
-            Set<String> activeRecipes = getActiveRecipes();
-            Set<String> availableStyles = getAvailableStyles();
-            Set<String> activeStyles = getActiveStyles();
+            List<String> activeRecipes = getActiveRecipes();
+            List<String> availableStyles = getAvailableStyles();
+            List<String> activeStyles = getActiveStyles();
 
             logger.quiet("Available Recipes:");
             for (RecipeDescriptor recipe : availableRecipeDescriptors) {

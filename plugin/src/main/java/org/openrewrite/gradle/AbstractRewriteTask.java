@@ -22,6 +22,7 @@ import org.gradle.api.tasks.options.Option;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -73,12 +74,12 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     }
 
     @Input
-    public Set<String> getActiveRecipes() {
+    public List<String> getActiveRecipes() {
         return getProjectParser().getActiveRecipes();
     }
 
     @Input
-    public Set<String> getActiveStyles() {
+    public List<String> getActiveStyles() {
         return getProjectParser().getActiveStyles();
     }
 

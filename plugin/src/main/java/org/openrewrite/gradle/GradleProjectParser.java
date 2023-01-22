@@ -19,15 +19,15 @@ import org.gradle.internal.service.ServiceRegistry;
 
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.SortedSet;
+import java.util.List;
 import java.util.function.Consumer;
 
 public interface GradleProjectParser {
-    SortedSet<String> getActiveRecipes();
+    List<String> getActiveRecipes();
 
-    SortedSet<String> getActiveStyles();
+    List<String> getActiveStyles();
 
-    SortedSet<String> getAvailableStyles();
+    List<String> getAvailableStyles();
 
     void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry);
 
