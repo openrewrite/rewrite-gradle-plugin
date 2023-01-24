@@ -15,7 +15,6 @@
  */
 package org.openrewrite.gradle.isolated;
 
-import org.apache.tools.ant.taskdefs.Java;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -28,6 +27,7 @@ import org.openrewrite.hcl.HclParser;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.json.JsonParser;
+import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.protobuf.ProtoParser;
 import org.openrewrite.quark.QuarkParser;
@@ -116,6 +116,7 @@ public class ResourceParser {
         HclParser hclParser = HclParser.builder().build();
         GroovyParser groovyParser = GroovyParser.builder().build();
         GradleParser gradleParser = GradleParser.builder().build();
+        KotlinParser kotlinParser = KotlinParser.builder().build();
 
         List<Path> resources = new ArrayList<>();
         Files.walkFileTree(searchDir, Collections.emptySet(), 16, new SimpleFileVisitor<Path>() {
@@ -136,6 +137,7 @@ public class ResourceParser {
                             hclParser.accept(file) ||
                             groovyParser.accept(file) ||
                             gradleParser.accept(file) ||
+                            kotlinParser.accept(file) ||
                             isParsedAsPlainText(file)
                     ) {
                         resources.add(file);
@@ -215,6 +217,12 @@ public class ResourceParser {
                 .build();
         List<Path> gradlePaths = new ArrayList<>();
 
+        KotlinParser kotlinParser = KotlinParser.builder()
+                .classpath(classpath)
+                .logCompilationWarningsAndErrors(false)
+                .build();
+        List<Path> kotlinPaths = new ArrayList<>();
+
         PlainTextParser plainTextParser = new PlainTextParser();
 
         QuarkParser quarkParser = new QuarkParser();
@@ -234,8 +242,10 @@ public class ResourceParser {
                 hclPaths.add(path);
             } else if (groovyParser.accept(path)) {
                 groovyPaths.add(path);
-            } else if(gradleParser.accept(path)) {
+            } else if (gradleParser.accept(path)) {
                 gradlePaths.add(path);
+            } else if (kotlinParser.accept(path)) {
+                kotlinPaths.add(path);
             } else if (quarkParser.accept(path)) {
                 quarkPaths.add(path);
             }
@@ -264,6 +274,9 @@ public class ResourceParser {
 
         sourceFiles.addAll(gradleParser.parse(gradlePaths, baseDir, ctx));
         alreadyParsed.addAll(gradlePaths);
+
+        sourceFiles.addAll(kotlinParser.parse(kotlinPaths, baseDir, ctx));
+        alreadyParsed.addAll(kotlinPaths);
 
         sourceFiles.addAll(plainTextParser.parse(plainTextPaths, baseDir, ctx));
         alreadyParsed.addAll(plainTextPaths);

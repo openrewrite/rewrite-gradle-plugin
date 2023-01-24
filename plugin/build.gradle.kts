@@ -116,6 +116,7 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-json")
     compileOnly("org.openrewrite:rewrite-xml")
     compileOnly("org.openrewrite:rewrite-yaml")
+    compileOnly("org.openrewrite:rewrite-kotlin:latest.integration")
     compileOnly("com.puppycrawl.tools:checkstyle:9.3")
 
     testImplementation(platform("org.junit:junit-bom:latest.release"))
