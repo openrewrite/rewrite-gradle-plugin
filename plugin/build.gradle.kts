@@ -100,6 +100,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-protobuf")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle")
+    "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3")
@@ -108,6 +109,7 @@ dependencies {
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
     compileOnly("org.openrewrite:rewrite-core")
     compileOnly("org.openrewrite:rewrite-gradle")
+    compileOnly("org.openrewrite.gradle.tooling:model:$latest")
     compileOnly("org.openrewrite:rewrite-groovy")
     compileOnly("org.openrewrite:rewrite-hcl")
     compileOnly("org.openrewrite:rewrite-java")
