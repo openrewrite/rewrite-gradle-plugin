@@ -842,8 +842,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
         logger.warn(recipeString.toString());
-        for (RecipeDescriptor rchild : rd.getRecipeList()) {
-            logRecipe(rchild, prefix + "    ");
+        for (RecipeDescriptor rChild : rd.getRecipeList()) {
+            logRecipe(rChild, prefix + "    ");
         }
     }
 }

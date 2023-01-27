@@ -27,7 +27,6 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -137,7 +136,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
 
     /**
      * Bloating stacktraces with reflection errors isn't generally helpful for understanding what went wrong.
-     *
+     * <p>
      * This highlights the actual cause of a problem, allowing Gradle's console to display something useful like
      * "Recipe validation errors detected ..." rather than only "InvocationTargetException ..."
      */

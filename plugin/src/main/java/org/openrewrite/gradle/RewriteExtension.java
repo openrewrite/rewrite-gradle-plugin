@@ -195,6 +195,14 @@ public class RewriteExtension {
         return rewriteVersion;
     }
 
+    private String rewriteGradleModelVersion;
+    public String getRewriteGradleModelVersion() {
+        if(rewriteGradleModelVersion == null) {
+            rewriteGradleModelVersion = getVersionProps().getProperty("org.openrewrite.gradle.tooling:model");
+        }
+        return rewriteGradleModelVersion;
+    }
+
     public String getCheckstyleToolsVersion() {
         return getVersionProps().getProperty("com.puppycrawl.tools:checkstyle");
     }
