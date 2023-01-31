@@ -119,24 +119,24 @@ public class ResourceParser {
 
         List<Path> resources = new ArrayList<>();
         Files.walkFileTree(searchDir, Collections.emptySet(), 16, new SimpleFileVisitor<Path>() {
-                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                 if (isExcluded(dir) || isIgnoredDirectory(searchDir, dir)) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 return FileVisitResult.CONTINUE;
             }
 
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (attrs.size() != 0 && !attrs.isOther() && !isExcluded(file) && !isOverSizeThreshold(attrs.size())) {
                     if (jsonParser.accept(file) ||
-                            xmlParser.accept(file) ||
-                            yamlParser.accept(file) ||
-                            propertiesParser.accept(file) ||
-                            protoParser.accept(file) ||
-                            hclParser.accept(file) ||
-                            groovyParser.accept(file) ||
-                            gradleParser.accept(file) ||
-                            isParsedAsPlainText(file)
+                        xmlParser.accept(file) ||
+                        yamlParser.accept(file) ||
+                        propertiesParser.accept(file) ||
+                        protoParser.accept(file) ||
+                        hclParser.accept(file) ||
+                        groovyParser.accept(file) ||
+                        gradleParser.accept(file) ||
+                        isParsedAsPlainText(file)
                     ) {
                         resources.add(file);
                     }
@@ -149,25 +149,25 @@ public class ResourceParser {
 
     @SuppressWarnings({"DuplicatedCode"})
     public List<SourceFile> parseSourceFiles(Path searchDir, Collection<Path> alreadyParsed,
-            List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) throws IOException {
+                                             List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) throws IOException {
 
         List<Path> resources = new ArrayList<>();
         List<Path> quarkPaths = new ArrayList<>();
         List<Path> plainTextPaths = new ArrayList<>();
         Files.walkFileTree(searchDir, Collections.emptySet(), 16, new SimpleFileVisitor<Path>() {
-                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                 if (isExcluded(dir) || isIgnoredDirectory(searchDir, dir)) {
                     return FileVisitResult.SKIP_SUBTREE;
                 }
                 return FileVisitResult.CONTINUE;
             }
 
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (!attrs.isOther() && !attrs.isSymbolicLink() &&
-                        !alreadyParsed.contains(file) && !isExcluded(file)) {
+                    !alreadyParsed.contains(file) && !isExcluded(file)) {
                     if (isOverSizeThreshold(attrs.size())) {
                         logger.info("Parsing as quark " + file + " as its size + " + attrs.size() / (1024L * 1024L) +
-                                "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
+                                    "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
                         quarkPaths.add(file);
                     } else if (isParsedAsPlainText(file)) {
                         plainTextPaths.add(file);
@@ -234,7 +234,7 @@ public class ResourceParser {
                 hclPaths.add(path);
             } else if (groovyParser.accept(path)) {
                 groovyPaths.add(path);
-            } else if(gradleParser.accept(path)) {
+            } else if (gradleParser.accept(path)) {
                 gradlePaths.add(path);
             } else if (quarkParser.accept(path)) {
                 quarkPaths.add(path);
