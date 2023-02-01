@@ -645,7 +645,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                     List<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx);
                     alreadyParsed.addAll(javaPaths);
                     cus = ListUtils.map(cus, cu -> {
-                        if(isExcluded(exclusions, cu.getSourcePath())) {
+                        if (isExcluded(exclusions, cu.getSourcePath()) ||
+                                cu.getSourcePath().startsWith(baseDir.relativize(subproject.getBuildDir().toPath()))) {
                             return null;
                         }
                         return cu;
