@@ -745,6 +745,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
             }
 
+            //Collect any additional yaml/properties/xml files that are NOT already in a source set.
+            sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
+
             // Attach GradleProject marker to the build script
             if(project.getBuildscript().getSourceFile() != null) {
                 Path buildScriptPath = baseDir.relativize(project.getBuildscript().getSourceFile().toPath());
@@ -757,8 +760,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 });
             }
 
-            //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-            sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
             List<PlainText> parseFailures = ParsingExecutionContextView.view(ctx).pollParseFailures();
             if(parseFailures.size() > 0) {
                 logger.warn("There were problems parsing {} sources, run with --info to see full stack traces:", parseFailures.size());
