@@ -36,7 +36,6 @@ class RewriteDryRunTest : RewritePluginTest {
         """.trimIndent()
         gradleProject(projectDir) {
             rewriteYaml("""
-                ---
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
                 recipeList:

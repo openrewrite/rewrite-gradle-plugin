@@ -21,7 +21,9 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
+import org.gradle.util.GradleVersion
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
@@ -86,7 +88,6 @@ class RewriteRunTest : RewritePluginTest {
     ) {
         gradleProject(projectDir) {
             rewriteYaml("""
-                ---
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
                 recipeList:
@@ -319,7 +320,6 @@ class RewriteRunTest : RewritePluginTest {
     ) {
         gradleProject(projectDir) {
             rewriteYaml("""
-                ---
                 type: specs.openrewrite.org/v1beta/recipe
                 name: com.example.RenameSam
                 displayName: Rename property keys
@@ -367,7 +367,6 @@ class RewriteRunTest : RewritePluginTest {
     ) {
         gradleProject(projectDir) {
             rewriteYaml("""
-                ---
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.AddGradleWrapper
                 displayName: Adds a Gradle wrapper
@@ -425,7 +424,6 @@ class RewriteRunTest : RewritePluginTest {
     ) {
         gradleProject(projectDir) {
             rewriteYaml("""
-                ---
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.RenameBuildGradle
                 displayName: Rename build.gradle to build.gradle.kts
@@ -470,7 +468,6 @@ class RewriteRunTest : RewritePluginTest {
         gradleProject(projectDir) {
             propertiesFile("gradle.properties", "systemProp.rewrite.activeStyles=org.openrewrite.testStyle")
             rewriteYaml("""
-                ---
                 type: specs.openrewrite.org/v1beta/style
                 name: org.openrewrite.testStyle
                 styleConfigs:
@@ -615,7 +612,6 @@ class RewriteRunTest : RewritePluginTest {
     fun groovySourceGetsTypesFromJavaSource(@TempDir projectDir: File) {
         gradleProject(projectDir) {
             rewriteYaml("""
-                ---
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.FindA
                 displayName: Rename build.gradle to build.gradle.kts
@@ -684,6 +680,62 @@ class RewriteRunTest : RewritePluginTest {
             }
         """.trimIndent()
         assertThat(bFile.readText()).isEqualTo(bExpected)
+    }
+
+    @DisabledIf("lessThanGradle6_1")
+    @Test
+    fun kotlinSource(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            buildGradle(
+                """
+                plugins {
+                    id("org.jetbrains.kotlin.jvm") version("1.8.0")
+                    id("org.openrewrite.rewrite")
+                }
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                rewrite {
+                    activeRecipe("org.openrewrite.test.FindString")
+                }
+            """)
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.FindString
+                displayName: Find kotlin strings
+                description: Finds kotlin strings.
+                recipeList:
+                  - org.openrewrite.java.search.FindTypes:
+                      fullyQualifiedTypeName: kotlin.String
+            """)
+            sourceSet("main") {
+                kotlin("""
+                    package com.foo
+                    
+                    class A {
+                        fun foo(s: String): String {
+                            return s
+                        }
+                    }
+                """)
+            }
+        }
+
+        val result = runGradle(projectDir, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val aFile = projectDir.resolve("src/main/kotlin/com/foo/A.kt")
+        assertThat(aFile.readText().contains("/*~~>*/")).isTrue
+    }
+
+    fun lessThanGradle6_1(): Boolean {
+        val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
+        return currentVersion < GradleVersion.version("6.1")
     }
 }
 

@@ -114,6 +114,11 @@ class GradleSourceSetSpec(
         javaSources.add(source.trimIndent())
     }
 
+    val kotlinSources: MutableList<String> = mutableListOf()
+    fun kotlin(@Language("kotlin") source: String) {
+        kotlinSources.add(source.trimIndent())
+    }
+
     val propertiesFiles: MutableMap<String, String> = mutableMapOf()
     fun propertiesFile(name: String, @Language("properties") text: String) {
         propertiesFiles[name] = text
@@ -144,6 +149,25 @@ class GradleSourceSetSpec(
             File(dir, path).apply {
                 parentFile.mkdirs()
                 writeText(javaSource)
+            }
+        }
+        for(kotlinSource in kotlinSources) {
+            val peckage = if(kotlinSource.startsWith("package")) {
+                "package\\s+([a-zA-Z0-9.]+)".toRegex(RegexOption.MULTILINE)
+                    .find(kotlinSource)!!
+                    .groupValues[1]
+            } else {
+                ""
+            }.replace(".", "/")
+            val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+)".toRegex(RegexOption.MULTILINE).find(kotlinSource)!!.groupValues[2]
+            val path = if(peckage.isEmpty()) {
+                "$name/kotlin/$clazz.kt"
+            } else {
+                "$name/kotlin/$peckage/$clazz.kt"
+            }
+            File(dir, path).apply {
+                parentFile.mkdirs()
+                writeText(kotlinSource)
             }
         }
         for(groovySource in groovyClassses) {

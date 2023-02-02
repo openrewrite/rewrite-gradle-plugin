@@ -203,6 +203,14 @@ public class RewriteExtension {
         return rewriteGradleModelVersion;
     }
 
+    private String rewriteKotlinVersion;
+    public String getRewriteKotlinVersion() {
+        if(rewriteKotlinVersion == null) {
+            rewriteKotlinVersion = getVersionProps().getProperty("org.openrewrite:rewrite-kotlin");
+        }
+        return rewriteKotlinVersion;
+    }
+
     public String getCheckstyleToolsVersion() {
         return getVersionProps().getProperty("com.puppycrawl.tools:checkstyle");
     }

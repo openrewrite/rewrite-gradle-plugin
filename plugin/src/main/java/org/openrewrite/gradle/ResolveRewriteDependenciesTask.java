@@ -62,6 +62,7 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
                     deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
+                    deps.create("org.openrewrite:rewrite-kotlin:" + extension.getRewriteKotlinVersion()),
                     deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-java-17:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),

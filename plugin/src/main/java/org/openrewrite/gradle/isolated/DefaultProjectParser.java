@@ -51,6 +51,8 @@ import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.*;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaSourceFile;
+import org.openrewrite.kotlin.KotlinParser;
+import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.BuildTool;
 import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
@@ -253,7 +255,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         if (javaConvention != null) {
             for (SourceSet sourceSet : javaConvention.getSourceSets()) {
                 sourceSet.getAllJava().getFiles().stream()
-                        .filter(it -> it.isFile() && it.getName().endsWith(".java"))
+                        .filter(it -> it.isFile() && (it.getName().endsWith(".java") || it.getName().endsWith(".kt")))
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
@@ -669,6 +671,40 @@ public class DefaultProjectParser implements GradleProjectParser {
                     }
                 }
 
+                if(subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.jvm")) {
+                    List<Path> kotlinPaths = sourceSet.getAllSource().getFiles().stream()
+                            .filter(it -> it.isFile() && it.getName().endsWith(".kt"))
+                            .map(File::toPath)
+                            .map(Path::toAbsolutePath)
+                            .map(Path::normalize)
+                            .collect(toList());
+
+                    if(kotlinPaths.size() > 0) {
+                        logger.info("Parsing {} Kotlin sources from {}/{}", kotlinPaths.size(), subproject.getName(), sourceSet.getName());
+
+                        KotlinParser kp = KotlinParser.builder()
+                                .classpath(dependencyPaths)
+                                .styles(styles)
+                                .typeCache(javaTypeCache)
+                                .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                                .build();
+
+                        Instant start = Instant.now();
+                        List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
+                        alreadyParsed.addAll(kotlinPaths);
+                        cus = ListUtils.map(cus, cu -> {
+                            if(isExcluded(exclusions, cu.getSourcePath())) {
+                                return null;
+                            }
+                            return cu;
+                        });
+                        Duration parseDuration = Duration.between(start, Instant.now());
+                        logger.info("Finished parsing Kotlin sources from {}/{} in {} ({} per source)",
+                                subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
+                        sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
+                    }
+                }
+
                 if(subproject.getPlugins().hasPlugin(GroovyPlugin.class)) {
                     List<Path> groovyPaths = sourceSet.getAllSource().getFiles().stream()
                             .filter(it -> it.isFile() && it.getName().endsWith(".groovy"))
@@ -709,18 +745,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
             }
 
-            //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-            sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
-            List<PlainText> parseFailures = ParsingExecutionContextView.view(ctx).pollParseFailures();
-            if(parseFailures.size() > 0) {
-                logger.warn("There were problems parsing {} sources, run with --info to see full stack traces:", parseFailures.size());
-                for(PlainText parseFailure : parseFailures) {
-                    logger.warn("  {}", parseFailure.getSourcePath());
-                }
-                logger.warn("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
-                sourceFiles.addAll(parseFailures);
-            }
-
             // Attach GradleProject marker to the build script
             if(project.getBuildscript().getSourceFile() != null) {
                 Path buildScriptPath = baseDir.relativize(project.getBuildscript().getSourceFile().toPath());
@@ -731,6 +755,18 @@ public class DefaultProjectParser implements GradleProjectParser {
                     GradleProject gp = GradleProjectBuilder.gradleProject(subproject);
                     return sourceFile.withMarkers(sourceFile.getMarkers().add(gp));
                 });
+            }
+
+            //Collect any additional yaml/properties/xml files that are NOT already in a source set.
+            sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
+            List<PlainText> parseFailures = ParsingExecutionContextView.view(ctx).pollParseFailures();
+            if(parseFailures.size() > 0) {
+                logger.warn("There were problems parsing {} sources, run with --info to see full stack traces:", parseFailures.size());
+                for(PlainText parseFailure : parseFailures) {
+                    logger.warn("  {}", parseFailure.getSourcePath());
+                }
+                logger.warn("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
+                sourceFiles.addAll(parseFailures);
             }
 
             return sourceFiles;
