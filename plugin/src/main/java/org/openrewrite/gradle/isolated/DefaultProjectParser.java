@@ -58,7 +58,7 @@ import org.openrewrite.marker.BuildTool;
 import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
-import org.openrewrite.marker.OperatingSystem;
+import org.openrewrite.marker.ci.OperatingSystem;
 import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
@@ -893,9 +893,9 @@ public class DefaultProjectParser implements GradleProjectParser {
         String osStr = SystemUtils.OS_NAME.toLowerCase();
         UUID uuid = UUID.randomUUID();
         if (osStr.contains("windows")) {
-            return new OperatingSystem(uuid, Windows);
+            return OperatingSystem.WINDOWS;
         } else {
-            return new OperatingSystem(uuid, Unix);
+            return OperatingSystem.UNIX;
         }
     }
 }
