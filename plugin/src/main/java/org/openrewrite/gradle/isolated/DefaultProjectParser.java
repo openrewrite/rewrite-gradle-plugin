@@ -114,7 +114,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         sharedProvenance = Stream.of(
                         buildEnvironment,
                         gitProvenance(baseDir, buildEnvironment),
-                        detectOs(),
+                        OperatingSystem.current(),
                         new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -889,14 +889,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         logger.warn(recipeString.toString());
         for (RecipeDescriptor rChild : rd.getRecipeList()) {
             logRecipe(rChild, prefix + "    ");
-        }
-    }
-
-    private OperatingSystem detectOs() {
-        if (OperatingSystem.current().isWindows()) {
-            return OperatingSystem.WINDOWS;
-        } else {
-            return OperatingSystem.UNIX;
         }
     }
 }
