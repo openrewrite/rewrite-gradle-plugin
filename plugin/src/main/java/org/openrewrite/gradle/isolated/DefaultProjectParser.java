@@ -894,7 +894,6 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     private OperatingSystem detectOs() {
         String osStr = SystemUtils.OS_NAME.toLowerCase();
-        UUID uuid = UUID.randomUUID();
         if (osStr.contains("windows")) {
             return OperatingSystem.WINDOWS;
         } else {
