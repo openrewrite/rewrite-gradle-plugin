@@ -27,6 +27,7 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.internal.impldep.org.apache.commons.lang.SystemUtils;
 import org.gradle.internal.service.ServiceRegistry;
 import org.openrewrite.*;
 import org.openrewrite.binary.Binary;
@@ -34,7 +35,9 @@ import org.openrewrite.config.Environment;
 import org.openrewrite.config.OptionDescriptor;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
-import org.openrewrite.gradle.*;
+import org.openrewrite.gradle.GradleProjectParser;
+import org.openrewrite.gradle.RewriteExtension;
+import org.openrewrite.gradle.SanitizedMarkerPrinter;
 import org.openrewrite.gradle.isolated.ui.RecipeDescriptorTreePrompter;
 import org.openrewrite.gradle.marker.GradleProject;
 import org.openrewrite.gradle.marker.GradleProjectBuilder;
@@ -48,7 +51,8 @@ import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.java.marker.JavaProject;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
-import org.openrewrite.java.style.*;
+import org.openrewrite.java.style.Autodetect;
+import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaSourceFile;
 import org.openrewrite.kotlin.KotlinParser;
@@ -58,6 +62,7 @@ import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.marker.ci.BuildEnvironment;
+import org.openrewrite.marker.ci.OperatingSystem;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.shaded.jgit.api.Git;
@@ -79,7 +84,8 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.Collections.*;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.*;
 import static org.openrewrite.Tree.randomId;
 import static org.openrewrite.gradle.TimeUtils.prettyPrint;
@@ -108,6 +114,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         sharedProvenance = Stream.of(
                         buildEnvironment,
                         gitProvenance(baseDir, buildEnvironment),
+                        OperatingSystem.current(),
                         new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
