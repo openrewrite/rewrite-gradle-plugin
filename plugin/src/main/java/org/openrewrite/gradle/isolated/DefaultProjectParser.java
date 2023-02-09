@@ -27,9 +27,15 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.internal.impldep.org.apache.commons.lang.SystemUtils;
 import org.gradle.internal.service.ServiceRegistry;
-import org.openrewrite.*;
+import org.openrewrite.ExecutionContext;
+import org.openrewrite.FileAttributes;
+import org.openrewrite.InMemoryExecutionContext;
+import org.openrewrite.Recipe;
+import org.openrewrite.RecipeRun;
+import org.openrewrite.Result;
+import org.openrewrite.SourceFile;
+import org.openrewrite.Validated;
 import org.openrewrite.binary.Binary;
 import org.openrewrite.config.Environment;
 import org.openrewrite.config.OptionDescriptor;
@@ -61,8 +67,9 @@ import org.openrewrite.marker.BuildTool;
 import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
+import org.openrewrite.marker.OsProvenance;
+import org.openrewrite.marker.Provenance;
 import org.openrewrite.marker.ci.BuildEnvironment;
-import org.openrewrite.marker.ci.OperatingSystem;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.shaded.jgit.api.Git;
@@ -70,7 +77,14 @@ import org.openrewrite.style.NamedStyles;
 import org.openrewrite.text.PlainText;
 import org.openrewrite.tree.ParsingExecutionContextView;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -78,7 +92,17 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -113,8 +137,10 @@ public class DefaultProjectParser implements GradleProjectParser {
         BuildEnvironment buildEnvironment = BuildEnvironment.build(System::getenv);
         sharedProvenance = Stream.of(
                         buildEnvironment,
-                        gitProvenance(baseDir, buildEnvironment),
-                        OperatingSystem.current(),
+                        Provenance.builder()
+                                .gitProvenance(gitProvenance(baseDir, buildEnvironment))
+                                .osProvenance(OsProvenance.current())
+                                .build(),
                         new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
