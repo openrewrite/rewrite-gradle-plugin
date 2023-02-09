@@ -297,7 +297,8 @@ public class RewriteExtension {
                     "**.txt",
                     "**.jsp",
                     "**.sql",
-                    "**Dockerfile"
+                    "**Dockerfile",
+                    "**Jenkinsfile"
             ));
         }
         return plainTextMasks;
