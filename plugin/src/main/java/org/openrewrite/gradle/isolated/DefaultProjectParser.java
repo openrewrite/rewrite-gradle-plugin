@@ -61,7 +61,7 @@ import org.openrewrite.marker.GitProvenance;
 import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.marker.ci.BuildEnvironment;
-import org.openrewrite.marker.OsProvenance;
+import org.openrewrite.marker.OperatingSystemProvenance;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.shaded.jgit.api.Git;
@@ -113,7 +113,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         sharedProvenance = Stream.of(
                         buildEnvironment,
                         gitProvenance(baseDir, buildEnvironment),
-                        OsProvenance.current(),
+                        OperatingSystemProvenance.current(),
                         new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
