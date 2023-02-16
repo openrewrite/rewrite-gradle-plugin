@@ -579,6 +579,13 @@ public class DefaultProjectParser implements GradleProjectParser {
 
 
     public List<SourceFile> parse(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
+        Collection<PathMatcher> exclusions = extension.getExclusions().stream()
+                .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
+                .collect(toList());
+        if(isExcluded(exclusions, subproject.getProjectDir().toPath())) {
+            logger.lifecycle("Skipping project {} because it is excluded", subproject.getName());
+            return Collections.emptyList();
+        }
         try {
             logger.lifecycle("Parsing sources from project {}", subproject.getName());
             List<NamedStyles> styles = getStyles();
@@ -603,9 +610,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             ResourceParser rp = new ResourceParser(baseDir, subproject, extension, javaTypeCache);
-            Collection<PathMatcher> exclusions = extension.getExclusions().stream()
-                    .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
-                    .collect(toList());
+
             List<SourceFile> sourceFiles = new ArrayList<>();
             for (SourceSet sourceSet : sourceSets) {
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
@@ -755,15 +760,18 @@ public class DefaultProjectParser implements GradleProjectParser {
             sourceFiles.addAll(map(rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, null)));
 
             // Attach GradleProject marker to the build script
+
             if(project.getBuildscript().getSourceFile() != null) {
                 Path buildScriptPath = baseDir.relativize(project.getBuildscript().getSourceFile().toPath());
-                sourceFiles = ListUtils.map(sourceFiles, sourceFile -> {
-                    if (!sourceFile.getSourcePath().equals(buildScriptPath)) {
-                        return sourceFile;
-                    }
-                    GradleProject gp = GradleProjectBuilder.gradleProject(subproject);
-                    return sourceFile.withMarkers(sourceFile.getMarkers().add(gp));
-                });
+                if(!isExcluded(exclusions, buildScriptPath)) {
+                    sourceFiles = ListUtils.map(sourceFiles, sourceFile -> {
+                        if (!sourceFile.getSourcePath().equals(buildScriptPath)) {
+                            return sourceFile;
+                        }
+                        GradleProject gp = GradleProjectBuilder.gradleProject(subproject);
+                        return sourceFile.withMarkers(sourceFile.getMarkers().add(gp));
+                    });
+                }
             }
 
             List<PlainText> parseFailures = ParsingExecutionContextView.view(ctx).pollParseFailures();
