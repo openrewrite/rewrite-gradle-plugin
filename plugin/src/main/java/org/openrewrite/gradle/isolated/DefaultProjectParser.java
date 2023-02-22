@@ -697,7 +697,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .classpath(dependencyPaths)
                                 .styles(styles)
                                 .typeCache(javaTypeCache)
-                                .logCompilationWarningsAndErrors(false)
+                                .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                                 .build();
 
                         Instant start = Instant.now();
