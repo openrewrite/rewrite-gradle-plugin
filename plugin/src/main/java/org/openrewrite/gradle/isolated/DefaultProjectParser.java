@@ -682,7 +682,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     }
                 }
 
-                if(subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.jvm")) {
+                if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.jvm") || subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.multiplatform")) {
                     List<Path> kotlinPaths = sourceSet.getAllSource().getFiles().stream()
                             .filter(it -> it.isFile() && it.getName().endsWith(".kt"))
                             .map(File::toPath)
