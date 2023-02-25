@@ -36,7 +36,9 @@ public class RewriteClassLoader extends URLClassLoader {
         "io.moderne.gradle.SerializingGradleProjectParser",
         "io.moderne.gradle.ModerneExtension",
         "org.slf4j",
-        "org.gradle"
+        "org.gradle",
+        "groovy",
+        "org.codehaus.groovy"
     );
 
     public RewriteClassLoader(Collection<URL> artifacts) {
