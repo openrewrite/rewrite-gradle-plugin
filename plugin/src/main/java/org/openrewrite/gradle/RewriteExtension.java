@@ -66,6 +66,8 @@ public class RewriteExtension {
 
     private boolean failOnDryRunResults;
 
+    private boolean throwOnParseFailures;
+
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
         this.project = project;
@@ -322,5 +324,16 @@ public class RewriteExtension {
 
     public String getJacksonModuleKotlinVersion() {
         return getVersionProps().getProperty("com.fasterxml.jackson.module:jackson-module-kotlin");
+    }
+
+    public boolean getThrowOnParseFailures() {
+        if(project.getProperties().containsKey("rewrite.throwOnParseFailures")) {
+            return true;
+        }
+        return throwOnParseFailures;
+    }
+
+    public void setThrowOnParseFailures(boolean throwOnParseFailures) {
+        this.throwOnParseFailures = throwOnParseFailures;
     }
 }

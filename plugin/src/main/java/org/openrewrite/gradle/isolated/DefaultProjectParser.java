@@ -105,7 +105,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     private Environment environment;
 
     public DefaultProjectParser(Project project, RewriteExtension extension) {
-        this.baseDir = project.getRootProject().getProjectDir().toPath();
+        this.baseDir = repositoryRoot(project);
         this.extension = extension;
         this.project = project;
 
@@ -117,6 +117,23 @@ public class DefaultProjectParser implements GradleProjectParser {
                         new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Attempt to determine the root of the git repository for the given project.
+     * Many Gradle builds co-locate the build root with the git repository root, but that is not required.
+     * If no git repository can be located in any folder containing the build, the build root will be returned.
+     */
+    static Path repositoryRoot(Project project) {
+        Path buildRoot = project.getRootProject().getProjectDir().toPath();
+        Path maybeBaseDir = buildRoot;
+        while(maybeBaseDir != null && !Files.exists(maybeBaseDir.resolve(".git"))) {
+            maybeBaseDir = maybeBaseDir.getParent();
+        }
+        if(maybeBaseDir == null) {
+            return buildRoot;
+        }
+        return maybeBaseDir;
     }
 
     @Nullable
@@ -619,7 +636,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
                         .collect(toList());
-                // The compile classpath doesn't include the transitive dependencies of the implementation configuration
+                // classpath doesn't include the transitive dependencies of the implementation configuration
                 // These aren't needed for compilation, but we want them so recipes have access to comprehensive type information
                 // The implementation configuration isn't resolvable, so we need a new configuration that extends from it
                 Configuration implementation = subproject.getConfigurations().getByName(sourceSet.getImplementationConfigurationName());
@@ -776,11 +793,17 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             List<PlainText> parseFailures = ParsingExecutionContextView.view(ctx).pollParseFailures();
             if(parseFailures.size() > 0) {
-                logger.warn("There were problems parsing {} sources, run with --info to see full stack traces:", parseFailures.size());
+                StringBuilder sb = new StringBuilder();
+                sb.append("There were problems parsing ").append(parseFailures.size()).append(" sources, run with --info to see full stack traces:\n");
                 for(PlainText parseFailure : parseFailures) {
-                    logger.warn("  {}", parseFailure.getSourcePath());
+                    sb.append("  ").append(parseFailure.getSourcePath()).append("\n");
                 }
-                logger.warn("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
+                sb.append("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
+                if(extension.getThrowOnParseFailures()) {
+                    throw new RuntimeException(sb.toString());
+                } else {
+                    logger.warn(sb.toString());
+                }
                 sourceFiles.addAll(parseFailures);
             }
 
@@ -814,7 +837,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         return styles;
     }
 
-    @SuppressWarnings("unused")
     protected ResultsContainer listResults(ExecutionContext ctx) {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
