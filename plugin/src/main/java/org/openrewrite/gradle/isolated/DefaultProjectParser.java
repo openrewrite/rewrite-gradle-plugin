@@ -412,6 +412,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     }
                 }
 
+                Set<Path> maybeEmptyDirectories = new HashSet<>();
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
                     logger.lifecycle("Generated new file " +
@@ -425,6 +426,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             result.getBefore().getSourcePath() +
                             " by:");
                     logRecipesThatMadeChanges(result);
+                    maybeEmptyDirectories.add(results.getProjectRoot().resolve(result.getBefore().getSourcePath().getParent()));
                 }
                 for (Result result : results.moved) {
                     assert result.getAfter() != null;
@@ -433,6 +435,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             result.getBefore().getSourcePath() + " to " +
                             result.getAfter().getSourcePath() + " by:");
                     logRecipesThatMadeChanges(result);
+                    maybeEmptyDirectories.add(results.getProjectRoot().resolve(result.getBefore().getSourcePath().getParent()));
                 }
                 for (Result result : results.refactoredInPlace) {
                     assert result.getBefore() != null;
@@ -489,6 +492,16 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                     for (Result result : results.refactoredInPlace) {
                         writeAfter(results.getProjectRoot(), result);
+                    }
+
+                    for(Path maybeEmptyDirectory : maybeEmptyDirectories) {
+                        try(Stream<Path> contents = Files.list(maybeEmptyDirectory)) {
+                            if(contents.findAny().isPresent()) {
+                                continue;
+                            }
+                            logger.quiet("Removing newly empty directory: " + maybeEmptyDirectory);
+                            Files.delete(maybeEmptyDirectory);
+                        }
                     }
                 } catch (IOException e) {
                     throw new UncheckedIOException("Unable to rewrite source files", e);
