@@ -19,9 +19,12 @@ import org.openrewrite.RecipeRun;
 import org.openrewrite.Result;
 import org.openrewrite.internal.lang.Nullable;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Stream;
 
 public class ResultsContainer {
     final Path projectRoot;
@@ -84,5 +87,35 @@ public class ResultsContainer {
 
     public boolean isNotEmpty() {
         return !generated.isEmpty() || !deleted.isEmpty() || !moved.isEmpty() || !refactoredInPlace.isEmpty();
+    }
+
+    /**
+     * List directories that are empty as a result of applying recipe changes
+     */
+    public List<Path> newlyEmptyDirectories() {
+        Set<Path> maybeEmptyDirectories = new LinkedHashSet<>();
+        for (Result result : moved) {
+            assert result.getBefore() != null;
+            maybeEmptyDirectories.add(projectRoot.resolve(result.getBefore().getSourcePath()).getParent());
+        }
+        for (Result result : deleted) {
+            assert result.getBefore() != null;
+            maybeEmptyDirectories.add(projectRoot.resolve(result.getBefore().getSourcePath()).getParent());
+        }
+        if(maybeEmptyDirectories.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Path> emptyDirectories = new ArrayList<>(maybeEmptyDirectories.size());
+        for(Path maybeEmptyDirectory : maybeEmptyDirectories) {
+            try(Stream<Path> contents = Files.list(maybeEmptyDirectory)) {
+                if(contents.findAny().isPresent()) {
+                    continue;
+                }
+                Files.delete(maybeEmptyDirectory);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        return emptyDirectories;
     }
 }
