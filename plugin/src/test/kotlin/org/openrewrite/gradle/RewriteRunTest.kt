@@ -780,6 +780,85 @@ class RewriteRunTest : RewritePluginTest {
             .isTrue()
     }
 
+    @Test
+    fun `build root and repository root do not need to be the same`(@TempDir repositoryRoot: File) {
+        repositoryRoot.apply {
+            resolve(".git").apply {
+                mkdirs()
+                resolve("HEAD").apply {
+                    createNewFile()
+                    writeText("ref: refs/heads/main")
+                }
+                resolve("objects").apply {
+                    mkdir()
+                }
+                resolve("refs").apply {
+                    mkdir()
+                }
+                resolve("reftable").apply {
+                    mkdir()
+                }
+            }
+        }
+        val buildRoot = repositoryRoot.resolve("test-project").apply { mkdirs() }
+        gradleProject(buildRoot) {
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.java.format.AutoFormat")
+                }
+            """)
+            sourceSet("main") {
+                java("""
+                    package org.openrewrite.before;
+                
+                    import java.util.ArrayList;
+                    import java.util.List;
+                    
+                    public class HelloWorld {
+                        public static void main(String[] args) {
+                            System.out.print("Hello");
+                                System.out.println(" world");
+                        }
+                    }
+                """)
+            }
+        }
+
+        val result = runGradle(buildRoot, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val javaFile = buildRoot.resolve("src/main/java/org/openrewrite/before/HelloWorld.java")
+        assertThat(javaFile.readText())
+            //language=java
+            .isEqualTo("""
+                package org.openrewrite.before;
+                
+                import java.util.ArrayList;
+                import java.util.List;
+                
+                public class HelloWorld {
+                    public static void main(String[] args) {
+                        System.out.print("Hello");
+                        System.out.println(" world");
+                    }
+                }
+                """.trimIndent()
+            )
+    }
+
     fun lessThanGradle6_1(): Boolean {
         val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
         return currentVersion < GradleVersion.version("6.1")
