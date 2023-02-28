@@ -15,10 +15,12 @@
  */
 package org.openrewrite.gradle.isolated;
 
-import org.apache.tools.ant.taskdefs.Java;
 import org.gradle.api.Project;
+import org.gradle.api.initialization.Settings;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.gradle.invocation.DefaultGradle;
+import org.gradle.util.GradleVersion;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.SourceFile;
 import org.openrewrite.gradle.GradleParser;
@@ -38,6 +40,7 @@ import org.openrewrite.xml.style.Autodetect;
 import org.openrewrite.xml.tree.Xml;
 import org.openrewrite.yaml.YamlParser;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.*;
@@ -55,6 +58,7 @@ public class ResourceParser {
     private static final Set<String> DEFAULT_IGNORED_DIRECTORIES = new HashSet<>(Arrays.asList("build", "target", "out", ".gradle", ".idea", ".project", "node_modules", ".git", ".metadata", ".DS_Store"));
     private static final Logger logger = Logging.getLogger(ResourceParser.class);
     private final Path baseDir;
+    private final Project project;
     private final Collection<PathMatcher> exclusions;
 
     private final JavaTypeCache typeCache;
@@ -65,6 +69,7 @@ public class ResourceParser {
 
     public ResourceParser(Path baseDir, Project project, RewriteExtension extension, JavaTypeCache typeCache) {
         this.baseDir = baseDir;
+        this.project = project;
         this.exclusions = pathMatchers(baseDir, mergeExclusions(project, extension));
         this.plainTextMasks = pathMatchers(baseDir, extension.getPlainTextMasks());
         this.typeCache = typeCache;
@@ -129,14 +134,14 @@ public class ResourceParser {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (attrs.size() != 0 && !attrs.isOther() && !isExcluded(file) && !isOverSizeThreshold(attrs.size())) {
                     if (jsonParser.accept(file) ||
-                        xmlParser.accept(file) ||
-                        yamlParser.accept(file) ||
-                        propertiesParser.accept(file) ||
-                        protoParser.accept(file) ||
-                        hclParser.accept(file) ||
-                        groovyParser.accept(file) ||
-                        gradleParser.accept(file) ||
-                        isParsedAsPlainText(file)
+                            xmlParser.accept(file) ||
+                            yamlParser.accept(file) ||
+                            propertiesParser.accept(file) ||
+                            protoParser.accept(file) ||
+                            hclParser.accept(file) ||
+                            groovyParser.accept(file) ||
+                            gradleParser.accept(file) ||
+                            isParsedAsPlainText(file)
                     ) {
                         resources.add(file);
                     }
@@ -164,10 +169,10 @@ public class ResourceParser {
 
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (!attrs.isOther() && !attrs.isSymbolicLink() &&
-                    !alreadyParsed.contains(file) && !isExcluded(file)) {
+                        !alreadyParsed.contains(file) && !isExcluded(file)) {
                     if (isOverSizeThreshold(attrs.size())) {
                         logger.info("Parsing as quark " + file + " as its size + " + attrs.size() / (1024L * 1024L) +
-                                    "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
+                                "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
                         quarkPaths.add(file);
                     } else if (isParsedAsPlainText(file)) {
                         plainTextPaths.add(file);
@@ -207,11 +212,29 @@ public class ResourceParser {
                 .build();
         List<Path> groovyPaths = new ArrayList<>();
 
+        List<Path> buildscriptClasspath = project.getBuildscript().getConfigurations().getByName("classpath").resolve()
+                .stream()
+                .map(File::toPath)
+                .collect(toList());
+
+        List<Path> settingsClasspath;
+        if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0) {
+            Settings settings = ((DefaultGradle) project.getGradle()).getSettings();
+            settingsClasspath = settings.getBuildscript().getConfigurations().getByName("classpath").resolve()
+                    .stream()
+                    .map(File::toPath)
+                    .collect(toList());
+        } else {
+            settingsClasspath = Collections.emptyList();
+        }
+
         GradleParser gradleParser = GradleParser.builder()
-                .setGroovyParser(GroovyParser.builder()
+                .groovyParser(GroovyParser.builder()
                         .typeCache(typeCache)
                         .styles(styles)
                         .logCompilationWarningsAndErrors(false))
+                .buildscriptClasspath(buildscriptClasspath)
+                .settingsClasspath(settingsClasspath)
                 .build();
         List<Path> gradlePaths = new ArrayList<>();
 
