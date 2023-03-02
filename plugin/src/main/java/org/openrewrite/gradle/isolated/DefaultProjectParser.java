@@ -64,7 +64,6 @@ import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.marker.OperatingSystemProvenance;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
-import org.openrewrite.shaded.jgit.api.Git;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.text.PlainText;
 import org.openrewrite.tree.ParsingExecutionContextView;
@@ -879,7 +878,6 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public void shutdownRewrite() {
         J.clearCaches();
-        Git.shutdown();
         GradleProjectBuilder.clearCaches();
     }
 
