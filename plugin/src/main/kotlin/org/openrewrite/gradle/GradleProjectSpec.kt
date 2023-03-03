@@ -34,6 +34,12 @@ class GradleProjectSpec(
         groovyBuildScript = text.trimIndent()
     }
 
+    @Language("groovy")
+    var settingsGradle: String? = null
+    fun settingsGradle(@Language("groovy") text: String) {
+        settingsGradle = text.trimIndent();
+    }
+
     @Language("yaml")
     var rewriteYaml: String? = null
     fun rewriteYaml(@Language("yaml") text: String) {
@@ -51,6 +57,11 @@ class GradleProjectSpec(
         propertiesFiles[name] = text
     }
 
+    val textFiles: MutableMap<String, String> = mutableMapOf()
+    fun textFile(name: String, text: String) {
+        textFiles[name] = text
+    }
+
     fun subproject(name: String, init: GradleProjectSpec.()->Unit): GradleProjectSpec {
         val subproject = GradleProjectSpec(File(dir, name)).apply(init)
         subprojects.add(subproject)
@@ -65,6 +76,11 @@ class GradleProjectSpec(
 
     fun build(): GradleProjectSpec {
         dir.mkdirs()
+
+        if(settingsGradle != null) {
+            File(dir, "settings.gradle").writeText(settingsGradle!!)
+        }
+
         if(groovyBuildScript != null) {
             File(dir, "build.gradle").writeText(groovyBuildScript!!)
         }
@@ -84,6 +100,13 @@ class GradleProjectSpec(
             File(dir, props.key).apply {
                 parentFile.mkdirs()
                 writeText(props.value)
+            }
+        }
+
+        for(text in textFiles.entries) {
+            File(dir, text.key).apply {
+                parentFile.mkdirs()
+                writeText(text.value)
             }
         }
 
@@ -124,10 +147,16 @@ class GradleSourceSetSpec(
         propertiesFiles[name] = text
     }
 
+    val yamlFiles: MutableMap<String, String> = mutableMapOf()
+    fun yamlFile(name: String, @Language("yaml") text: String) {
+        yamlFiles[name] = text
+    }
+
     val groovyClassses: MutableList<String> = mutableListOf()
     fun groovyClass(@Language("groovy") source: String) {
         groovyClassses.add(source.trimIndent())
     }
+
 
     @Suppress("RegExpSimplifiable")
     fun build(dir: File): GradleSourceSetSpec {
@@ -194,6 +223,14 @@ class GradleSourceSetSpec(
                 File(dir, "$name/resources/${props.key}").apply {
                     parentFile.mkdirs()
                     writeText(props.value)
+                }
+            }
+        }
+        if(yamlFiles.isNotEmpty()) {
+            for(yaml in yamlFiles.entries) {
+                File(dir, "$name/resources/${yaml.key}").apply {
+                    parentFile.mkdirs()
+                    writeText(yaml.value)
                 }
             }
         }

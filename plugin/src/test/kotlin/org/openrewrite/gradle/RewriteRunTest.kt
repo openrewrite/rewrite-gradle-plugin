@@ -24,7 +24,10 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.gradle.util.GradleVersion
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
+import org.junit.jupiter.api.condition.DisabledOnOs
+import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
+import org.openrewrite.Issue
 import java.io.File
 
 class RewriteRunTest : RewritePluginTest {
@@ -733,7 +736,7 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(aFile.readText().contains("/*~~>*/")).isTrue
     }
 
-    // https://github.com/openrewrite/rewrite-gradle-plugin/issues/128
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/128")
     @Test
     fun deleteEmptyDirectory(@TempDir projectDir: File) {
         gradleProject(projectDir) {
@@ -857,6 +860,78 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 """.trimIndent()
             )
+    }
+
+    @DisabledOnOs(OS.WINDOWS) // A file handle I haven't been able to track down is left open, causing JUnit to fail to clean up the directory on Windows
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/176")
+    @Test
+    fun runRecipeFromProjectDependency(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            settingsGradle("""
+                rootProject.name = 'multi-project-recipe'
+
+                include("recipe")
+                include("product")
+            """)
+            subproject("recipe") {
+                buildGradle("""
+                    plugins { 
+                        id("java")
+                    }
+                """)
+                sourceSet("main") {
+                    yamlFile("META-INF/rewrite/recipe.yml", """
+                        type: specs.openrewrite.org/v1beta/recipe
+                        name: com.example.TextToSam
+                        displayName: Changes contents of sam.txt
+                        description: Change contents of sam.txt to "sam"
+                        applicability:
+                          singleSource:
+                            - org.openrewrite.FindSourceFiles:
+                                filePattern: "**/sam.txt"
+                        recipeList:
+                          - org.openrewrite.text.ChangeText:
+                              toText: sam
+                    """)
+                }
+            }
+            subproject("product") {
+                buildGradle("""
+                    plugins {
+                        id("org.openrewrite.rewrite")
+                    }
+                    repositories {
+                        mavenLocal()
+                        mavenCentral()
+                        maven {
+                           url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                        }
+                    }
+                    
+                    rewrite {
+                        activeRecipe("com.example.TextToSam")
+                    }
+                    
+                    dependencies {
+                        rewrite(project(":recipe"))
+                    }
+                """)
+                textFile("sam.txt", "notsam")
+                textFile("johnathan.txt", "jonathan")
+            }
+        }
+
+        val result = runGradle(projectDir, "rewriteRun")
+        val rewriteRunResult = result.task(":product:rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val samFile = projectDir.resolve("product/sam.txt")
+        assertThat(samFile.readText()).isEqualTo("sam")
+
+        val jonathanFile = projectDir.resolve("product/johnathan.txt")
+        assertThat(jonathanFile.readText())
+            .`as`("Applicability test should have prevented this file from being altered")
+            .isEqualTo("jonathan")
     }
 
     fun lessThanGradle6_1(): Boolean {

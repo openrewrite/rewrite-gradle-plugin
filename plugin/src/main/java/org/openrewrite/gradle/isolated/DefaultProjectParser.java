@@ -368,6 +368,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                                     Stream.concat(results.generated.stream(), results.deleted.stream()),
                                     Stream.concat(results.moved.stream(), results.refactoredInPlace.stream())
                             )
+                            // cannot meaningfully display diffs of these things. Console output notes that they were touched by a recipe.
+                            .filter(it -> !(it.getAfter() instanceof Binary) && !(it.getAfter() instanceof Quark))
                             .map(Result::diff)
                             .forEach(diff -> {
                                 try {
@@ -533,6 +535,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             } catch (IOException e) {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
             }
+        } else if(result.getAfter() instanceof Quark) {
+            // Don't attempt to write to a Quark; it has already been logged as change that has been made
         } else {
             Charset charset = result.getAfter().getCharset() == null ? StandardCharsets.UTF_8 : result.getAfter().getCharset();
             try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(targetPath, charset)) {

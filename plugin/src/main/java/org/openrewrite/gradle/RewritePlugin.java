@@ -61,14 +61,17 @@ public class RewritePlugin implements Plugin<Project> {
         RewriteRunTask rewriteRun = project.getTasks().create("rewriteRun", RewriteRunTask.class)
                 .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+        rewriteRun.dependsOn(rewriteConf);
 
         RewriteDryRunTask rewriteDryRun = project.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
                 .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+        rewriteDryRun.dependsOn(rewriteConf);
 
-        project.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
+        RewriteDiscoverTask rewriteDiscover = project.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
                 .setExtension(extension)
                 .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+        rewriteDiscover.dependsOn(rewriteConf);
 
         if(isRootProject) {
             project.allprojects(subproject -> configureProject(subproject, extension, rewriteDryRun, rewriteRun));
