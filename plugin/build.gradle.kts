@@ -121,6 +121,7 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-xml")
     compileOnly("org.openrewrite:rewrite-yaml")
     compileOnly("com.puppycrawl.tools:checkstyle:9.3")
+    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
 
     testImplementation(platform("org.junit:junit-bom:latest.release"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")

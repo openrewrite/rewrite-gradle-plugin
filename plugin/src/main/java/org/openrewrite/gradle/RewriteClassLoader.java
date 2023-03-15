@@ -38,7 +38,8 @@ public class RewriteClassLoader extends URLClassLoader {
         "org.slf4j",
         "org.gradle",
         "groovy",
-        "org.codehaus.groovy"
+        "org.codehaus.groovy",
+        "org.jetbrains.kotlin.gradle"
     );
 
     public RewriteClassLoader(Collection<URL> artifacts) {

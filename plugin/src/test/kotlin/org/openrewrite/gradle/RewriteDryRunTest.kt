@@ -122,4 +122,95 @@ class RewriteDryRunTest : RewritePluginTest {
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
+
+    @Test
+    fun testMultiplatform(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("org.jetbrains.kotlin.multiplatform") version "1.8.0"
+                    id("org.openrewrite.rewrite")
+                }
+                
+                group = "org.example"
+                version = "1.0-SNAPSHOT"
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                }
+                
+                kotlin {
+                    jvm {
+                        jvmToolchain(8)
+                        withJava()
+                        testRuns["test"].executionTask.configure {
+                            useJUnitPlatform()
+                        }
+                    }
+                    js(BOTH) {
+                        browser {
+                            commonWebpackConfig {
+                                cssSupport {
+                                    it.enabled.set(true)
+                                }
+                            }
+                        }
+                    }
+                    def hostOs = System.getProperty("os.name")
+                    def isMingwX64 = hostOs.startsWith("Windows")
+                    def nativeTarget
+                    if (hostOs == "Mac OS X") nativeTarget = macosX64('native')
+                    else if (hostOs == "Linux") nativeTarget = linuxX64("native")
+                    else if (isMingwX64) nativeTarget = mingwX64("native")
+                    else throw new GradleException("Host OS is not supported in Kotlin/Native.")
+                    
+                    sourceSets {
+                        commonMain {
+                            dependencies {
+                                compileOnly 'org.openrewrite:rewrite-core:7.38.0'
+                                implementation 'org.openrewrite:rewrite-java:7.38.0'
+                            }
+                        }
+                        commonTest {
+                        }
+                        
+                        jvmMain {
+                        }
+                        
+                        jvmTest {
+                        }
+                        
+                        jsMain {
+                        }
+                        
+                        jsTest {
+                        }
+                        
+                        nativeMain {
+                        }
+                        
+                        nativeTest {
+                        }
+                    }
+                }
+            """)
+            sourceSet("commonMain") {
+                kotlin("""
+                    import kotlin.Int
+                    
+                    class HelloWorld {
+                        fun sayHello() {
+                            println("Hello world")
+                        }
+                    }
+                """)
+            }
+        }
+        val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
+        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
+    }
 }
