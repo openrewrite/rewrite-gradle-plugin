@@ -15,15 +15,22 @@
  */
 package org.openrewrite.gradle.isolated;
 
+import org.openrewrite.Cursor;
+import org.openrewrite.PrintOutputCapture;
 import org.openrewrite.RecipeRun;
 import org.openrewrite.Result;
 import org.openrewrite.internal.lang.Nullable;
+import org.openrewrite.marker.Marker;
+import org.openrewrite.marker.Markup;
+import org.openrewrite.marker.SearchResult;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 public class ResultsContainer {
@@ -50,9 +57,26 @@ public class ResultsContainer {
                 } else if (result.getBefore() != null && !result.getBefore().getSourcePath().equals(result.getAfter().getSourcePath())) {
                     moved.add(result);
                 } else {
-                    refactoredInPlace.add(result);
+                    if (!result.diff(Paths.get(""), new FencedMarkerPrinter(), true).isEmpty()) {
+                        refactoredInPlace.add(result);
+                    }
                 }
             }
+        }
+    }
+
+    /**
+     * Only retains output for markers of type {@code SearchResult} and {@code Markup}.
+     */
+    private static class FencedMarkerPrinter implements PrintOutputCapture.MarkerPrinter {
+        @Override
+        public String beforeSyntax(Marker marker, Cursor cursor, UnaryOperator<String> commentWrapper) {
+            return marker instanceof SearchResult || marker instanceof Markup ? "{{" + marker.getId() + "}}" : "";
+        }
+
+        @Override
+        public String afterSyntax(Marker marker, Cursor cursor, UnaryOperator<String> commentWrapper) {
+            return marker instanceof SearchResult || marker instanceof Markup ? "{{" + marker.getId() + "}}" : "";
         }
     }
 
