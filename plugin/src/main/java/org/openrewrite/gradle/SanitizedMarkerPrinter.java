@@ -18,6 +18,7 @@ package org.openrewrite.gradle;
 import org.openrewrite.Cursor;
 import org.openrewrite.PrintOutputCapture;
 import org.openrewrite.marker.Marker;
+import org.openrewrite.marker.SearchResult;
 
 import java.util.function.UnaryOperator;
 
@@ -28,11 +29,17 @@ import java.util.function.UnaryOperator;
 public class SanitizedMarkerPrinter implements PrintOutputCapture.MarkerPrinter {
     @Override
     public String beforeSyntax(Marker marker, Cursor cursor, UnaryOperator<String> commentWrapper) {
+        if(marker instanceof SearchResult) {
+            return DEFAULT.beforeSyntax(marker, cursor, commentWrapper);
+        }
         return "";
     }
 
     @Override
     public String afterSyntax(Marker marker, Cursor cursor, UnaryOperator<String> commentWrapper) {
+        if(marker instanceof SearchResult) {
+            return DEFAULT.afterSyntax(marker, cursor, commentWrapper);
+        }
         return "";
     }
 }

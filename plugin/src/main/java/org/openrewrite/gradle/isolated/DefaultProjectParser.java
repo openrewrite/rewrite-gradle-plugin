@@ -540,7 +540,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         } else {
             Charset charset = result.getAfter().getCharset() == null ? StandardCharsets.UTF_8 : result.getAfter().getCharset();
             try (BufferedWriter sourceFileWriter = Files.newBufferedWriter(targetPath, charset)) {
-                sourceFileWriter.write(new String(result.getAfter().printAll(new SanitizedMarkerPrinter()).getBytes(charset), charset));
+                sourceFileWriter.write(result.getAfter().printAll(new PrintOutputCapture<>(0, new SanitizedMarkerPrinter())));
             } catch (IOException e) {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
             }
