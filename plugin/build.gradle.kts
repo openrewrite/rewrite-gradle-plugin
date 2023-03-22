@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 import nl.javadude.gradle.plugins.license.LicenseExtension
 import org.gradle.rewrite.build.GradleVersionData
 import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
@@ -10,19 +12,17 @@ plugins {
     id("com.github.hierynomus.license") version "0.16.1"
 }
 
-pluginBundle {
-    website = "https://github.com/openrewrite/rewrite-gradle-plugin"
-    vcsUrl = "https://github.com/openrewrite/rewrite-gradle-plugin.git"
-    tags = listOf("rewrite", "refactoring", "java", "checkstyle")
-}
-
 gradlePlugin {
+    website.set("https://github.com/openrewrite/rewrite-gradle-plugin")
+    vcsUrl.set("https://github.com/openrewrite/rewrite-gradle-plugin.git")
+
     plugins {
         create("rewrite") {
             id = "org.openrewrite.rewrite"
             displayName = "Rewrite"
             description = "Automatically eliminate technical debt"
             implementationClass = "org.openrewrite.gradle.RewritePlugin"
+            tags.set(listOf("rewrite", "refactoring", "remediation", "security", "migration", "java", "checkstyle"))
         }
     }
 }
