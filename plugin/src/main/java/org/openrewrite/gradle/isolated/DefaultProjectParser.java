@@ -731,6 +731,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .typeCache(javaTypeCache)
                                 .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                                 .build();
+                        kp.setSourceSet(sourceSet.getName());
 
                         Instant start = Instant.now();
                         List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
@@ -912,6 +913,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
+
+                    kp.setSourceSet(sourceSetName);
 
                     Instant start = Instant.now();
                     List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
