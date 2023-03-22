@@ -749,7 +749,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
 
                 if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
-                    List<SourceFile> cus = parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, ctx);
+                    List<SourceFile> cus = parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
                     sourceFiles.addAll(cus);
                 }
 
@@ -833,7 +833,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
-    private List<SourceFile> parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
+    private List<SourceFile> parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, List<Marker> projectProvenance, ExecutionContext ctx) {
         Object kotlinExtension = subproject.getExtensions().getByName("kotlin");
         NamedDomainObjectContainer<KotlinSourceSet> sourceSets;
         try {
@@ -859,6 +859,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             return emptyList();
         }
 
+        List<SourceFile> sourceFiles = new ArrayList<>();
         for (String sourceSetName : sourceSetNames) {
             try {
                 Object sourceSet = sourceSets.getClass().getMethod("getByName", String.class)
@@ -924,10 +925,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Duration parseDuration = Duration.between(start, Instant.now());
                     logger.info("Finished parsing Kotlin sources from {}/{} in {} ({} per source)",
                             subproject.getName(), kotlinDirectorySet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
-                    List<SourceFile> sourceFiles = new ArrayList<>(cus.size());
-                    sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(emptyList(), null)));
-                    return sourceFiles;
+                    sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
                 }
+                return sourceFiles;
             } catch (Exception e) {
                 logger.warn("Failed to resolve sourceSet from {}:{}. Some type information may be incomplete",
                         subproject.getPath(), sourceSetName);
