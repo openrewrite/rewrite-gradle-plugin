@@ -21,7 +21,6 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
-import org.gradle.util.GradleVersion
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.condition.DisabledOnOs
@@ -773,7 +772,7 @@ class RewriteRunTest : RewritePluginTest {
         val rewriteRunResult = result.task(":rewriteRun")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-        val fooDir = projectDir.resolve("foo");
+        val fooDir = projectDir.resolve("foo")
         val fooProperties = fooDir.resolve("foo.properties")
         assertThat(!fooProperties.exists())
             .`as`("Recipe should have deleted foo/foo.properties, but it still exists")
@@ -933,10 +932,4 @@ class RewriteRunTest : RewritePluginTest {
             .`as`("Applicability test should have prevented this file from being altered")
             .isEqualTo("jonathan")
     }
-
-    fun lessThanGradle6_1(): Boolean {
-        val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
-        return currentVersion < GradleVersion.version("6.1")
-    }
 }
-

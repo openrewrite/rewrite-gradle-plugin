@@ -19,8 +19,10 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -28,6 +30,7 @@ import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.internal.service.ServiceRegistry;
+import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet;
 import org.openrewrite.*;
 import org.openrewrite.binary.Binary;
 import org.openrewrite.config.Environment;
@@ -728,6 +731,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .typeCache(javaTypeCache)
                                 .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                                 .build();
+                        kp.setSourceSet(sourceSet.getName());
 
                         Instant start = Instant.now();
                         List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
@@ -743,6 +747,11 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
                         sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
                     }
+                }
+
+                if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
+                    List<SourceFile> cus = parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
+                    sourceFiles.addAll(cus);
                 }
 
                 if(subproject.getPlugins().hasPlugin(GroovyPlugin.class)) {
@@ -823,6 +832,112 @@ public class DefaultProjectParser implements GradleProjectParser {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private List<SourceFile> parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, List<Marker> projectProvenance, ExecutionContext ctx) {
+        Object kotlinExtension = subproject.getExtensions().getByName("kotlin");
+        NamedDomainObjectContainer<KotlinSourceSet> sourceSets;
+        try {
+            Class<?> clazz = kotlinExtension.getClass().getClassLoader().loadClass("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension");
+            //noinspection unchecked
+            sourceSets = (NamedDomainObjectContainer<KotlinSourceSet>) clazz.getMethod("getSourceSets")
+                    .invoke(kotlinExtension);
+
+        } catch (Exception e) {
+            logger.warn("Failed to resolve KotlinMultiplatformExtension from {}. No sources files from KotlinMultiplatformExtension will be parsed.",
+                    subproject.getPath());
+            return emptyList();
+        }
+
+        SortedSet<String> sourceSetNames;
+        try {
+            //noinspection unchecked
+            sourceSetNames = (SortedSet<String>) sourceSets.getClass().getMethod("getNames")
+                    .invoke(sourceSets);
+        } catch (Exception e) {
+            logger.warn("Failed to resolve SourceSetNames in KotlinMultiplatformExtension from {}. No sources files from KotlinMultiplatformExtension will be parsed.",
+                    subproject.getPath());
+            return emptyList();
+        }
+
+        List<SourceFile> sourceFiles = new ArrayList<>();
+        for (String sourceSetName : sourceSetNames) {
+            try {
+                Object sourceSet = sourceSets.getClass().getMethod("getByName", String.class)
+                        .invoke(sourceSets, sourceSetName);
+                SourceDirectorySet kotlinDirectorySet = (SourceDirectorySet) sourceSet.getClass().getMethod("getKotlin").invoke(sourceSet);
+                List<Path> kotlinPaths = kotlinDirectorySet.getFiles().stream()
+                        .filter(it -> it.isFile() && it.getName().endsWith(".kt"))
+                        .map(File::toPath)
+                        .map(Path::toAbsolutePath)
+                        .map(Path::normalize)
+                        .collect(toList());
+
+                // classpath doesn't include the transitive dependencies of the implementation configuration
+                // These aren't needed for compilation, but we want them so recipes have access to comprehensive type information
+                // The implementation configuration isn't resolvable, so we need a new configuration that extends from it
+                String implementationName = (String) sourceSet.getClass().getMethod("getImplementationConfigurationName").invoke(sourceSet);
+                Configuration implementation = subproject.getConfigurations().getByName(implementationName);
+                Configuration rewriteImplementation = subproject.getConfigurations().maybeCreate("rewrite" + implementationName);
+                rewriteImplementation.extendsFrom(implementation);
+
+                Set<File> implementationClasspath;
+                try {
+                    implementationClasspath = rewriteImplementation.resolve();
+                } catch (Exception e) {
+                    logger.warn("Failed to resolve dependencies from {}:{}. Some type information may be incomplete",
+                            subproject.getPath(), implementationName);
+                    implementationClasspath = emptySet();
+                }
+
+                String compileName = (String) sourceSet.getClass().getMethod("getCompileOnlyConfigurationName").invoke(sourceSet);
+                Configuration compileOnly = subproject.getConfigurations().getByName(compileName);
+                Configuration rewriteCompileOnly = subproject.getConfigurations().maybeCreate("rewrite" + compileName);
+                rewriteCompileOnly.setCanBeResolved(true);
+                rewriteCompileOnly.extendsFrom(compileOnly);
+
+                // The implementation configuration doesn't include build/source directories from project dependencies
+                // So mash it and our rewriteImplementation together to get everything
+                List<Path> dependencyPaths = Stream.concat(implementationClasspath.stream(), rewriteCompileOnly.getFiles().stream())
+                        .map(File::toPath)
+                        .map(Path::toAbsolutePath)
+                        .map(Path::normalize)
+                        .distinct()
+                        .collect(toList());
+
+                if (!kotlinPaths.isEmpty()) {
+                    logger.info("Parsing {} Kotlin sources from {}/{}", kotlinPaths.size(), subproject.getName(), kotlinDirectorySet.getName());
+                    KotlinParser kp = KotlinParser.builder()
+                            .classpath(dependencyPaths)
+                            .styles(getStyles())
+                            .typeCache(javaTypeCache)
+                            .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                            .build();
+
+                    kp.setSourceSet(sourceSetName);
+
+                    Instant start = Instant.now();
+                    List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
+                    alreadyParsed.addAll(kotlinPaths);
+                    cus = ListUtils.map(cus, cu -> {
+                        if (isExcluded(exclusions, cu.getSourcePath())) {
+                            return null;
+                        }
+                        return cu;
+                    });
+                    Duration parseDuration = Duration.between(start, Instant.now());
+                    logger.info("Finished parsing Kotlin sources from {}/{} in {} ({} per source)",
+                            subproject.getName(), kotlinDirectorySet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
+                    sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
+                }
+                return sourceFiles;
+            } catch (Exception e) {
+                logger.warn("Failed to resolve sourceSet from {}:{}. Some type information may be incomplete",
+                        subproject.getPath(), sourceSetName);
+            }
+        }
+
+        return emptyList();
     }
 
     private boolean isExcluded(Collection<PathMatcher> exclusions, Path path) {

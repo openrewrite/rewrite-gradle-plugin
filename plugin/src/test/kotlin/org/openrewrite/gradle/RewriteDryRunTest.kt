@@ -18,6 +18,7 @@ package org.openrewrite.gradle
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
@@ -119,6 +120,76 @@ class RewriteDryRunTest : RewritePluginTest {
 
         val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.java.OrderImports")
         val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
+    }
+
+    @DisabledIf("lessThanGradle6_1")
+    @Test
+    fun testMultiplatform(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                    id("org.jetbrains.kotlin.multiplatform") version "1.8.0"
+                }
+                group = "org.example"
+                version = "1.0-SNAPSHOT"
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+
+                kotlin {
+                    jvm {
+                        jvmToolchain(8)
+                        withJava()
+                    }
+
+                    sourceSets {
+                        commonMain {
+                            dependencies {
+                            }
+                        }
+                        commonTest {
+                            dependencies {
+                            }
+                        }
+                        jvmMain {
+                        }
+                        jvmTest {
+                        }
+                    }
+                }
+            """)
+            settingsGradle("""
+                pluginManagement {
+                    repositories {
+                        mavenLocal()
+                        maven { url = uri("https://plugins.gradle.org/m2") }
+                        gradlePluginPortal()
+                    }
+                }
+                rootProject.name = "example"
+            """)
+            sourceSet("commonMain") {
+                kotlin("""
+                    class HelloWorld {
+                        fun sayHello() {
+                            println("Hello world")
+                        }
+                    }
+                """)
+            }
+        }
+        val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
+        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }

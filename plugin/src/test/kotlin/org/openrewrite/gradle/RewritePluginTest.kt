@@ -17,6 +17,7 @@ package org.openrewrite.gradle
 
 import org.gradle.testkit.runner.BuildResult
 import org.gradle.testkit.runner.GradleRunner
+import org.gradle.util.GradleVersion
 import java.io.File
 import java.lang.management.ManagementFactory
 
@@ -38,4 +39,9 @@ interface RewritePluginTest {
             .forwardOutput()
             .build()
 
+
+    fun lessThanGradle6_1(): Boolean {
+        val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
+        return currentVersion < GradleVersion.version("6.1")
+    }
 }
