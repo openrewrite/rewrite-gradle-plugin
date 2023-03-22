@@ -18,6 +18,7 @@ package org.openrewrite.gradle
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
@@ -123,6 +124,7 @@ class RewriteDryRunTest : RewritePluginTest {
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
 
+    @DisabledIf("lessThanGradle6_1")
     @Test
     fun testMultiplatform(@TempDir projectDir: File) {
         gradleProject(projectDir) {
@@ -185,13 +187,10 @@ class RewriteDryRunTest : RewritePluginTest {
                 """)
             }
         }
-        val gradleVersion = System.getProperty("org.openrewrite.test.gradleVersion")
-        if (gradleVersion >= "6.1") {
-            val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
-            val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
+        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
 
-            assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
-            assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
-        }
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
 }
