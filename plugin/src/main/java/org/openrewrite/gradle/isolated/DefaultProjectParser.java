@@ -385,7 +385,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     throw new RuntimeException("Unable to generate rewrite result file.", e);
                 }
                 logger.warn("Report available:");
-                logger.warn("    " + reportPath.normalize());
+                logger.warn("    {}", reportPath.normalize());
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
                 if (project.getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
@@ -588,7 +588,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     throw new RuntimeException("Unable to load rewrite configuration", e);
                 }
             } else if (extension.getConfigFileSetDeliberately()) {
-                logger.warn("Rewrite configuration file " + rewriteConfig + " does not exist.");
+                logger.warn("Rewrite configuration file {} does not exist.", rewriteConfig);
             }
 
             environment = env.build();
@@ -823,7 +823,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 if(extension.getThrowOnParseFailures()) {
                     throw new RuntimeException(sb.toString());
                 } else {
-                    logger.warn(sb.toString());
+                    logger.warn("{}", sb);
                 }
                 sourceFiles.addAll(parseFailures);
             }
@@ -968,9 +968,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
         if(recipe.getRecipeList().isEmpty()) {
-            logger.warn("No recipes were activated. " +
-                    "Activate a recipe with rewrite.activeRecipe(\"com.fully.qualified.RecipeClassName\") in your build file, " +
-                    "or on the command line with -DactiveRecipe=com.fully.qualified.RecipeClassName");
+            logger.warn("No recipes were activated. Activate a recipe with rewrite.activeRecipe(\"com.fully.qualified.RecipeClassName\") in your build file, or on the command line with -DactiveRecipe=com.fully.qualified.RecipeClassName");
             return new ResultsContainer(baseDir, null);
         }
         logger.lifecycle("Validating active recipes");
@@ -978,9 +976,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         List<Validated.Invalid> failedValidations = validated.stream().map(Validated::failures)
                 .flatMap(Collection::stream).collect(toList());
         if (!failedValidations.isEmpty()) {
-            failedValidations.forEach(failedValidation -> logger.error(
-                    "Recipe validation error in " + failedValidation.getProperty() + ": " +
-                            failedValidation.getMessage(), failedValidation.getException()));
+            failedValidations.forEach(failedValidation -> logger.error("Recipe validation error in {}: {}", failedValidation.getProperty(), failedValidation.getMessage(), failedValidation.getException()));
             if (extension.getFailOnInvalidActiveRecipes()) {
                 throw new RuntimeException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
             } else {
@@ -1041,7 +1037,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 recipeString.append(": {").append(opts).append("}");
             }
         }
-        logger.warn(recipeString.toString());
+        logger.warn("{}", recipeString);
         for (RecipeDescriptor rChild : rd.getRecipeList()) {
             logRecipe(rChild, prefix + "    ");
         }

@@ -57,43 +57,36 @@ public class GradleLoggingMeterRegistry extends MeterRegistry {
                 .forEach(m -> {
                     Printer print = new Printer(m);
                     m.use(
-                            gauge -> log.info(print.id() + " value=" + print.value(gauge.value())),
+                            gauge -> log.info("{} value={}", print.id(), print.value(gauge.value())),
                             counter -> {
                                 double count = counter.count();
-                                log.info(print.id() + " count=" + print.count(count));
+                                log.info("{} count={}", print.id(), print.count(count));
                             },
                             timer -> {
                                 HistogramSnapshot snapshot = timer.takeSnapshot();
                                 long count = snapshot.count();
-                                log.info(print.id() + " count=" + print.unitlessCount(count) +
-                                        " mean=" + print.time(snapshot.mean(getBaseTimeUnit())) +
-                                        " max=" + print.time(snapshot.max(getBaseTimeUnit())));
+                                log.info("{} count={} mean={} max={}", print.id(), print.unitlessCount(count), print.time(snapshot.mean(getBaseTimeUnit())), print.time(snapshot.max(getBaseTimeUnit())));
                             },
                             summary -> {
                                 HistogramSnapshot snapshot = summary.takeSnapshot();
                                 long count = snapshot.count();
-                                log.info(print.id() + " count=" + print.unitlessCount(count) +
-                                        " mean=" + print.value(snapshot.mean()) +
-                                        " max=" + print.value(snapshot.max()));
+                                log.info("{} count={} mean={} max={}", print.id(), print.unitlessCount(count), print.value(snapshot.mean()), print.value(snapshot.max()));
                             },
                             longTaskTimer -> {
                                 int activeTasks = longTaskTimer.activeTasks();
-                                log.info(print.id() +
-                                        " active=" + print.value(activeTasks) +
-                                        " duration=" + print.time(longTaskTimer.duration(getBaseTimeUnit())));
+                                log.info("{} active={} duration={}", print.id(), print.value(activeTasks), print.time(longTaskTimer.duration(getBaseTimeUnit())));
                             },
                             timeGauge -> {
                                 double value = timeGauge.value(getBaseTimeUnit());
-                                log.info(print.id() + " value=" + print.time(value));
+                                log.info("{} value={}", print.id(), print.time(value));
                             },
                             counter -> {
                                 double count = counter.count();
-                                log.info(print.id() + " count=" + print.count(count));
+                                log.info("{} count={}", print.id(), print.count(count));
                             },
                             timer -> {
                                 double count = timer.count();
-                                log.info(print.id() + " count=" + print.count(count) +
-                                        " mean=" + print.time(timer.mean(getBaseTimeUnit())));
+                                log.info("{} count={} mean={}", print.id(), print.count(count), print.time(timer.mean(getBaseTimeUnit())));
                             },
                             meter -> log.info(writeMeter(meter, print))
                     );

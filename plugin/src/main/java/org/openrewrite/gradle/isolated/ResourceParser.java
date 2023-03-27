@@ -171,8 +171,7 @@ public class ResourceParser {
                 if (!attrs.isOther() && !attrs.isSymbolicLink() &&
                         !alreadyParsed.contains(file) && !isExcluded(file)) {
                     if (isOverSizeThreshold(attrs.size())) {
-                        logger.info("Parsing as quark " + file + " as its size + " + attrs.size() / (1024L * 1024L) +
-                                "Mb exceeds size threshold " + sizeThresholdMb + "Mb");
+                        logger.info("Parsing as quark {} as its size {}Mb exceeds size threshold {}Mb", file, attrs.size() / (1024L * 1024L), sizeThresholdMb);
                         quarkPaths.add(file);
                     } else if (isParsedAsPlainText(file)) {
                         plainTextPaths.add(file);
