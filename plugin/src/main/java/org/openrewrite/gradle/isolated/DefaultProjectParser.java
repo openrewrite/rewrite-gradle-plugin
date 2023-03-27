@@ -641,6 +641,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceSets = javaConvention.getSourceSets();
             }
 
+            if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
+                return parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
+            }
+
             ResourceParser rp = new ResourceParser(baseDir, subproject, extension, javaTypeCache);
 
             List<SourceFile> sourceFiles = new ArrayList<>();
@@ -747,11 +751,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
                         sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
                     }
-                }
-
-                if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
-                    List<SourceFile> cus = parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
-                    sourceFiles.addAll(cus);
                 }
 
                 if(subproject.getPlugins().hasPlugin(GroovyPlugin.class)) {
