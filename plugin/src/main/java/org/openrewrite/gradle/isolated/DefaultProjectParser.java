@@ -641,7 +641,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceSets = javaConvention.getSourceSets();
             }
 
-            if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
+            //noinspection DataFlowIssue
+            if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
+                    subproject.getExtensions().findByName("kotlin") != null && subproject.getExtensions().findByName("kotlin").getClass().getCanonicalName().startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
                 return parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
             }
 
