@@ -213,6 +213,14 @@ public class RewriteExtension {
         return rewriteKotlinVersion;
     }
 
+    private String rewritePythonVersion;
+    public String getRewritePythonVersion() {
+        if(rewritePythonVersion == null) {
+            rewritePythonVersion = getVersionProps().getProperty("org.openrewrite:rewrite-python");
+        }
+        return rewritePythonVersion;
+    }
+
     public String getCheckstyleToolsVersion() {
         return getVersionProps().getProperty("com.puppycrawl.tools:checkstyle");
     }

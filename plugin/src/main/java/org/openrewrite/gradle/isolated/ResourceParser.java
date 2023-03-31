@@ -32,6 +32,7 @@ import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.json.JsonParser;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.protobuf.ProtoParser;
+import org.openrewrite.python.PythonParser;
 import org.openrewrite.quark.QuarkParser;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.text.PlainTextParser;
@@ -118,6 +119,7 @@ public class ResourceParser {
         YamlParser yamlParser = new YamlParser();
         PropertiesParser propertiesParser = new PropertiesParser();
         ProtoParser protoParser = new ProtoParser();
+        PythonParser pythonParser = PythonParser.builder().build();
         HclParser hclParser = HclParser.builder().build();
         GroovyParser groovyParser = GroovyParser.builder().build();
         GradleParser gradleParser = GradleParser.builder().build();
@@ -139,6 +141,7 @@ public class ResourceParser {
                             propertiesParser.accept(file) ||
                             protoParser.accept(file) ||
                             hclParser.accept(file) ||
+                            pythonParser.accept(file) ||
                             groovyParser.accept(file) ||
                             gradleParser.accept(file) ||
                             isParsedAsPlainText(file)
@@ -203,6 +206,11 @@ public class ResourceParser {
         HclParser hclParser = HclParser.builder().build();
         List<Path> hclPaths = new ArrayList<>();
 
+        PythonParser pythonParser = PythonParser.builder()
+                .typeCache(typeCache)
+                .build();
+        List<Path> pythonPaths = new ArrayList<>();
+
         GroovyParser groovyParser = GroovyParser.builder()
                 .classpath(classpath)
                 .typeCache(typeCache)
@@ -254,6 +262,8 @@ public class ResourceParser {
                 protoPaths.add(path);
             } else if (hclParser.accept(path)) {
                 hclPaths.add(path);
+            } else if (pythonParser.accept(path)) {
+                pythonPaths.add(path);
             } else if (groovyParser.accept(path)) {
                 groovyPaths.add(path);
             } else if (gradleParser.accept(path)) {
@@ -280,6 +290,9 @@ public class ResourceParser {
 
         sourceFiles.addAll(hclParser.parse(hclPaths, baseDir, ctx));
         alreadyParsed.addAll(hclPaths);
+
+        sourceFiles.addAll(pythonParser.parse(pythonPaths, baseDir, ctx));
+        alreadyParsed.addAll(pythonPaths);
 
         sourceFiles.addAll(groovyParser.parse(groovyPaths, baseDir, ctx));
         alreadyParsed.addAll(groovyPaths);
