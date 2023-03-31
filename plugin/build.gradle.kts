@@ -29,13 +29,22 @@ gradlePlugin {
 
 repositories {
     if (!project.hasProperty("releasing")) {
-        mavenLocal()
+        mavenLocal {
+            mavenContent {
+                excludeVersionByRegex(".+", ".+", ".+-rc[0-9]*")
+            }
+        }
+
         maven {
             url = uri("https://oss.sonatype.org/content/repositories/snapshots")
         }
     }
 
-    mavenCentral()
+    mavenCentral {
+        mavenContent {
+            excludeVersionByRegex(".+", ".+", ".+-rc[0-9]*")
+        }
+    }
 }
 
 val latest = if (project.hasProperty("releasing")) {
