@@ -186,7 +186,7 @@ val gVP = tasks.register("generateVersionsProperties") {
 }
 
 tasks.named<Copy>("processResources") {
-    into("/") {
+    into("rewrite/") {
         from(gVP)
     }
 }
