@@ -177,7 +177,7 @@ public class RewriteExtension {
 
     private Properties getVersionProps() {
         if(versionProps == null) {
-            try(InputStream is = RewriteExtension.class.getResourceAsStream("/versions.properties")) {
+            try(InputStream is = RewriteExtension.class.getResourceAsStream("/rewrite/versions.properties")) {
                 versionProps = new Properties();
                 versionProps.load(is);
             } catch(IOException e) {
