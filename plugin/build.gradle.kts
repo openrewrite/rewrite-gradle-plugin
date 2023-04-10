@@ -31,7 +31,7 @@ repositories {
     if (!project.hasProperty("releasing")) {
         mavenLocal {
             mavenContent {
-                excludeVersionByRegex(".+", ".+", ".+-rc[0-9]*")
+                excludeVersionByRegex(".+", ".+", ".+-rc[-]?[0-9]*")
             }
         }
 
@@ -42,7 +42,7 @@ repositories {
 
     mavenCentral {
         mavenContent {
-            excludeVersionByRegex(".+", ".+", ".+-rc[0-9]*")
+            excludeVersionByRegex(".+", ".+", ".+-rc[-]?[0-9]*")
         }
     }
 }
