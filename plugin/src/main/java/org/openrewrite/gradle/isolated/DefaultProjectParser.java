@@ -57,14 +57,11 @@ import org.openrewrite.java.style.Autodetect;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaSourceFile;
+import org.openrewrite.java.tree.JavaType;
 import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
-import org.openrewrite.marker.BuildTool;
-import org.openrewrite.marker.GitProvenance;
-import org.openrewrite.marker.Marker;
-import org.openrewrite.marker.Markers;
+import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
-import org.openrewrite.marker.OperatingSystemProvenance;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
@@ -682,7 +679,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .distinct()
                         .collect(toList());
 
-                JavaSourceSet sourceSetProvenance = null;
                 if (javaPaths.size() > 0) {
                     logger.info("Parsing {} Java sources from {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
                     JavaParser jp = JavaParser.fromJavaVersion()
@@ -691,7 +687,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
-                    jp.setSourceSet(sourceSet.getName());
                     Instant start = Instant.now();
                     List<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx);
                     alreadyParsed.addAll(javaPaths);
@@ -705,18 +700,12 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Duration parseDuration = Duration.between(start, Instant.now());
                     logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
                             subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
-                    sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
-                    sourceSetProvenance = jp.getSourceSet(ctx); // Hold onto provenance to apply it to resource files
+                    sourceFiles.addAll(autodetectStyle(cus));
                 }
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if (resourcesDir.exists()) {
-                        if (sourceSetProvenance == null) {
-                            // Just in case there are no java source files, but there _are_ resource files
-                            // Skip providing a classpath because it's time-consuming and non-Java sources have no concept of java type information
-                            sourceSetProvenance = new JavaSourceSet(randomId(), sourceSet.getName(), emptyList());
-                        }
-                        sourceFiles.addAll(map(rp.parse(resourcesDir.toPath(), alreadyParsed, ctx), addProvenance(projectProvenance, sourceSetProvenance)));
+                        sourceFiles.addAll(rp.parse(resourcesDir.toPath(), alreadyParsed, ctx));
                     }
                 }
 
@@ -737,7 +726,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .typeCache(javaTypeCache)
                                 .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                                 .build();
-                        kp.setSourceSet(sourceSet.getName());
 
                         Instant start = Instant.now();
                         List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
@@ -751,7 +739,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         Duration parseDuration = Duration.between(start, Instant.now());
                         logger.info("Finished parsing Kotlin sources from {}/{} in {} ({} per source)",
                                 subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
-                        sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
+                        sourceFiles.addAll(autodetectStyle(cus));
                     }
                 }
 
@@ -780,19 +768,36 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .build();
                         Instant start = Instant.now();
                         List<G.CompilationUnit> cus = gp.parse(groovyPaths, baseDir, ctx);
+                        alreadyParsed.addAll(groovyPaths);
                         cus = ListUtils.map(cus, cu -> {
                             if(isExcluded(exclusions, cu.getSourcePath())) {
                                 return null;
                             }
                             return cu;
                         });
-                        sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
-                        alreadyParsed.addAll(groovyPaths);
                         Duration parseDuration = Duration.between(start, Instant.now());
                         logger.info("Finished parsing Groovy sources from {}/{} in {} ({} per source)",
                                 subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(groovyPaths.size())));
+                        sourceFiles.addAll(autodetectStyle(cus));
                     }
                 }
+
+                JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
+                List<JavaType.FullyQualified> classpath = sourceSetProvenance.getClasspath();
+                for (SourceFile sourceFile : sourceFiles) {
+                    Set<JavaType> typesInUse = emptySet();
+                    if (sourceFile instanceof JavaSourceFile) {
+                        typesInUse = ((JavaSourceFile) sourceFile).getTypesInUse().getTypesInUse();
+                    }
+
+                    for (JavaType type : typesInUse) {
+                        if (type instanceof JavaType.FullyQualified) {
+                            classpath.add((JavaType.FullyQualified) type);
+                        }
+                    }
+                }
+                sourceSetProvenance = sourceSetProvenance.withClasspath(classpath);
+                sourceFiles = map(sourceFiles, addProvenance(projectProvenance, sourceSetProvenance));
             }
 
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
@@ -915,8 +920,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
 
-                    kp.setSourceSet(sourceSetName);
-
                     Instant start = Instant.now();
                     List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
                     alreadyParsed.addAll(kotlinPaths);
@@ -929,7 +932,17 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Duration parseDuration = Duration.between(start, Instant.now());
                     logger.info("Finished parsing Kotlin sources from {}/{} in {} ({} per source)",
                             subproject.getName(), kotlinDirectorySet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
-                    sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, null)));
+                    JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths, javaTypeCache, false);
+                    List<JavaType.FullyQualified> classpath = sourceSetProvenance.getClasspath();
+                    for (K.CompilationUnit cu : cus) {
+                        for (JavaType type : cu.getTypesInUse().getTypesInUse()) {
+                            if (type instanceof JavaType.FullyQualified) {
+                                classpath.add((JavaType.FullyQualified) type);
+                            }
+                        }
+                    }
+                    sourceSetProvenance = sourceSetProvenance.withClasspath(classpath);
+                    sourceFiles.addAll(map(autodetectStyle(cus), addProvenance(projectProvenance, sourceSetProvenance)));
                 }
                 return sourceFiles;
             } catch (Exception e) {
