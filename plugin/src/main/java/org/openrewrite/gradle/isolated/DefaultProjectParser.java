@@ -784,16 +784,16 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
                 List<JavaType.FullyQualified> classpath = sourceSetProvenance.getClasspath();
+                Set<JavaType> typesInUse = new HashSet<>();
                 for (SourceFile sourceFile : sourceFiles) {
-                    Set<JavaType> typesInUse = emptySet();
                     if (sourceFile instanceof JavaSourceFile) {
                         typesInUse = ((JavaSourceFile) sourceFile).getTypesInUse().getTypesInUse();
                     }
 
-                    for (JavaType type : typesInUse) {
-                        if (type instanceof JavaType.FullyQualified) {
-                            classpath.add((JavaType.FullyQualified) type);
-                        }
+                }
+                for (JavaType type : typesInUse) {
+                    if (type instanceof JavaType.FullyQualified) {
+                        classpath.add((JavaType.FullyQualified) type);
                     }
                 }
                 sourceSetProvenance = sourceSetProvenance.withClasspath(classpath);
