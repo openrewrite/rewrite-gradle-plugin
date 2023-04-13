@@ -535,7 +535,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             } catch (IOException e) {
                 throw new UncheckedIOException("Unable to rewrite source files", e);
             }
-        } else if(result.getAfter() instanceof Quark) {
+        } else //noinspection StatementWithEmptyBody
+            if(result.getAfter() instanceof Quark) {
             // Don't attempt to write to a Quark; it has already been logged as change that has been made
         } else {
             Charset charset = result.getAfter().getCharset() == null ? StandardCharsets.UTF_8 : result.getAfter().getCharset();
@@ -787,9 +788,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                 Set<JavaType> typesInUse = new HashSet<>();
                 for (SourceFile sourceFile : sourceFiles) {
                     if (sourceFile instanceof JavaSourceFile) {
-                        typesInUse = ((JavaSourceFile) sourceFile).getTypesInUse().getTypesInUse();
+                        typesInUse.addAll(((JavaSourceFile) sourceFile).getTypesInUse().getTypesInUse());
                     }
-
                 }
                 for (JavaType type : typesInUse) {
                     if (type instanceof JavaType.FullyQualified) {
