@@ -56,7 +56,7 @@ import static java.util.stream.Collectors.toList;
 import static org.openrewrite.gradle.TimeUtils.prettyPrint;
 
 public class ResourceParser {
-    private static final Set<String> DEFAULT_IGNORED_DIRECTORIES = new HashSet<>(Arrays.asList("build", "target", "out", ".gradle", ".idea", ".project", "node_modules", ".git", ".metadata", ".DS_Store"));
+    private static final Set<String> DEFAULT_IGNORED_DIRECTORIES = new HashSet<>(Arrays.asList("build", "target", "out", ".sonar", ".gradle", ".idea", ".project", "node_modules", ".git", ".metadata", ".DS_Store"));
     private static final Logger logger = Logging.getLogger(ResourceParser.class);
     private final Path baseDir;
     private final Project project;
