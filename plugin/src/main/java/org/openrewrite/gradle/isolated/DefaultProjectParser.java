@@ -812,8 +812,12 @@ public class DefaultProjectParser implements GradleProjectParser {
                         if (!sourceFile.getSourcePath().equals(buildScriptPath)) {
                             return sourceFile;
                         }
-                        GradleProject gp = GradleProjectBuilder.gradleProject(subproject);
-                        return sourceFile.withMarkers(sourceFile.getMarkers().add(gp));
+                        try {
+                            GradleProject gp = GradleProjectBuilder.gradleProject(subproject);
+                            return sourceFile.withMarkers(sourceFile.getMarkers().add(gp));
+                        } catch (Exception e) {
+                            return Markup.warn(sourceFile, e);
+                        }
                     });
                 }
             }
