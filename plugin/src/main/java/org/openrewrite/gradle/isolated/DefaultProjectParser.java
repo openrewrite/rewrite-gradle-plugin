@@ -37,6 +37,7 @@ import org.openrewrite.config.Environment;
 import org.openrewrite.config.OptionDescriptor;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
+import org.openrewrite.gradle.DefaultRewriteExtension;
 import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.gradle.SanitizedMarkerPrinter;
@@ -385,7 +386,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 logger.warn("    {}", reportPath.normalize());
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
-                if (project.getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
+                if (project.getExtensions().getByType(DefaultRewriteExtension.class).getFailOnDryRunResults()) {
                     throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
                 }
             } else {
