@@ -817,7 +817,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                             GradleProject gp = GradleProjectBuilder.gradleProject(subproject);
                             return sourceFile.withMarkers(sourceFile.getMarkers().add(gp));
                         } catch (Exception e) {
-                            return Markup.warn(sourceFile, e);
+                            // Gradle dependency resolution exceptions may be cyclic, which can be a problem for serialization
+                            RuntimeException sanitizedException = new RuntimeException(e.getMessage());
+                            sanitizedException.setStackTrace(e.getStackTrace());
+                            return Markup.warn(sourceFile, sanitizedException);
                         }
                     });
                 }
