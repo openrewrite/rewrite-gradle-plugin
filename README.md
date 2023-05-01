@@ -60,5 +60,5 @@ plugins {
 
 ## Documentation
 
-- [OpenRewrite Quickstart Guide](https://docs.openrewrite.org/getting-started/getting-started)
+- [OpenRewrite Quickstart Guide](https://docs.openrewrite.org/running-recipes/getting-started)
 - [Gradle Plugin Reference](https://docs.openrewrite.org/reference/gradle-plugin-configuration)
