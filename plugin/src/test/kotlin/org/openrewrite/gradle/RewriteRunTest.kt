@@ -21,6 +21,7 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.condition.DisabledOnOs
@@ -270,7 +271,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 
                 rewrite {
-                    activeRecipe("org.openrewrite.java.cleanup.EqualsAvoidsNull")
+                    activeRecipe("org.openrewrite.java.cleanup.UnnecessaryParentheses")
                 }
                 
                 repositories {
@@ -288,8 +289,8 @@ class RewriteRunTest : RewritePluginTest {
                     public class A {
                         {
                             String s = null;
-                            if(s.equals("test")) {}
-                            if(s.equalsIgnoreCase("test")) {}
+                            if((s.equals("test"))) {}
+                            if(s.equalsIgnoreCase(("test"))) {}
                         }
                     }
                 """)
@@ -308,7 +309,7 @@ class RewriteRunTest : RewritePluginTest {
             public class A {
                 {
                     String s = null;
-                    if("test".equals(s)) {}
+                    if(s.equals("test")) {}
                     if(s.equalsIgnoreCase("test")) {}
                 }
             }
@@ -861,6 +862,7 @@ class RewriteRunTest : RewritePluginTest {
             )
     }
 
+    @Disabled("Applicability tests are no longer supported for YAML recipes")
     @DisabledOnOs(OS.WINDOWS) // A file handle I haven't been able to track down is left open, causing JUnit to fail to clean up the directory on Windows
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/176")
     @Test

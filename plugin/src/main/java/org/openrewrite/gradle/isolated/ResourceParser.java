@@ -186,7 +186,7 @@ public class ResourceParser {
             }
         });
 
-        List<SourceFile> sourceFiles = new ArrayList<>(resources.size());
+        Stream<SourceFile> sourceFiles = Stream.empty();
 
         JsonParser jsonParser = new JsonParser();
         List<Path> jsonPaths = new ArrayList<>();
@@ -273,40 +273,40 @@ public class ResourceParser {
             }
         });
 
-        sourceFiles.addAll(jsonParser.parse(jsonPaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, jsonParser.parse(jsonPaths, baseDir, ctx));
         alreadyParsed.addAll(jsonPaths);
 
-        sourceFiles.addAll(autodetectXmlStyles(xmlParser.parse(xmlPaths, baseDir, ctx)));
+        sourceFiles = Stream.concat(sourceFiles, xmlParser.parse(xmlPaths, baseDir, ctx));
         alreadyParsed.addAll(xmlPaths);
 
-        sourceFiles.addAll(yamlParser.parse(yamlPaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, yamlParser.parse(yamlPaths, baseDir, ctx));
         alreadyParsed.addAll(yamlPaths);
 
-        sourceFiles.addAll(propertiesParser.parse(propertiesPaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, propertiesParser.parse(propertiesPaths, baseDir, ctx));
         alreadyParsed.addAll(propertiesPaths);
 
-        sourceFiles.addAll(protoParser.parse(protoPaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, protoParser.parse(protoPaths, baseDir, ctx));
         alreadyParsed.addAll(protoPaths);
 
-        sourceFiles.addAll(hclParser.parse(hclPaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, hclParser.parse(hclPaths, baseDir, ctx));
         alreadyParsed.addAll(hclPaths);
 
-        sourceFiles.addAll(pythonParser.parse(pythonPaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, pythonParser.parse(pythonPaths, baseDir, ctx));
         alreadyParsed.addAll(pythonPaths);
 
-        sourceFiles.addAll(groovyParser.parse(groovyPaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, groovyParser.parse(groovyPaths, baseDir, ctx));
         alreadyParsed.addAll(groovyPaths);
 
-        sourceFiles.addAll(gradleParser.parse(gradlePaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, gradleParser.parse(gradlePaths, baseDir, ctx));
         alreadyParsed.addAll(gradlePaths);
 
-        sourceFiles.addAll(plainTextParser.parse(plainTextPaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, plainTextParser.parse(plainTextPaths, baseDir, ctx));
         alreadyParsed.addAll(plainTextPaths);
 
-        sourceFiles.addAll(quarkParser.parse(quarkPaths, baseDir, ctx));
+        sourceFiles = Stream.concat(sourceFiles, quarkParser.parse(quarkPaths, baseDir, ctx));
         alreadyParsed.addAll(quarkPaths);
 
-        return sourceFiles;
+        return sourceFiles.collect(toList());
     }
 
     private boolean isOverSizeThreshold(long fileSize) {

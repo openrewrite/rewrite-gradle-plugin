@@ -46,6 +46,7 @@ import org.openrewrite.gradle.marker.GradleProject;
 import org.openrewrite.gradle.marker.GradleProjectBuilder;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.groovy.tree.G;
+import org.openrewrite.internal.InMemoryLargeSourceSet;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.ipc.http.HttpUrlConnectionSender;
@@ -690,7 +691,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
                     Instant start = Instant.now();
-                    List<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx);
+                    List<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx).collect(toList());
                     alreadyParsed.addAll(javaPaths);
                     cus = ListUtils.map(cus, cu -> {
                         if (isExcluded(exclusions, cu.getSourcePath()) ||
@@ -730,7 +731,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .build();
 
                         Instant start = Instant.now();
-                        List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
+                        List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx).collect(toList());
                         alreadyParsed.addAll(kotlinPaths);
                         cus = ListUtils.map(cus, cu -> {
                             if(isExcluded(exclusions, cu.getSourcePath())) {
@@ -769,7 +770,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .logCompilationWarningsAndErrors(false)
                                 .build();
                         Instant start = Instant.now();
-                        List<G.CompilationUnit> cus = gp.parse(groovyPaths, baseDir, ctx);
+                        List<G.CompilationUnit> cus = gp.parse(groovyPaths, baseDir, ctx).collect(toList());
                         alreadyParsed.addAll(groovyPaths);
                         cus = ListUtils.map(cus, cu -> {
                             if(isExcluded(exclusions, cu.getSourcePath())) {
@@ -929,7 +930,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .build();
 
                     Instant start = Instant.now();
-                    List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
+                    List<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx).collect(toList());
                     alreadyParsed.addAll(kotlinPaths);
                     cus = ListUtils.map(cus, cu -> {
                         if (isExcluded(exclusions, cu.getSourcePath())) {
@@ -1009,7 +1010,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         List<SourceFile> sourceFiles = parse(ctx);
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
-        RecipeRun recipeRun = recipe.run(sourceFiles, ctx);
+        RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
         return new ResultsContainer(baseDir, recipeRun);
     }
 
