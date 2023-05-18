@@ -152,9 +152,9 @@ class GradleSourceSetSpec(
         yamlFiles[name] = text
     }
 
-    val groovyClassses: MutableList<String> = mutableListOf()
+    val groovyClasses: MutableList<String> = mutableListOf()
     fun groovyClass(@Language("groovy") source: String) {
-        groovyClassses.add(source.trimIndent())
+        groovyClasses.add(source.trimIndent())
     }
 
 
@@ -199,7 +199,7 @@ class GradleSourceSetSpec(
                 writeText(kotlinSource)
             }
         }
-        for(groovySource in groovyClassses) {
+        for(groovySource in groovyClasses) {
             val peckage = if(groovySource.startsWith("package")) {
                 "package\\s+([a-zA-Z0-9.]+);?".toRegex(RegexOption.MULTILINE)
                     .find(groovySource)!!
