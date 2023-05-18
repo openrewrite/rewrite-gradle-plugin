@@ -916,7 +916,7 @@ class RewriteRunTest : RewritePluginTest {
                     }
                 """)
                 textFile("sam.txt", "notsam")
-                textFile("johnathan.txt", "jonathan")
+                textFile("jonathan.txt", "jonathan")
             }
         }
 
@@ -927,7 +927,7 @@ class RewriteRunTest : RewritePluginTest {
         val samFile = projectDir.resolve("product/sam.txt")
         assertThat(samFile.readText()).isEqualTo("sam")
 
-        val jonathanFile = projectDir.resolve("product/johnathan.txt")
+        val jonathanFile = projectDir.resolve("product/jonathan.txt")
         assertThat(jonathanFile.readText())
             .`as`("Applicability test should have prevented this file from being altered")
             .isEqualTo("jonathan")
