@@ -91,25 +91,25 @@ public class ResourceParser {
                 .collect(Collectors.toList());
     }
 
-    public List<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, ExecutionContext ctx) {
+    public Stream<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, ExecutionContext ctx) {
         return parse(projectDir, alreadyParsed, Collections.emptyList(), Collections.emptyList(), ctx);
     }
 
-    public List<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) {
-        List<SourceFile> sourceFiles;
+    public Stream<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) {
+        Stream<SourceFile> sourceFiles;
         logger.info("Parsing other sources from {}", projectDir);
         Instant start = Instant.now();
+        int countBefore = alreadyParsed.size();
         try {
-            sourceFiles = new ArrayList<>(parseSourceFiles(projectDir, alreadyParsed, classpath, styles, ctx));
+            sourceFiles = parseSourceFiles(projectDir, alreadyParsed, classpath, styles, ctx);
         } catch (IOException e) {
             logger.error(e.getMessage(), e);
             throw new UncheckedIOException(e);
         }
-        if (sourceFiles.size() > 0) {
-            Duration duration = Duration.between(start, Instant.now());
-            logger.info("Finished parsing {} other sources from {} in {} ({} per source)",
-                    sourceFiles.size(), projectDir, prettyPrint(duration), prettyPrint(duration.dividedBy(sourceFiles.size())));
-        }
+        Duration duration = Duration.between(start, Instant.now());
+        int count = alreadyParsed.size() - countBefore;
+        logger.info("Finished parsing {} other sources from {} in {} ({} per source)",
+                count, projectDir, prettyPrint(duration), prettyPrint(duration.dividedBy(count)));
         return sourceFiles;
     }
 
@@ -136,15 +136,15 @@ public class ResourceParser {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (attrs.size() != 0 && !attrs.isOther() && !isExcluded(file) && !isOverSizeThreshold(attrs.size())) {
                     if (jsonParser.accept(file) ||
-                            xmlParser.accept(file) ||
-                            yamlParser.accept(file) ||
-                            propertiesParser.accept(file) ||
-                            protoParser.accept(file) ||
-                            hclParser.accept(file) ||
-                            pythonParser.accept(file) ||
-                            groovyParser.accept(file) ||
-                            gradleParser.accept(file) ||
-                            isParsedAsPlainText(file)
+                        xmlParser.accept(file) ||
+                        yamlParser.accept(file) ||
+                        propertiesParser.accept(file) ||
+                        protoParser.accept(file) ||
+                        hclParser.accept(file) ||
+                        pythonParser.accept(file) ||
+                        groovyParser.accept(file) ||
+                        gradleParser.accept(file) ||
+                        isParsedAsPlainText(file)
                     ) {
                         resources.add(file);
                     }
@@ -156,8 +156,8 @@ public class ResourceParser {
     }
 
     @SuppressWarnings({"DuplicatedCode"})
-    public List<SourceFile> parseSourceFiles(Path searchDir, Collection<Path> alreadyParsed,
-                                             List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) throws IOException {
+    public Stream<SourceFile> parseSourceFiles(Path searchDir, Collection<Path> alreadyParsed,
+                                               List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) throws IOException {
 
         List<Path> resources = new ArrayList<>();
         List<Path> quarkPaths = new ArrayList<>();
@@ -172,7 +172,7 @@ public class ResourceParser {
 
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (!attrs.isOther() && !attrs.isSymbolicLink() &&
-                        !alreadyParsed.contains(file) && !isExcluded(file)) {
+                    !alreadyParsed.contains(file) && !isExcluded(file)) {
                     if (isOverSizeThreshold(attrs.size())) {
                         logger.info("Parsing as quark {} as its size {}Mb exceeds size threshold {}Mb", file, attrs.size() / (1024L * 1024L), sizeThresholdMb);
                         quarkPaths.add(file);
@@ -306,7 +306,7 @@ public class ResourceParser {
         sourceFiles = Stream.concat(sourceFiles, quarkParser.parse(quarkPaths, baseDir, ctx));
         alreadyParsed.addAll(quarkPaths);
 
-        return sourceFiles.collect(toList());
+        return sourceFiles;
     }
 
     private boolean isOverSizeThreshold(long fileSize) {
