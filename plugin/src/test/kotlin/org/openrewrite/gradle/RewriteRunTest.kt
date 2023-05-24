@@ -375,7 +375,7 @@ class RewriteRunTest : RewritePluginTest {
                 displayName: Adds a Gradle wrapper
                 description: Add wrapper for gradle version 7.4.2
                 recipeList:
-                  - org.openrewrite.gradle.AddGradleWrapper:
+                  - org.openrewrite.gradle.UpdateGradleWrapper:
                       version: "7.4.2"
             """)
             buildGradle("""
