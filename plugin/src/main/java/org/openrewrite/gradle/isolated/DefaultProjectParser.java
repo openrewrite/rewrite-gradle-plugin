@@ -610,7 +610,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 .collect(toList());
         if (isExcluded(exclusions, subproject.getProjectDir().toPath())) {
             logger.lifecycle("Skipping project {} because it is excluded", subproject.getName());
-            return Stream.of();
+            return Stream.empty();
         }
         try {
             logger.lifecycle("Parsing sources from project {}", subproject.getName());
@@ -842,7 +842,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         } catch (Exception e) {
             logger.warn("Failed to resolve KotlinMultiplatformExtension from {}. No sources files from KotlinMultiplatformExtension will be parsed.",
                     subproject.getPath());
-            return Stream.of();
+            return Stream.empty();
         }
 
         SortedSet<String> sourceSetNames;
@@ -853,7 +853,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         } catch (Exception e) {
             logger.warn("Failed to resolve SourceSetNames in KotlinMultiplatformExtension from {}. No sources files from KotlinMultiplatformExtension will be parsed.",
                     subproject.getPath());
-            return Stream.of();
+            return Stream.empty();
         }
 
         Stream<SourceFile> sourceFiles = Stream.of();
@@ -933,7 +933,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
-        return Stream.of();
+        return Stream.empty();
     }
 
     private boolean isExcluded(Collection<PathMatcher> exclusions, Path path) {
