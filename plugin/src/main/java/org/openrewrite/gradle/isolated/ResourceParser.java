@@ -27,7 +27,6 @@ import org.openrewrite.gradle.GradleParser;
 import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.hcl.HclParser;
-import org.openrewrite.internal.ListUtils;
 import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.json.JsonParser;
 import org.openrewrite.properties.PropertiesParser;
@@ -37,8 +36,6 @@ import org.openrewrite.quark.QuarkParser;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.text.PlainTextParser;
 import org.openrewrite.xml.XmlParser;
-import org.openrewrite.xml.style.Autodetect;
-import org.openrewrite.xml.tree.Xml;
 import org.openrewrite.yaml.YamlParser;
 
 import java.io.File;
@@ -344,10 +341,5 @@ public class ResourceParser {
             }
         }
         return false;
-    }
-
-    private List<Xml.Document> autodetectXmlStyles(List<Xml.Document> xmls) {
-        Autodetect xmlStyle = Autodetect.detect(xmls);
-        return ListUtils.map(xmls, xml -> xml.withMarkers(xml.getMarkers().add(xmlStyle)));
     }
 }
