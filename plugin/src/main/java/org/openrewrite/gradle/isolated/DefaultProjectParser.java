@@ -47,6 +47,7 @@ import org.openrewrite.gradle.marker.GradleProjectBuilder;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.groovy.tree.G;
 import org.openrewrite.internal.InMemoryLargeSourceSet;
+import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.ipc.http.HttpUrlConnectionSender;
 import org.openrewrite.java.JavaParser;
@@ -66,6 +67,7 @@ import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.text.PlainText;
 import org.openrewrite.tree.ParsingExecutionContextView;
+import org.openrewrite.xml.tree.Xml;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -697,7 +699,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Duration parseDuration = Duration.between(start, Instant.now());
                     logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
                             subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
-                    sourceFiles = Stream.concat(sourceFiles, autodetectStyle(cus));
+                    sourceFiles = Stream.concat(sourceFiles, cus);
                 }
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
@@ -736,7 +738,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         Duration parseDuration = Duration.between(start, Instant.now());
                         logger.info("Finished parsing Kotlin sources from {}/{} in {} ({} per source)",
                                 subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
-                        sourceFiles = Stream.concat(sourceFiles, autodetectStyle(cus));
+                        sourceFiles = Stream.concat(sourceFiles, cus);
                     }
                 }
 
@@ -775,7 +777,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         Duration parseDuration = Duration.between(start, Instant.now());
                         logger.info("Finished parsing Groovy sources from {}/{} in {} ({} per source)",
                                 subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(groovyPaths.size())));
-                        sourceFiles = Stream.concat(sourceFiles, autodetectStyle(cus));
+                        sourceFiles = Stream.concat(sourceFiles, cus);
                     }
                 }
 
@@ -924,7 +926,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             subproject.getName(), kotlinDirectorySet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
                     JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths, javaTypeCache, false);
 
-                    sourceFiles = Stream.concat(sourceFiles, autodetectStyle(cus).map(addProvenance(projectProvenance, sourceSetProvenance)));
+                    sourceFiles = Stream.concat(sourceFiles, cus.map(addProvenance(projectProvenance, sourceSetProvenance)));
                 }
                 return sourceFiles;
             } catch (Exception e) {
@@ -980,7 +982,13 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
-        List<SourceFile> sourceFiles = parse(ctx).collect(toList());
+        org.openrewrite.java.style.Autodetect.Detector javaDetector = org.openrewrite.java.style.Autodetect.detect(parse(ctx));
+        org.openrewrite.xml.style.Autodetect.Detector xmlDetector = org.openrewrite.xml.style.Autodetect.detect(javaDetector);
+        List<SourceFile> sourceFiles = xmlDetector.collect(toList());
+        Map<Class<? extends Tree>, NamedStyles> stylesByType = new HashMap<>();
+        stylesByType.put(JavaSourceFile.class, javaDetector.build());
+        stylesByType.put(Xml.Document.class, xmlDetector.build());
+        sourceFiles = ListUtils.map(sourceFiles, applyAutodetectedStyle(stylesByType));
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
@@ -992,11 +1000,15 @@ public class DefaultProjectParser implements GradleProjectParser {
         GradleProjectBuilder.clearCaches();
     }
 
-    private <T extends JavaSourceFile> Stream<T> autodetectStyle(Stream<T> sourceFiles) {
-//        FIXME
-//        Autodetect autodetect = Autodetect.detect(sourceFiles);
-//        return ListUtils.map(sourceFiles, cu -> cu.withMarkers(cu.getMarkers().add(autodetect)));
-        return sourceFiles;
+    private UnaryOperator<SourceFile> applyAutodetectedStyle(Map<Class<? extends Tree>, NamedStyles> stylesByType) {
+        return before -> {
+            for (Map.Entry<Class<? extends Tree>, NamedStyles> styleTypeEntry : stylesByType.entrySet()) {
+                if (styleTypeEntry.getKey().isAssignableFrom(before.getClass())) {
+                    before = before.withMarkers(before.getMarkers().add(styleTypeEntry.getValue()));
+                }
+            }
+            return before;
+        };
     }
 
     private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {

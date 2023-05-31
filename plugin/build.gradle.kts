@@ -74,7 +74,7 @@ java {
     }
 }
 
-tasks.withType<KotlinCompile>().configureEach {
+tasks.named<KotlinCompile>("compileKotlin") {
     kotlinOptions {
         jvmTarget = "1.8"
     }
