@@ -74,22 +74,17 @@ java {
     }
 }
 
-tasks.named<KotlinCompile>("compileKotlin") {
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-}
-
-tasks.named<JavaCompile>("compileJava") {
-    options.release.set(8)
-    sourceCompatibility = "1.8"
-    targetCompatibility = "1.8"
-}
-
 tasks.withType<JavaCompile>().configureEach {
+    options.release.set(8)
     options.encoding = "UTF-8"
     options.compilerArgs.add("-parameters")
     options.isFork = true
+}
+
+tasks.withType<KotlinCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+    }
 }
 
 val rewriteDependencies = configurations.create("rewriteDependencies")
