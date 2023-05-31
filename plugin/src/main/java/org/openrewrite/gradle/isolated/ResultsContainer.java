@@ -45,7 +45,7 @@ public class ResultsContainer {
         this.projectRoot = projectRoot;
         this.recipeRun = recipeRun;
         if (recipeRun != null) {
-            for (Result result : recipeRun.getResults()) {
+            for (Result result : recipeRun.getChangeset().getAllResults()) {
                 if (result.getBefore() == null && result.getAfter() == null) {
                     // This situation shouldn't happen / makes no sense
                     continue;
