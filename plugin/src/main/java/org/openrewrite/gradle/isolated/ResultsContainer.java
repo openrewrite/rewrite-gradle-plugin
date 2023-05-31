@@ -35,24 +35,16 @@ import java.util.stream.Stream;
 
 public class ResultsContainer {
     final Path projectRoot;
-    final List<RecipeRun> recipeRuns;
+    final RecipeRun recipeRun;
     final List<Result> generated = new ArrayList<>();
     final List<Result> deleted = new ArrayList<>();
     final List<Result> moved = new ArrayList<>();
     final List<Result> refactoredInPlace = new ArrayList<>();
 
-    /**
-     * @deprecated Use {@link ResultsContainer#ResultsContainer(Path, List)} instead
-     */
-    @Deprecated
     public ResultsContainer(Path projectRoot, @Nullable RecipeRun recipeRun) {
-        this(projectRoot, recipeRun != null ? Collections.singletonList(recipeRun) : Collections.emptyList());
-    }
-
-    public ResultsContainer(Path projectRoot, List<RecipeRun> recipeRuns) {
         this.projectRoot = projectRoot;
-        this.recipeRuns = recipeRuns;
-        for (RecipeRun recipeRun : recipeRuns) {
+        this.recipeRun = recipeRun;
+        if (recipeRun != null) {
             for (Result result : recipeRun.getChangeset().getAllResults()) {
                 if (result.getBefore() == null && result.getAfter() == null) {
                     // This situation shouldn't happen / makes no sense

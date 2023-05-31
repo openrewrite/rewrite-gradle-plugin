@@ -965,7 +965,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         Recipe recipe = env.activateRecipes(getActiveRecipes());
         if (recipe.getRecipeList().isEmpty()) {
             logger.warn("No recipes were activated. Activate a recipe with rewrite.activeRecipe(\"com.fully.qualified.RecipeClassName\") in your build file, or on the command line with -DactiveRecipe=com.fully.qualified.RecipeClassName");
-            return new ResultsContainer(baseDir, Collections.emptyList());
+            return new ResultsContainer(baseDir, null);
         }
         logger.lifecycle("Validating active recipes");
         Collection<Validated> validated = recipe.validateAll();
@@ -984,7 +984,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
-        return new ResultsContainer(baseDir, Collections.singletonList(recipeRun));
+        return new ResultsContainer(baseDir, recipeRun);
     }
 
     public void shutdownRewrite() {
