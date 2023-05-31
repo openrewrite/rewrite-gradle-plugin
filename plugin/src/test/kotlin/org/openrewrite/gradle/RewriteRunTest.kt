@@ -467,6 +467,7 @@ class RewriteRunTest : RewritePluginTest {
     }
 
     @Test
+    @Disabled("Logic moved to `moderne-ast-write`; test should maybe also be moved")
     fun mergeConfiguredAndAutodetectedStyles(@TempDir projectDir: File) {
         gradleProject(projectDir) {
             propertiesFile("gradle.properties", "systemProp.rewrite.activeStyles=org.openrewrite.testStyle")
