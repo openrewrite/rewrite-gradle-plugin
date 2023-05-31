@@ -105,8 +105,10 @@ public class ResourceParser {
         }
         Duration duration = Duration.between(start, Instant.now());
         int count = alreadyParsed.size() - countBefore;
-        logger.info("Finished parsing {} other sources from {} in {} ({} per source)",
-                count, projectDir, prettyPrint(duration), prettyPrint(duration.dividedBy(count)));
+        if (count > 0) {
+            logger.info("Finished parsing {} other sources from {} in {} ({} per source)",
+                    count, projectDir, prettyPrint(duration), prettyPrint(duration.dividedBy(count)));
+        }
         return sourceFiles;
     }
 
