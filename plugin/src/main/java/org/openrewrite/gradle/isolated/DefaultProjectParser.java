@@ -996,7 +996,6 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     public void shutdownRewrite() {
-        J.clearCaches();
         GradleProjectBuilder.clearCaches();
     }
 
