@@ -15,12 +15,10 @@
  */
 package org.openrewrite.gradle.isolated;
 
-import org.openrewrite.Cursor;
-import org.openrewrite.PrintOutputCapture;
-import org.openrewrite.RecipeRun;
-import org.openrewrite.Result;
+import org.openrewrite.*;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.marker.Marker;
+import org.openrewrite.marker.Markers;
 import org.openrewrite.marker.Markup;
 import org.openrewrite.marker.SearchResult;
 
@@ -81,28 +79,48 @@ public class ResultsContainer {
     }
 
     @Nullable
-    public Throwable getFirstException() {
+    public RuntimeException getFirstException() {
         for (Result result : generated) {
-            for (Throwable recipeError : result.getRecipeErrors()) {
-                return recipeError;
+            for (RuntimeException error : getRecipeErrors(result)) {
+                return error;
             }
         }
         for (Result result : deleted) {
-            for (Throwable recipeError : result.getRecipeErrors()) {
-                return recipeError;
+            for (RuntimeException error : getRecipeErrors(result)) {
+                return error;
             }
         }
         for (Result result : moved) {
-            for (Throwable recipeError : result.getRecipeErrors()) {
-                return recipeError;
+            for (RuntimeException error : getRecipeErrors(result)) {
+                return error;
             }
         }
         for (Result result : refactoredInPlace) {
-            for (Throwable recipeError : result.getRecipeErrors()) {
-                return recipeError;
+            for (RuntimeException error : getRecipeErrors(result)) {
+                return error;
             }
         }
         return null;
+    }
+
+    private List<RuntimeException> getRecipeErrors(Result result) {
+        List<RuntimeException> exceptions = new ArrayList<>();
+        new TreeVisitor<Tree, Integer>() {
+            @Nullable
+            @Override
+            public Tree visit(@Nullable Tree tree, Integer p) {
+                if (tree != null) {
+                    Markers markers = tree.getMarkers();
+                    markers.findFirst(Markup.Error.class).ifPresent(e -> {
+                        Optional<SourceFile> sourceFile = Optional.ofNullable(getCursor().firstEnclosing(SourceFile.class));
+                        String sourcePath = sourceFile.map(SourceFile::getSourcePath).map(Path::toString).orElse("<unknown>");
+                        exceptions.add(new RuntimeException("Error while visiting " + sourcePath + ": " + e.getMessage()));
+                    });
+                }
+                return super.visit(tree, p);
+            }
+        }.visit(result.getAfter(), 0);
+        return exceptions;
     }
 
     public Path getProjectRoot() {
@@ -126,13 +144,13 @@ public class ResultsContainer {
             assert result.getBefore() != null;
             maybeEmptyDirectories.add(projectRoot.resolve(result.getBefore().getSourcePath()).getParent());
         }
-        if(maybeEmptyDirectories.isEmpty()) {
+        if (maybeEmptyDirectories.isEmpty()) {
             return Collections.emptyList();
         }
         List<Path> emptyDirectories = new ArrayList<>(maybeEmptyDirectories.size());
-        for(Path maybeEmptyDirectory : maybeEmptyDirectories) {
-            try(Stream<Path> contents = Files.list(maybeEmptyDirectory)) {
-                if(contents.findAny().isPresent()) {
+        for (Path maybeEmptyDirectory : maybeEmptyDirectories) {
+            try (Stream<Path> contents = Files.list(maybeEmptyDirectory)) {
+                if (contents.findAny().isPresent()) {
                     continue;
                 }
                 Files.delete(maybeEmptyDirectory);
