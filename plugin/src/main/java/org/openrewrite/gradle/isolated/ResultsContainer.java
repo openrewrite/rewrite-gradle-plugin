@@ -106,18 +106,15 @@ public class ResultsContainer {
     private List<RuntimeException> getRecipeErrors(Result result) {
         List<RuntimeException> exceptions = new ArrayList<>();
         new TreeVisitor<Tree, Integer>() {
-            @Nullable
             @Override
-            public Tree visit(@Nullable Tree tree, Integer p) {
-                if (tree != null) {
-                    Markers markers = tree.getMarkers();
-                    markers.findFirst(Markup.Error.class).ifPresent(e -> {
-                        Optional<SourceFile> sourceFile = Optional.ofNullable(getCursor().firstEnclosing(SourceFile.class));
-                        String sourcePath = sourceFile.map(SourceFile::getSourcePath).map(Path::toString).orElse("<unknown>");
-                        exceptions.add(new RuntimeException("Error while visiting " + sourcePath + ": " + e.getMessage()));
-                    });
-                }
-                return super.visit(tree, p);
+            public Tree preVisit(Tree tree, Integer integer) {
+                Markers markers = tree.getMarkers();
+                markers.findFirst(Markup.Error.class).ifPresent(e -> {
+                    Optional<SourceFile> sourceFile = Optional.ofNullable(getCursor().firstEnclosing(SourceFile.class));
+                    String sourcePath = sourceFile.map(SourceFile::getSourcePath).map(Path::toString).orElse("<unknown>");
+                    exceptions.add(new RuntimeException("Error while visiting " + sourcePath + ": " + e.getDetail()));
+                });
+                return tree;
             }
         }.visit(result.getAfter(), 0);
         return exceptions;
