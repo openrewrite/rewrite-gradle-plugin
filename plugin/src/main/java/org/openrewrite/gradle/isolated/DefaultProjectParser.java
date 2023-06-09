@@ -75,8 +75,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
@@ -86,7 +84,6 @@ import java.util.stream.Stream;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.*;
 import static org.openrewrite.Tree.randomId;
-import static org.openrewrite.gradle.TimeUtils.prettyPrint;
 
 @SuppressWarnings("unused")
 public class DefaultProjectParser implements GradleProjectParser {
@@ -598,29 +595,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         return builder;
     }
 
-    private Stream<SourceFile> parseFailures(ExecutionContext ctx) {
-        return Stream.of(ParsingExecutionContextView.view(ctx))
-                .flatMap(ctxView -> {
-                    List<PlainText> parseFailures = ctxView.pollParseFailures();
-                    if (!parseFailures.isEmpty()) {
-                        StringBuilder sb = new StringBuilder();
-                        sb.append("There were problems parsing ").append(parseFailures.size()).append(" + sources, run with --info to see full stack traces:\n");
-                        for (PlainText parseFailure : parseFailures) {
-                            sb.append("  ").append(parseFailure.getSourcePath()).append("\n");
-                        }
-                        sb.append("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
-                        if (extension.getThrowOnParseFailures()) {
-                            throw new RuntimeException(sb.toString());
-                        } else {
-                            logger.warn("{}", sb);
-                        }
-                        return parseFailures.stream();
-                    }
-                    return Stream.empty();
-                });
-    }
-
-
     public Stream<SourceFile> parse(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
         Collection<PathMatcher> exclusions = extension.getExclusions().stream()
                 .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
@@ -662,12 +636,15 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             Stream<SourceFile> sourceFiles = Stream.of();
             for (SourceSet sourceSet : sourceSets) {
+                Stream<SourceFile> sourceSetSourceFiles = Stream.of();
+
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
                         .collect(toList());
+
                 // classpath doesn't include the transitive dependencies of the implementation configuration
                 // These aren't needed for compilation, but we want them so recipes have access to comprehensive type information
                 // The implementation configuration isn't resolvable, so we need a new configuration that extends from it
@@ -693,15 +670,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .distinct()
                         .collect(toList());
 
-                if (javaPaths.size() > 0) {
-                    logger.info("Parsing {} Java sources from {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
+                if (!javaPaths.isEmpty()) {
                     JavaParser jp = JavaParser.fromJavaVersion()
                             .classpath(dependencyPaths)
                             .styles(styles)
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
-                    Instant start = Instant.now();
                     Stream<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx);
                     alreadyParsed.addAll(javaPaths);
                     cus = cus.map(cu -> {
@@ -711,15 +686,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                         }
                         return cu;
                     }).filter(Objects::nonNull);
-                    Duration parseDuration = Duration.between(start, Instant.now());
-                    logger.info("Finished parsing Java sources from {}/{} in {} ({} per source)",
-                            subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(javaPaths.size())));
-                    sourceFiles = Stream.concat(sourceFiles, cus);
+                    sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                    logger.info("Scanned {} Java sources in {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
                 }
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if (resourcesDir.exists()) {
-                        sourceFiles = Stream.concat(sourceFiles, rp.parse(resourcesDir.toPath(), alreadyParsed, ctx));
+                        sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, rp.parse(resourcesDir.toPath(), alreadyParsed, ctx));
                     }
                 }
 
@@ -731,8 +704,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .map(Path::normalize)
                             .collect(toList());
 
-                    if (kotlinPaths.size() > 0) {
-                        logger.info("Parsing {} Kotlin sources from {}/{}", kotlinPaths.size(), subproject.getName(), sourceSet.getName());
+                    if (!kotlinPaths.isEmpty()) {
 
                         KotlinParser kp = KotlinParser.builder()
                                 .classpath(dependencyPaths)
@@ -741,7 +713,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                                 .build();
 
-                        Instant start = Instant.now();
                         Stream<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
                         alreadyParsed.addAll(kotlinPaths);
                         cus = cus.map(cu -> {
@@ -750,10 +721,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                             }
                             return cu;
                         }).filter(Objects::nonNull);
-                        Duration parseDuration = Duration.between(start, Instant.now());
-                        logger.info("Finished parsing Kotlin sources from {}/{} in {} ({} per source)",
-                                subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
-                        sourceFiles = Stream.concat(sourceFiles, cus);
+                        sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                        logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getName(), sourceSet.getName());
                     }
                 }
 
@@ -765,7 +734,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .map(Path::normalize)
                             .collect(toList());
 
-                    if (groovyPaths.size() > 0) {
+                    if (!groovyPaths.isEmpty()) {
                         // Groovy sources are aware of java types that are intermixed in the same directory/sourceSet
                         // Include the build directory containing class files so these definitions are available
                         List<Path> dependenciesWithBuildDirs = Stream.concat(
@@ -773,14 +742,12 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 sourceSet.getOutput().getClassesDirs().getFiles().stream().map(File::toPath)
                         ).collect(toList());
 
-                        logger.info("Parsing {} Groovy sources from {}/{}", groovyPaths.size(), subproject.getName(), sourceSet.getName());
                         GroovyParser gp = GroovyParser.builder()
                                 .classpath(dependenciesWithBuildDirs)
                                 .styles(styles)
                                 .typeCache(javaTypeCache)
                                 .logCompilationWarningsAndErrors(false)
                                 .build();
-                        Instant start = Instant.now();
                         Stream<G.CompilationUnit> cus = gp.parse(groovyPaths, baseDir, ctx);
                         alreadyParsed.addAll(groovyPaths);
                         cus = cus.map(cu -> {
@@ -789,15 +756,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                             }
                             return cu;
                         }).filter(Objects::nonNull);
-                        Duration parseDuration = Duration.between(start, Instant.now());
-                        logger.info("Finished parsing Groovy sources from {}/{} in {} ({} per source)",
-                                subproject.getName(), sourceSet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(groovyPaths.size())));
-                        sourceFiles = Stream.concat(sourceFiles, cus);
+                        sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                        logger.info("Scanned {} Groovy sources in {}/{}", groovyPaths.size(), subproject.getName(), sourceSet.getName());
                     }
                 }
 
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
-                sourceFiles = sourceFiles.map(addProvenance(projectProvenance, sourceSetProvenance));
+                sourceFiles = Stream.concat(sourceFiles, sourceSetSourceFiles.map(addProvenance(projectProvenance, sourceSetProvenance)));
             }
 
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
@@ -903,7 +868,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .collect(toList());
 
                 if (!kotlinPaths.isEmpty()) {
-                    logger.info("Parsing {} Kotlin sources from {}/{}", kotlinPaths.size(), subproject.getName(), kotlinDirectorySet.getName());
                     KotlinParser kp = KotlinParser.builder()
                             .classpath(dependencyPaths)
                             .styles(getStyles())
@@ -911,7 +875,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
 
-                    Instant start = Instant.now();
                     Stream<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
                     alreadyParsed.addAll(kotlinPaths);
                     cus = cus.map(cu -> {
@@ -920,12 +883,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                         }
                         return cu;
                     }).filter(Objects::nonNull);
-                    Duration parseDuration = Duration.between(start, Instant.now());
-                    logger.info("Finished parsing Kotlin sources from {}/{} in {} ({} per source)",
-                            subproject.getName(), kotlinDirectorySet.getName(), prettyPrint(parseDuration), prettyPrint(parseDuration.dividedBy(kotlinPaths.size())));
                     JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths, javaTypeCache, false);
 
                     sourceFiles = Stream.concat(sourceFiles, cus.map(addProvenance(projectProvenance, sourceSetProvenance)));
+                    logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getName(), kotlinDirectorySet.getName());
                 }
                 return sourceFiles;
             } catch (Exception e) {
@@ -935,6 +896,28 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
 
         return Stream.empty();
+    }
+
+    private Stream<SourceFile> parseFailures(ExecutionContext ctx) {
+        return Stream.of(ParsingExecutionContextView.view(ctx))
+                .flatMap(ctxView -> {
+                    List<PlainText> parseFailures = ctxView.pollParseFailures();
+                    if (!parseFailures.isEmpty()) {
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("There were problems parsing ").append(parseFailures.size()).append(" + sources, run with --info to see full stack traces:\n");
+                        for (PlainText parseFailure : parseFailures) {
+                            sb.append("  ").append(parseFailure.getSourcePath()).append("\n");
+                        }
+                        sb.append("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
+                        if (extension.getThrowOnParseFailures()) {
+                            throw new RuntimeException(sb.toString());
+                        } else {
+                            logger.warn("{}", sb);
+                        }
+                        return parseFailures.stream();
+                    }
+                    return Stream.empty();
+                });
     }
 
     private boolean isExcluded(Collection<PathMatcher> exclusions, Path path) {
@@ -954,7 +937,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 try {
                     styles.add(CheckstyleConfigLoader.loadCheckstyleConfig(checkstyleConfig.toPath(), extension.getCheckstyleProperties()));
                 } catch (Exception e) {
-                    logger.warn("Unable to parse checkstyle configuration", e);
+                    logger.warn("Unable to parse Checkstyle configuration", e);
                 }
             }
         }

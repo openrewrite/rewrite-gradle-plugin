@@ -43,14 +43,11 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.openrewrite.gradle.TimeUtils.prettyPrint;
 
 public class ResourceParser {
     private static final Set<String> DEFAULT_IGNORED_DIRECTORIES = new HashSet<>(Arrays.asList("build", "target", "out", ".sonar", ".gradle", ".idea", ".project", "node_modules", ".git", ".metadata", ".DS_Store"));
@@ -94,8 +91,6 @@ public class ResourceParser {
 
     public Stream<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) {
         Stream<SourceFile> sourceFiles;
-        logger.info("Parsing other sources from {}", projectDir);
-        Instant start = Instant.now();
         int countBefore = alreadyParsed.size();
         try {
             sourceFiles = parseSourceFiles(projectDir, alreadyParsed, classpath, styles, ctx);
@@ -103,11 +98,9 @@ public class ResourceParser {
             logger.error(e.getMessage(), e);
             throw new UncheckedIOException(e);
         }
-        Duration duration = Duration.between(start, Instant.now());
         int count = alreadyParsed.size() - countBefore;
         if (count > 0) {
-            logger.info("Finished parsing {} other sources from {} in {} ({} per source)",
-                    count, projectDir, prettyPrint(duration), prettyPrint(duration.dividedBy(count)));
+            logger.info("Scanned {} other sources in {}", count, projectDir);
         }
         return sourceFiles;
     }
@@ -161,6 +154,7 @@ public class ResourceParser {
         List<Path> resources = new ArrayList<>();
         List<Path> quarkPaths = new ArrayList<>();
         List<Path> plainTextPaths = new ArrayList<>();
+
         Files.walkFileTree(searchDir, Collections.emptySet(), 16, new SimpleFileVisitor<Path>() {
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                 if (isExcluded(dir) || isIgnoredDirectory(searchDir, dir)) {
@@ -184,8 +178,6 @@ public class ResourceParser {
                 return FileVisitResult.CONTINUE;
             }
         });
-
-        Stream<SourceFile> sourceFiles = Stream.empty();
 
         JsonParser jsonParser = new JsonParser();
         List<Path> jsonPaths = new ArrayList<>();
@@ -272,38 +264,62 @@ public class ResourceParser {
             }
         });
 
-        sourceFiles = Stream.concat(sourceFiles, jsonParser.parse(jsonPaths, baseDir, ctx));
-        alreadyParsed.addAll(jsonPaths);
+        Stream<SourceFile> sourceFiles = Stream.empty();
 
-        sourceFiles = Stream.concat(sourceFiles, xmlParser.parse(xmlPaths, baseDir, ctx));
-        alreadyParsed.addAll(xmlPaths);
+        if (!jsonPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, jsonParser.parse(jsonPaths, baseDir, ctx));
+            alreadyParsed.addAll(jsonPaths);
+        }
 
-        sourceFiles = Stream.concat(sourceFiles, yamlParser.parse(yamlPaths, baseDir, ctx));
-        alreadyParsed.addAll(yamlPaths);
+        if (!xmlPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, xmlParser.parse(xmlPaths, baseDir, ctx));
+            alreadyParsed.addAll(xmlPaths);
+        }
 
-        sourceFiles = Stream.concat(sourceFiles, propertiesParser.parse(propertiesPaths, baseDir, ctx));
-        alreadyParsed.addAll(propertiesPaths);
+        if (!yamlPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, yamlParser.parse(yamlPaths, baseDir, ctx));
+            alreadyParsed.addAll(yamlPaths);
+        }
 
-        sourceFiles = Stream.concat(sourceFiles, protoParser.parse(protoPaths, baseDir, ctx));
-        alreadyParsed.addAll(protoPaths);
+        if (!propertiesPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, propertiesParser.parse(propertiesPaths, baseDir, ctx));
+            alreadyParsed.addAll(propertiesPaths);
+        }
 
-        sourceFiles = Stream.concat(sourceFiles, hclParser.parse(hclPaths, baseDir, ctx));
-        alreadyParsed.addAll(hclPaths);
+        if (!protoPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, protoParser.parse(protoPaths, baseDir, ctx));
+            alreadyParsed.addAll(protoPaths);
+        }
 
-        sourceFiles = Stream.concat(sourceFiles, pythonParser.parse(pythonPaths, baseDir, ctx));
-        alreadyParsed.addAll(pythonPaths);
+        if (!hclPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, hclParser.parse(hclPaths, baseDir, ctx));
+            alreadyParsed.addAll(hclPaths);
+        }
 
-        sourceFiles = Stream.concat(sourceFiles, groovyParser.parse(groovyPaths, baseDir, ctx));
-        alreadyParsed.addAll(groovyPaths);
+        if (!pythonPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, pythonParser.parse(pythonPaths, baseDir, ctx));
+            alreadyParsed.addAll(pythonPaths);
+        }
 
-        sourceFiles = Stream.concat(sourceFiles, gradleParser.parse(gradlePaths, baseDir, ctx));
-        alreadyParsed.addAll(gradlePaths);
+        if (!groovyPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, groovyParser.parse(groovyPaths, baseDir, ctx));
+            alreadyParsed.addAll(groovyPaths);
+        }
 
-        sourceFiles = Stream.concat(sourceFiles, plainTextParser.parse(plainTextPaths, baseDir, ctx));
-        alreadyParsed.addAll(plainTextPaths);
+        if (!gradlePaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, gradleParser.parse(gradlePaths, baseDir, ctx));
+            alreadyParsed.addAll(gradlePaths);
+        }
 
-        sourceFiles = Stream.concat(sourceFiles, quarkParser.parse(quarkPaths, baseDir, ctx));
-        alreadyParsed.addAll(quarkPaths);
+        if (!plainTextPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, plainTextParser.parse(plainTextPaths, baseDir, ctx));
+            alreadyParsed.addAll(plainTextPaths);
+        }
+
+        if (!quarkPaths.isEmpty()) {
+            sourceFiles = Stream.concat(sourceFiles, quarkParser.parse(quarkPaths, baseDir, ctx));
+            alreadyParsed.addAll(quarkPaths);
+        }
 
         return sourceFiles;
     }
