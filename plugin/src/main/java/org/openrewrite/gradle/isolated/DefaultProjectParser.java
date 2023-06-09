@@ -594,7 +594,30 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
         builder = Stream.concat(builder, parse(project, alreadyParsed, ctx));
+        builder = Stream.concat(builder, parseFailures(ctx));
         return builder;
+    }
+
+    private Stream<SourceFile> parseFailures(ExecutionContext ctx) {
+        return Stream.of(ParsingExecutionContextView.view(ctx))
+                .flatMap(ctxView -> {
+                    List<PlainText> parseFailures = ctxView.pollParseFailures();
+                    if (!parseFailures.isEmpty()) {
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("There were problems parsing ").append(parseFailures.size()).append(" + sources, run with --info to see full stack traces:\n");
+                        for (PlainText parseFailure : parseFailures) {
+                            sb.append("  ").append(parseFailure.getSourcePath()).append("\n");
+                        }
+                        sb.append("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
+                        if (extension.getThrowOnParseFailures()) {
+                            throw new RuntimeException(sb.toString());
+                        } else {
+                            logger.warn("{}", sb);
+                        }
+                        return parseFailures.stream();
+                    }
+                    return Stream.empty();
+                });
     }
 
 
@@ -800,22 +823,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                         }
                     });
                 }
-            }
-
-            List<PlainText> parseFailures = ParsingExecutionContextView.view(ctx).pollParseFailures();
-            if (parseFailures.size() > 0) {
-                StringBuilder sb = new StringBuilder();
-                sb.append("There were problems parsing ").append(parseFailures.size()).append(" sources, run with --info to see full stack traces:\n");
-                for (PlainText parseFailure : parseFailures) {
-                    sb.append("  ").append(parseFailure.getSourcePath()).append("\n");
-                }
-                sb.append("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
-                if (extension.getThrowOnParseFailures()) {
-                    throw new RuntimeException(sb.toString());
-                } else {
-                    logger.warn("{}", sb);
-                }
-                sourceFiles = Stream.concat(sourceFiles, parseFailures.stream());
             }
 
             return sourceFiles;
