@@ -87,7 +87,6 @@ import static org.openrewrite.Tree.randomId;
 
 @SuppressWarnings("unused")
 public class DefaultProjectParser implements GradleProjectParser {
-    private static final JavaTypeCache javaTypeCache = new JavaTypeCache();
     private static final String LOG_INDENT_INCREMENT = "    ";
 
     private final Logger logger = Logging.getLogger(DefaultProjectParser.class);
@@ -603,8 +602,9 @@ public class DefaultProjectParser implements GradleProjectParser {
             logger.lifecycle("Skipping project {} because it is excluded", subproject.getName());
             return Stream.empty();
         }
+
         try {
-            logger.lifecycle("Parsing sources from project {}", subproject.getName());
+            logger.lifecycle("Scanning sources in project {}", subproject.getName());
             List<NamedStyles> styles = getStyles();
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
@@ -632,11 +632,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                 return parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
             }
 
-            ResourceParser rp = new ResourceParser(baseDir, subproject, extension, javaTypeCache);
-
             Stream<SourceFile> sourceFiles = Stream.of();
             for (SourceSet sourceSet : sourceSets) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
+                JavaTypeCache javaTypeCache = new JavaTypeCache();
 
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
@@ -690,6 +689,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     logger.info("Scanned {} Java sources in {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
                 }
 
+                ResourceParser rp = new ResourceParser(baseDir, subproject, extension, javaTypeCache);
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if (resourcesDir.exists()) {
                         sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, rp.parse(resourcesDir.toPath(), alreadyParsed, ctx));
@@ -766,12 +766,12 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             //Collect any additional yaml/properties/xml files that are NOT already in a source set.
+            ResourceParser rp = new ResourceParser(baseDir, subproject, extension, new JavaTypeCache());
             sourceFiles = Stream.concat(sourceFiles, rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx).map(addProvenance(projectProvenance, null)));
 
             // Attach GradleProject marker to the build script
-
-            if (project.getBuildscript().getSourceFile() != null) {
-                Path buildScriptPath = baseDir.relativize(project.getBuildscript().getSourceFile().toPath());
+            if (this.project.getBuildscript().getSourceFile() != null) {
+                Path buildScriptPath = baseDir.relativize(this.project.getBuildscript().getSourceFile().toPath());
                 if (!isExcluded(exclusions, buildScriptPath)) {
                     sourceFiles = sourceFiles.map(sourceFile -> {
                         if (!sourceFile.getSourcePath().equals(buildScriptPath)) {
@@ -868,6 +868,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .collect(toList());
 
                 if (!kotlinPaths.isEmpty()) {
+                    JavaTypeCache javaTypeCache = new JavaTypeCache();
                     KotlinParser kp = KotlinParser.builder()
                             .classpath(dependencyPaths)
                             .styles(getStyles())
