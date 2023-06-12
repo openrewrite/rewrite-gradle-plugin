@@ -45,7 +45,6 @@ import org.openrewrite.gradle.isolated.ui.RecipeDescriptorTreePrompter;
 import org.openrewrite.gradle.marker.GradleProject;
 import org.openrewrite.gradle.marker.GradleProjectBuilder;
 import org.openrewrite.groovy.GroovyParser;
-import org.openrewrite.groovy.tree.G;
 import org.openrewrite.internal.InMemoryLargeSourceSet;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
@@ -56,16 +55,13 @@ import org.openrewrite.java.marker.JavaProject;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
-import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaSourceFile;
 import org.openrewrite.kotlin.KotlinParser;
-import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
-import org.openrewrite.text.PlainText;
 import org.openrewrite.tree.ParsingExecutionContextView;
 import org.openrewrite.xml.tree.Xml;
 
@@ -76,6 +72,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -90,6 +87,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     private static final String LOG_INDENT_INCREMENT = "    ";
 
     private final Logger logger = Logging.getLogger(DefaultProjectParser.class);
+    private final AtomicBoolean firstWarningLogged = new AtomicBoolean(false);
     protected final Path baseDir;
     protected final RewriteExtension extension;
     protected final Project project;
@@ -590,8 +588,9 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
         builder = Stream.concat(builder, parse(project, alreadyParsed, ctx));
-        builder = Stream.concat(builder, parseFailures(ctx));
-        return builder;
+
+        // log parse errors here at the end, so that we don't log parse errors for files that were excluded
+        return builder.map(this::logParseErrors);
     }
 
     public Stream<SourceFile> parse(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
@@ -676,7 +675,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
-                    Stream<J.CompilationUnit> cus = jp.parse(javaPaths, baseDir, ctx);
+                    Stream<SourceFile> cus = jp.parse(javaPaths, baseDir, ctx);
                     alreadyParsed.addAll(javaPaths);
                     cus = cus.map(cu -> {
                         if (isExcluded(exclusions, cu.getSourcePath()) ||
@@ -713,7 +712,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                                 .build();
 
-                        Stream<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
+                        Stream<SourceFile> cus = kp.parse(kotlinPaths, baseDir, ctx);
                         alreadyParsed.addAll(kotlinPaths);
                         cus = cus.map(cu -> {
                             if (isExcluded(exclusions, cu.getSourcePath())) {
@@ -748,7 +747,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .typeCache(javaTypeCache)
                                 .logCompilationWarningsAndErrors(false)
                                 .build();
-                        Stream<G.CompilationUnit> cus = gp.parse(groovyPaths, baseDir, ctx);
+                        Stream<SourceFile> cus = gp.parse(groovyPaths, baseDir, ctx);
                         alreadyParsed.addAll(groovyPaths);
                         cus = cus.map(cu -> {
                             if (isExcluded(exclusions, cu.getSourcePath())) {
@@ -876,7 +875,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
 
-                    Stream<K.CompilationUnit> cus = kp.parse(kotlinPaths, baseDir, ctx);
+                    Stream<SourceFile> cus = kp.parse(kotlinPaths, baseDir, ctx);
                     alreadyParsed.addAll(kotlinPaths);
                     cus = cus.map(cu -> {
                         if (isExcluded(exclusions, cu.getSourcePath())) {
@@ -899,26 +898,14 @@ public class DefaultProjectParser implements GradleProjectParser {
         return Stream.empty();
     }
 
-    private Stream<SourceFile> parseFailures(ExecutionContext ctx) {
-        return Stream.of(ParsingExecutionContextView.view(ctx))
-                .flatMap(ctxView -> {
-                    List<PlainText> parseFailures = ctxView.pollParseFailures();
-                    if (!parseFailures.isEmpty()) {
-                        StringBuilder sb = new StringBuilder();
-                        sb.append("There were problems parsing ").append(parseFailures.size()).append(" + sources, run with --info to see full stack traces:\n");
-                        for (PlainText parseFailure : parseFailures) {
-                            sb.append("  ").append(parseFailure.getSourcePath()).append("\n");
-                        }
-                        sb.append("Execution will continue but these files are unlikely to be affected by refactoring recipes.");
-                        if (extension.getThrowOnParseFailures()) {
-                            throw new RuntimeException(sb.toString());
-                        } else {
-                            logger.warn("{}", sb);
-                        }
-                        return parseFailures.stream();
-                    }
-                    return Stream.empty();
-                });
+    private SourceFile logParseErrors(SourceFile source) {
+        if (source instanceof ParseError) {
+            if (firstWarningLogged.compareAndSet(false, true)) {
+                logger.warn("There were problems parsing some source files, run with --info to see full stack traces");
+            }
+            logger.warn("There were problems parsing " + source.getSourcePath());
+        }
+        return source;
     }
 
     private boolean isExcluded(Collection<PathMatcher> exclusions, Path path) {
