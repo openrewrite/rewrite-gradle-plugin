@@ -952,9 +952,12 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
-        org.openrewrite.java.style.Autodetect.Detector javaDetector = org.openrewrite.java.style.Autodetect.detect(parse(ctx));
-        org.openrewrite.xml.style.Autodetect.Detector xmlDetector = org.openrewrite.xml.style.Autodetect.detect(javaDetector);
-        List<SourceFile> sourceFiles = xmlDetector.collect(toList());
+        org.openrewrite.java.style.Autodetect.Detector javaDetector = org.openrewrite.java.style.Autodetect.detector();
+        org.openrewrite.xml.style.Autodetect.Detector xmlDetector = org.openrewrite.xml.style.Autodetect.detector();
+        List<SourceFile> sourceFiles = parse(ctx)
+                .peek(javaDetector::sample)
+                .peek(xmlDetector::sample)
+                .collect(toList());
         Map<Class<? extends Tree>, NamedStyles> stylesByType = new HashMap<>();
         stylesByType.put(JavaSourceFile.class, javaDetector.build());
         stylesByType.put(Xml.Document.class, xmlDetector.build());
