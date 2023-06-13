@@ -346,7 +346,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
                 for (Result result : results.refactoredInPlace) {
                     assert result.getBefore() != null;
-                    logger.warn("These recipes would make results to {}:", result.getBefore().getSourcePath());
+                    logger.warn("These recipes would make changes to {}:", result.getBefore().getSourcePath());
                     logRecipesThatMadeChanges(result);
                 }
 
