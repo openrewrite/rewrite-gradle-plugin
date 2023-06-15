@@ -20,11 +20,11 @@ jobs:
     name: itest-${{ matrix.java }}
     steps:
       - name: checkout-openrewrite/spring-petclinic-migration
-        uses: actions/checkout@v3.5.2
+        uses: actions/checkout@v3.5.3
         with:
           repository: openrewrite/spring-petclinic-migration
       - name: setup-plugin-checkout-source
-        uses: actions/checkout@v3.5.2
+        uses: actions/checkout@v3.5.3
         with:
           path: rewrite-gradle-plugin
       - name: setup-plugin-setup-java-11
