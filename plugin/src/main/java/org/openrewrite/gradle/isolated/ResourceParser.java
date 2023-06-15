@@ -321,7 +321,8 @@ public class ResourceParser {
             alreadyParsed.addAll(quarkPaths);
         }
 
-        return sourceFiles;
+        // Filter out `null` values as safeguard against ill-behaved parsers; see https://github.com/openrewrite/rewrite/pull/3322
+        return sourceFiles.filter(Objects::nonNull);
     }
 
     private boolean isOverSizeThreshold(long fileSize) {
