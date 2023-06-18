@@ -74,6 +74,7 @@ import java.nio.file.PathMatcher;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -669,21 +670,24 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .collect(toList());
 
                 if (!javaPaths.isEmpty()) {
-                    JavaParser jp = JavaParser.fromJavaVersion()
-                            .classpath(dependencyPaths)
-                            .styles(styles)
-                            .typeCache(javaTypeCache)
-                            .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                            .build();
-                    Stream<SourceFile> cus = jp.parse(javaPaths, baseDir, ctx);
                     alreadyParsed.addAll(javaPaths);
-                    cus = cus.map(cu -> {
-                        if (isExcluded(exclusions, cu.getSourcePath()) ||
-                            cu.getSourcePath().startsWith(baseDir.relativize(subproject.getBuildDir().toPath()))) {
-                            return null;
-                        }
-                        return cu;
-                    }).filter(Objects::nonNull);
+                    Stream<SourceFile> cus = Stream
+                            .of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
+                                    .classpath(dependencyPaths)
+                                    .styles(styles)
+                                    .typeCache(javaTypeCache)
+                                    .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                                    .build())
+                            .map(Supplier::get)
+                            .flatMap(jp -> jp.parse(javaPaths, baseDir, ctx))
+                            .map(cu -> {
+                                if (isExcluded(exclusions, cu.getSourcePath()) ||
+                                    cu.getSourcePath().startsWith(baseDir.relativize(subproject.getBuildDir().toPath()))) {
+                                    return null;
+                                }
+                                return cu;
+                            })
+                            .filter(Objects::nonNull);
                     sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
                     logger.info("Scanned {} Java sources in {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
                 }
@@ -704,22 +708,23 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .collect(toList());
 
                     if (!kotlinPaths.isEmpty()) {
-
-                        KotlinParser kp = KotlinParser.builder()
-                                .classpath(dependencyPaths)
-                                .styles(styles)
-                                .typeCache(javaTypeCache)
-                                .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                                .build();
-
-                        Stream<SourceFile> cus = kp.parse(kotlinPaths, baseDir, ctx);
                         alreadyParsed.addAll(kotlinPaths);
-                        cus = cus.map(cu -> {
-                            if (isExcluded(exclusions, cu.getSourcePath())) {
-                                return null;
-                            }
-                            return cu;
-                        }).filter(Objects::nonNull);
+                        Stream<SourceFile> cus = Stream
+                                .of((Supplier<KotlinParser>) () -> KotlinParser.builder()
+                                        .classpath(dependencyPaths)
+                                        .styles(styles)
+                                        .typeCache(javaTypeCache)
+                                        .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                                        .build())
+                                .map(Supplier::get)
+                                .flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx))
+                                .map(cu -> {
+                                    if (isExcluded(exclusions, cu.getSourcePath())) {
+                                        return null;
+                                    }
+                                    return cu;
+                                })
+                                .filter(Objects::nonNull);
                         sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
                         logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getName(), sourceSet.getName());
                     }
@@ -741,20 +746,24 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 sourceSet.getOutput().getClassesDirs().getFiles().stream().map(File::toPath)
                         ).collect(toList());
 
-                        GroovyParser gp = GroovyParser.builder()
-                                .classpath(dependenciesWithBuildDirs)
-                                .styles(styles)
-                                .typeCache(javaTypeCache)
-                                .logCompilationWarningsAndErrors(false)
-                                .build();
-                        Stream<SourceFile> cus = gp.parse(groovyPaths, baseDir, ctx);
                         alreadyParsed.addAll(groovyPaths);
-                        cus = cus.map(cu -> {
-                            if (isExcluded(exclusions, cu.getSourcePath())) {
-                                return null;
-                            }
-                            return cu;
-                        }).filter(Objects::nonNull);
+
+                        Stream<SourceFile> cus = Stream
+                                .of((Supplier<GroovyParser>) () -> GroovyParser.builder()
+                                        .classpath(dependenciesWithBuildDirs)
+                                        .styles(styles)
+                                        .typeCache(javaTypeCache)
+                                        .logCompilationWarningsAndErrors(false)
+                                        .build())
+                                .map(Supplier::get)
+                                .flatMap(gp -> gp.parse(groovyPaths, baseDir, ctx))
+                                .map(cu -> {
+                                    if (isExcluded(exclusions, cu.getSourcePath())) {
+                                        return null;
+                                    }
+                                    return cu;
+                                })
+                                .filter(Objects::nonNull);
                         sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
                         logger.info("Scanned {} Groovy sources in {}/{}", groovyPaths.size(), subproject.getName(), sourceSet.getName());
                     }
