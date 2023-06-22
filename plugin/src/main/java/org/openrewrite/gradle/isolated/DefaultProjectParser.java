@@ -23,6 +23,7 @@ import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.SourceDirectorySet;
+import org.gradle.api.initialization.Settings;
 import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -30,6 +31,8 @@ import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.internal.service.ServiceRegistry;
+import org.gradle.invocation.DefaultGradle;
+import org.gradle.util.GradleVersion;
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet;
 import org.openrewrite.*;
 import org.openrewrite.binary.Binary;
@@ -44,6 +47,8 @@ import org.openrewrite.gradle.SanitizedMarkerPrinter;
 import org.openrewrite.gradle.isolated.ui.RecipeDescriptorTreePrompter;
 import org.openrewrite.gradle.marker.GradleProject;
 import org.openrewrite.gradle.marker.GradleProjectBuilder;
+import org.openrewrite.gradle.marker.GradleSettings;
+import org.openrewrite.gradle.marker.GradleSettingsBuilder;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.internal.InMemoryLargeSourceSet;
 import org.openrewrite.internal.ListUtils;
@@ -795,6 +800,28 @@ public class DefaultProjectParser implements GradleProjectParser {
                             return Markup.warn(sourceFile, sanitizedException);
                         }
                     });
+                }
+            }
+
+            if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0) {
+                Settings settings = ((DefaultGradle) this.project.getGradle()).getSettings();
+                if (settings.getBuildscript().getSourceFile() != null) {
+                    Path settingsScriptPath = baseDir.relativize(settings.getBuildscript().getSourceFile().toPath());
+                    if (!isExcluded(exclusions, settingsScriptPath)) {
+                        sourceFiles = sourceFiles.map(sourceFile -> {
+                            if (!sourceFile.getSourcePath().equals(settingsScriptPath)) {
+                                return sourceFile;
+                            }
+                            try {
+                                GradleSettings gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
+                                return sourceFile.withMarkers(sourceFile.getMarkers().add(gs));
+                            } catch (Exception e) {
+                                RuntimeException sanitizedException = new RuntimeException(e.getMessage());
+                                sanitizedException.setStackTrace(e.getStackTrace());
+                                return Markup.warn(sourceFile, sanitizedException);
+                            }
+                        });
+                    }
                 }
             }
 
