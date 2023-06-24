@@ -30,6 +30,7 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.invocation.DefaultGradle;
 import org.gradle.util.GradleVersion;
@@ -620,10 +621,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceSets = Collections.emptySet();
             } else {
                 projectProvenance = new ArrayList<>(sharedProvenance);
-                projectProvenance.add(new JavaVersion(randomId(), System.getProperty("java.runtime.version"),
-                        System.getProperty("java.vm.vendor"),
-                        javaConvention.getSourceCompatibility().toString(),
-                        javaConvention.getTargetCompatibility().toString()));
                 projectProvenance.add(new JavaProject(randomId(), subproject.getName(),
                         new JavaProject.Publication(subproject.getGroup().toString(),
                                 subproject.getName(),
@@ -641,6 +638,11 @@ public class DefaultProjectParser implements GradleProjectParser {
             for (SourceSet sourceSet : sourceSets) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 JavaTypeCache javaTypeCache = new JavaTypeCache();
+                JavaCompile javaCompileTask = (JavaCompile) project.getTasks().getByName(sourceSet.getCompileJavaTaskName());
+                JavaVersion javaVersion = new JavaVersion(randomId(), System.getProperty("java.runtime.version"),
+                        System.getProperty("java.vm.vendor"),
+                        javaCompileTask.getSourceCompatibility(),
+                        javaCompileTask.getTargetCompatibility());
 
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
@@ -692,7 +694,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 }
                                 return cu;
                             })
-                            .filter(Objects::nonNull);
+                            .filter(Objects::nonNull)
+                            .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
                     sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
                     logger.info("Scanned {} Java sources in {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
                 }
@@ -729,7 +732,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                                     }
                                     return cu;
                                 })
-                                .filter(Objects::nonNull);
+                                .filter(Objects::nonNull)
+                                .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
                         sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
                         logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getName(), sourceSet.getName());
                     }
@@ -768,7 +772,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                                     }
                                     return cu;
                                 })
-                                .filter(Objects::nonNull);
+                                .filter(Objects::nonNull)
+                                .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
                         sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
                         logger.info("Scanned {} Groovy sources in {}/{}", groovyPaths.size(), subproject.getName(), sourceSet.getName());
                     }
