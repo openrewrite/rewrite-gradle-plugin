@@ -95,11 +95,9 @@ public class RewritePlugin implements Plugin<Project> {
             JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
             javaConvention.getSourceSets().all(sourceSet -> {
                 // This is intended to ensure that any Groovy/Kotlin/etc. and dependent project sources are available
-                Task compileTask = project.getTasks().findByName(sourceSet.getCompileJavaTaskName());
-                if(compileTask != null) {
-                    rewriteRun.dependsOn(compileTask);
-                    rewriteDryRun.dependsOn(compileTask);
-                }
+                Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());
+                rewriteRun.dependsOn(compileTask);
+                rewriteDryRun.dependsOn(compileTask);
             });
         });
     }
