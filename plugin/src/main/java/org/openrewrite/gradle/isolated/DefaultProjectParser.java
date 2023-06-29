@@ -639,11 +639,19 @@ public class DefaultProjectParser implements GradleProjectParser {
             for (SourceSet sourceSet : sourceSets) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 JavaTypeCache javaTypeCache = new JavaTypeCache();
-                JavaCompile javaCompileTask = (JavaCompile) project.getTasks().getByName(sourceSet.getCompileJavaTaskName());
-                JavaVersion javaVersion = new JavaVersion(randomId(), System.getProperty("java.runtime.version"),
-                        System.getProperty("java.vm.vendor"),
-                        javaCompileTask.getSourceCompatibility(),
-                        javaCompileTask.getTargetCompatibility());
+                JavaCompile javaCompileTask = (JavaCompile) project.getTasks().findByName(sourceSet.getCompileJavaTaskName());
+                JavaVersion javaVersion;
+                if(javaCompileTask == null) {
+                    javaVersion = new JavaVersion(randomId(), System.getProperty("java.runtime.version"),
+                            System.getProperty("java.vm.vendor"),
+                            javaConvention.getSourceCompatibility().toString(),
+                            javaConvention.getTargetCompatibility().toString());
+                } else {
+                    javaVersion = new JavaVersion(randomId(), System.getProperty("java.runtime.version"),
+                            System.getProperty("java.vm.vendor"),
+                            javaCompileTask.getSourceCompatibility(),
+                            javaCompileTask.getTargetCompatibility());
+                }
 
                 List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
                         .filter(it -> it.isFile() && it.getName().endsWith(".java"))
