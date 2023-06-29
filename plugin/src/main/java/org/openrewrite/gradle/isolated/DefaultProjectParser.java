@@ -68,6 +68,7 @@ import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
+import org.openrewrite.tree.ParseError;
 import org.openrewrite.tree.ParsingExecutionContextView;
 import org.openrewrite.xml.tree.Xml;
 
