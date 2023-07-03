@@ -54,7 +54,6 @@ import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.internal.InMemoryLargeSourceSet;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.lang.Nullable;
-import org.openrewrite.ipc.http.HttpUrlConnectionSender;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.java.marker.JavaProject;
@@ -394,10 +393,11 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     public void run(Consumer<Throwable> onError) {
-        run(listResults(new InMemoryExecutionContext(onError)));
+        ExecutionContext ctx = new InMemoryExecutionContext(onError);
+        run(listResults(ctx), ctx);
     }
 
-    public void run(ResultsContainer results) {
+    public void run(ResultsContainer results, ExecutionContext ctx) {
         try {
             if (results.isNotEmpty()) {
                 RuntimeException firstException = results.getFirstException();
@@ -440,7 +440,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 try {
                     for (Result result : results.generated) {
-                        writeAfter(results.getProjectRoot(), result);
+                        writeAfter(results.getProjectRoot(), result, ctx);
                     }
                     for (Result result : results.deleted) {
                         assert result.getBefore() != null;
@@ -477,12 +477,12 @@ public class DefaultProjectParser implements GradleProjectParser {
                             // On Mac this can return "false" even when the file was deleted, so skip the check
                             //noinspection ResultOfMethodCallIgnored
                             originalLocation.toFile().delete();
-                            writeAfter(results.getProjectRoot(), result);
+                            writeAfter(results.getProjectRoot(), result, ctx);
                         }
                     }
 
                     for (Result result : results.refactoredInPlace) {
-                        writeAfter(results.getProjectRoot(), result);
+                        writeAfter(results.getProjectRoot(), result, ctx);
                     }
                     List<Path> emptyDirectories = results.newlyEmptyDirectories();
                     if (!emptyDirectories.isEmpty()) {
@@ -502,7 +502,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
-    private static void writeAfter(Path root, Result result) {
+    private static void writeAfter(Path root, Result result, ExecutionContext ctx) {
         assert result.getAfter() != null;
         Path targetPath = root.resolve(result.getAfter().getSourcePath());
         File targetFile = targetPath.toFile();
@@ -519,7 +519,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         } else if (result.getAfter() instanceof Remote) {
             Remote remote = (Remote) result.getAfter();
             try (FileOutputStream sourceFileWriter = new FileOutputStream(targetFile)) {
-                InputStream source = remote.getInputStream(new HttpUrlConnectionSender());
+                InputStream source = remote.getInputStream(ctx);
                 byte[] buf = new byte[4096];
                 int length;
                 while ((length = source.read(buf)) > 0) {
