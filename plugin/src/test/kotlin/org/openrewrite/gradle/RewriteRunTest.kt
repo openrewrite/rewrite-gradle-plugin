@@ -752,6 +752,7 @@ class RewriteRunTest : RewritePluginTest {
             propertiesFile("foo/foo.properties", "foo = bar")
             buildGradle("""
                 plugins {
+                    id("groovy")
                     id("org.openrewrite.rewrite")
                 }
                 
