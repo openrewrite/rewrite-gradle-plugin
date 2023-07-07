@@ -62,19 +62,20 @@ public class ResourceParser {
 
     private final int sizeThresholdMb;
 
+
     public ResourceParser(Path baseDir, Project project, RewriteExtension extension, JavaTypeCache typeCache) {
         this.baseDir = baseDir;
         this.project = project;
-        this.exclusions = pathMatchers(baseDir, mergeExclusions(project, extension));
+        this.exclusions = pathMatchers(baseDir, mergeExclusions(project, baseDir, extension));
         this.plainTextMasks = pathMatchers(baseDir, extension.getPlainTextMasks());
         this.typeCache = typeCache;
         this.sizeThresholdMb = extension.getSizeThresholdMb();
     }
 
-    private static Collection<String> mergeExclusions(Project project, RewriteExtension extension) {
+    private static Collection<String> mergeExclusions(Project project, Path baseDir, RewriteExtension extension) {
         return Stream.concat(
                 project.getSubprojects().stream()
-                        .map(subproject -> project.getProjectDir().toPath().relativize(subproject.getProjectDir().toPath()).toString()),
+                        .map(subproject -> baseDir.relativize(subproject.getProjectDir().toPath()).toString()),
                 extension.getExclusions().stream()
         ).collect(toList());
     }
@@ -128,15 +129,15 @@ public class ResourceParser {
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (attrs.size() != 0 && !attrs.isOther() && !isExcluded(file) && !isOverSizeThreshold(attrs.size())) {
                     if (jsonParser.accept(file) ||
-                        xmlParser.accept(file) ||
-                        yamlParser.accept(file) ||
-                        propertiesParser.accept(file) ||
-                        protoParser.accept(file) ||
-                        hclParser.accept(file) ||
-                        pythonParser.accept(file) ||
-                        groovyParser.accept(file) ||
-                        gradleParser.accept(file) ||
-                        isParsedAsPlainText(file)
+                            xmlParser.accept(file) ||
+                            yamlParser.accept(file) ||
+                            propertiesParser.accept(file) ||
+                            protoParser.accept(file) ||
+                            hclParser.accept(file) ||
+                            pythonParser.accept(file) ||
+                            groovyParser.accept(file) ||
+                            gradleParser.accept(file) ||
+                            isParsedAsPlainText(file)
                     ) {
                         resources.add(file);
                     }
@@ -165,7 +166,7 @@ public class ResourceParser {
 
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 if (!attrs.isOther() && !attrs.isSymbolicLink() &&
-                    !alreadyParsed.contains(file) && !isExcluded(file)) {
+                        !alreadyParsed.contains(file) && !isExcluded(file)) {
                     if (isOverSizeThreshold(attrs.size())) {
                         logger.info("Parsing as quark {} as its size {}Mb exceeds size threshold {}Mb", file, attrs.size() / (1024L * 1024L), sizeThresholdMb);
                         quarkPaths.add(file);
