@@ -62,19 +62,20 @@ public class ResourceParser {
 
     private final int sizeThresholdMb;
 
+
     public ResourceParser(Path baseDir, Project project, RewriteExtension extension, JavaTypeCache typeCache) {
         this.baseDir = baseDir;
         this.project = project;
-        this.exclusions = pathMatchers(baseDir, mergeExclusions(project, extension));
+        this.exclusions = pathMatchers(baseDir, mergeExclusions(project, baseDir, extension));
         this.plainTextMasks = pathMatchers(baseDir, extension.getPlainTextMasks());
         this.typeCache = typeCache;
         this.sizeThresholdMb = extension.getSizeThresholdMb();
     }
 
-    private static Collection<String> mergeExclusions(Project project, RewriteExtension extension) {
+    private static Collection<String> mergeExclusions(Project project, Path baseDir, RewriteExtension extension) {
         return Stream.concat(
                 project.getSubprojects().stream()
-                        .map(subproject -> project.getProjectDir().toPath().relativize(subproject.getProjectDir().toPath()).toString()),
+                        .map(subproject -> baseDir.relativize(subproject.getProjectDir().toPath()).toString()),
                 extension.getExclusions().stream()
         ).collect(toList());
     }
