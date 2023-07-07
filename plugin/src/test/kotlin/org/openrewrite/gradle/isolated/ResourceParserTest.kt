@@ -39,7 +39,7 @@ class ResourceParserTest {
         Mockito.`when`(subProject.projectDir).thenReturn(path.resolve("project/subproject").toFile())
         Mockito.`when`(project.subprojects).thenReturn(setOf(subProject))
 
-        val resourceParser = ResourceParser(path,  project, rewriteExtension, JavaTypeCache())
+        val resourceParser = ResourceParser(path, project, rewriteExtension, JavaTypeCache())
 
         val sources = resourceParser.listSources(project.projectDir.toPath())
 
