@@ -16,28 +16,34 @@
 package org.openrewrite.gradle.isolated
 
 import org.assertj.core.api.Assertions
-import org.gradle.api.Project
+import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
+import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.gradle.DefaultRewriteExtension
 import org.openrewrite.java.internal.JavaTypeCache
+import java.io.File
 import kotlin.io.path.Path
 
 class ResourceParserTest {
 
     @Test
     fun `resource parser is excluding subprojects directories using the base dir`(
+            @TempDir userHome: File
     ) {
-        val project = Mockito.mock(Project::class.java)
-        val subProject = Mockito.mock(Project::class.java)
+
+        val path = Path("src/test/samples/resourceParserTest/root").toAbsolutePath()
+
+        val project =  ProjectBuilder.builder()
+                .withProjectDir(path.resolve("project").toFile())
+                .withGradleUserHomeDir(userHome)
+                .build()
+
+        ProjectBuilder.builder()
+                .withProjectDir(path.resolve("project/subproject").toFile())
+                .withParent(project)
+                .build()
 
         val rewriteExtension = DefaultRewriteExtension(project)
-
-        val path = Path("src/test/samples/resourceParserTest/root")
-
-        Mockito.`when`(project.projectDir).thenReturn(path.resolve("project").toFile())
-        Mockito.`when`(subProject.projectDir).thenReturn(path.resolve("project/subproject").toFile())
-        Mockito.`when`(project.subprojects).thenReturn(setOf(subProject))
 
         val resourceParser = ResourceParser(path, project, rewriteExtension, JavaTypeCache())
 

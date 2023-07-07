@@ -132,7 +132,6 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:latest.release"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
-    testImplementation("org.mockito:mockito-core:latest.release")
 
     //we declare rewrite dependencies as test runtime to avoid having to declare them as implementation dependencies
     testRuntimeOnly("org.openrewrite:rewrite-core")
