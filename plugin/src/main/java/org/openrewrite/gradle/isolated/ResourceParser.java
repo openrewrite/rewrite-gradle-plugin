@@ -47,6 +47,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static org.openrewrite.PathUtils.separatorsToUnix;
 
@@ -88,7 +89,7 @@ public class ResourceParser {
     }
 
     public Stream<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, ExecutionContext ctx) {
-        return parse(projectDir, alreadyParsed, Collections.emptyList(), Collections.emptyList(), ctx);
+        return parse(projectDir, alreadyParsed, emptyList(), emptyList(), ctx);
     }
 
     public Stream<SourceFile> parse(Path projectDir, Collection<Path> alreadyParsed, List<Path> classpath, List<NamedStyles> styles, ExecutionContext ctx) {
@@ -116,7 +117,7 @@ public class ResourceParser {
         PythonParser pythonParser = PythonParser.builder().build();
         HclParser hclParser = HclParser.builder().build();
         GroovyParser.Builder gpb = GroovyParser.builder()
-                .classpath();
+                .classpath(emptyList());
         GroovyParser groovyParser = gpb.build();
         GradleParser gradleParser = GradleParser.builder()
                 .groovyParser(gpb)
@@ -229,7 +230,7 @@ public class ResourceParser {
                     .map(File::toPath)
                     .collect(toList());
         } else {
-            settingsClasspath = Collections.emptyList();
+            settingsClasspath = emptyList();
         }
 
         GradleParser gradleParser = GradleParser.builder()
