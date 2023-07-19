@@ -48,6 +48,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static org.openrewrite.PathUtils.separatorsToUnix;
 
 public class ResourceParser {
     private static final Set<String> DEFAULT_IGNORED_DIRECTORIES = new HashSet<>(Arrays.asList("build", "target", "out", ".sonar", ".gradle", ".idea", ".project", "node_modules", ".git", ".metadata", ".DS_Store"));
@@ -75,7 +76,7 @@ public class ResourceParser {
     private static Collection<String> mergeExclusions(Project project, Path baseDir, RewriteExtension extension) {
         return Stream.concat(
                 project.getSubprojects().stream()
-                        .map(subproject -> baseDir.relativize(subproject.getProjectDir().toPath()).toString()),
+                        .map(subproject -> separatorsToUnix(baseDir.relativize(subproject.getProjectDir().toPath()).toString())),
                 extension.getExclusions().stream()
         ).collect(toList());
     }

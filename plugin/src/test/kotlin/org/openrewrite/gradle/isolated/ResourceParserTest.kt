@@ -28,20 +28,20 @@ class ResourceParserTest {
 
     @Test
     fun `resource parser is excluding subprojects directories using the base dir`(
-            @TempDir userHome: File
+        @TempDir userHome: File
     ) {
 
         val path = Path("src/test/samples/resourceParserTest/root").toAbsolutePath()
 
-        val project =  ProjectBuilder.builder()
-                .withProjectDir(path.resolve("project").toFile())
-                .withGradleUserHomeDir(userHome)
-                .build()
+        val project = ProjectBuilder.builder()
+            .withProjectDir(path.resolve("project").toFile())
+            .withGradleUserHomeDir(userHome)
+            .build()
 
         ProjectBuilder.builder()
-                .withProjectDir(path.resolve("project/subproject").toFile())
-                .withParent(project)
-                .build()
+            .withProjectDir(path.resolve("project/subproject").toFile())
+            .withParent(project)
+            .build()
 
         val rewriteExtension = DefaultRewriteExtension(project)
 
