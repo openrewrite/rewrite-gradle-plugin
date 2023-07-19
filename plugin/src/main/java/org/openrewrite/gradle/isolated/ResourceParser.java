@@ -114,8 +114,12 @@ public class ResourceParser {
         ProtoParser protoParser = new ProtoParser();
         PythonParser pythonParser = PythonParser.builder().build();
         HclParser hclParser = HclParser.builder().build();
-        GroovyParser groovyParser = GroovyParser.builder().build();
-        GradleParser gradleParser = GradleParser.builder().build();
+        GroovyParser.Builder gpb = GroovyParser.builder()
+                .classpath();
+        GroovyParser groovyParser = gpb.build();
+        GradleParser gradleParser = GradleParser.builder()
+                .groovyParser(gpb)
+                .build();
 
         List<Path> resources = new ArrayList<>();
         Files.walkFileTree(searchDir, Collections.emptySet(), 16, new SimpleFileVisitor<Path>() {
