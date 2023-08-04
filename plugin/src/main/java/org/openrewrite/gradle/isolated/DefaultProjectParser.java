@@ -836,6 +836,28 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
             }
 
+            sourceFiles =
+             sourceFiles.map(sourceFile -> {
+                File file = baseDir.resolve(sourceFile.getSourcePath()).toFile();
+
+                if (file.exists()) {
+                    try {
+                        String originalContent = new String(Files.readAllBytes(file.toPath()), sourceFile.getCharset());
+                        if (sourceFile.printAll().equals(originalContent)) {
+                            return sourceFile;
+                        } else {
+                            return new ParseError(UUID.randomUUID(), sourceFile.getMarkers(),
+                                    sourceFile.getSourcePath(), sourceFile.getFileAttributes(),
+                                    sourceFile.getCharset().name(), sourceFile.isCharsetBomMarked(),
+                                    sourceFile.getChecksum(), originalContent, sourceFile);
+                        }
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                }
+
+                return sourceFile;
+            });
             return sourceFiles;
         } catch (Exception e) {
             throw new RuntimeException(e);
