@@ -224,11 +224,15 @@ public class ResourceParser {
 
         List<Path> settingsClasspath;
         if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0) {
-            Settings settings = ((DefaultGradle) project.getGradle()).getSettings();
-            settingsClasspath = settings.getBuildscript().getConfigurations().getByName("classpath").resolve()
-                    .stream()
-                    .map(File::toPath)
-                    .collect(toList());
+            try {
+                Settings settings = ((DefaultGradle) project.getGradle()).getSettings();
+                settingsClasspath = settings.getBuildscript().getConfigurations().getByName("classpath").resolve()
+                        .stream()
+                        .map(File::toPath)
+                        .collect(toList());
+            } catch (IllegalStateException e) {
+                settingsClasspath = emptyList();
+            }
         } else {
             settingsClasspath = emptyList();
         }

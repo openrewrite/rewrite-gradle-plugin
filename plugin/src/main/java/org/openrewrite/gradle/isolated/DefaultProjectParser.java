@@ -629,13 +629,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceSets = javaConvention.getSourceSets();
             }
 
+            Stream<SourceFile> sourceFiles = Stream.of();
             //noinspection DataFlowIssue
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
                 subproject.getExtensions().findByName("kotlin") != null && subproject.getExtensions().findByName("kotlin").getClass().getCanonicalName().startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
-                return parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
+                sourceFiles = parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
             }
 
-            Stream<SourceFile> sourceFiles = Stream.of();
             for (SourceSet sourceSet : sourceSets) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 JavaTypeCache javaTypeCache = new JavaTypeCache();
@@ -699,13 +699,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
                     sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
                     logger.info("Scanned {} Java sources in {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
-                }
-
-                ResourceParser rp = new ResourceParser(baseDir, subproject, extension, javaTypeCache);
-                for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
-                    if (resourcesDir.exists()) {
-                        sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, rp.parse(resourcesDir.toPath(), alreadyParsed, ctx));
-                    }
                 }
 
                 if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.jvm")) {
@@ -780,6 +773,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                     }
                 }
 
+                ResourceParser rp = new ResourceParser(baseDir, subproject, extension, javaTypeCache);
+                for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
+                    if (resourcesDir.exists()) {
+                        sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, rp.parse(resourcesDir.toPath(), alreadyParsed, ctx));
+                    }
+                }
+
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
                 sourceFiles = Stream.concat(sourceFiles, sourceSetSourceFiles.map(addProvenance(projectProvenance, sourceSetProvenance)));
             }
@@ -810,8 +810,13 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0) {
-                Settings settings = ((DefaultGradle) this.project.getGradle()).getSettings();
-                if (settings.getBuildscript().getSourceFile() != null) {
+                Settings settings = null;
+                try {
+                    settings = ((DefaultGradle) this.project.getGradle()).getSettings();
+                } catch (IllegalStateException e) {
+                    // ignore
+                }
+                if (settings != null && settings.getBuildscript().getSourceFile() != null) {
                     Path settingsScriptPath = baseDir.relativize(settings.getBuildscript().getSourceFile().toPath());
                     if (!isExcluded(exclusions, settingsScriptPath)) {
                         sourceFiles = sourceFiles.map(sourceFile -> {
