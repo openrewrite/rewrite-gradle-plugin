@@ -271,7 +271,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 
                 rewrite {
-                    activeRecipe("org.openrewrite.java.cleanup.UnnecessaryParentheses")
+                    activeRecipe("org.openrewrite.staticanalysis.UnnecessaryParentheses")
                 }
                 
                 repositories {
@@ -280,6 +280,10 @@ class RewriteRunTest : RewritePluginTest {
                     maven {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
+                }
+                
+                dependencies {
+                    rewrite("org.openrewrite.recipe:rewrite-static-analysis:1.0.4")
                 }
             """)
             sourceSet("main") {
