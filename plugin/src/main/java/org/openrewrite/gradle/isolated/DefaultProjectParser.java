@@ -784,9 +784,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceFiles = Stream.concat(sourceFiles, sourceSetSourceFiles.map(addProvenance(projectProvenance, sourceSetProvenance)));
             }
 
-            //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-            ResourceParser rp = new ResourceParser(baseDir, subproject, extension, new JavaTypeCache());
-            sourceFiles = Stream.concat(sourceFiles, rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx).map(addProvenance(projectProvenance, null)));
+            sourceFiles = Stream.concat(sourceFiles, parseNonProjectResources(subproject, alreadyParsed, ctx, projectProvenance, sourceFiles)
+                    .map(addProvenance(projectProvenance, null)));
 
             // Attach GradleProject marker to the build script
             if (this.project.getBuildscript().getSourceFile() != null) {
@@ -840,6 +839,12 @@ public class DefaultProjectParser implements GradleProjectParser {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    protected Stream<SourceFile> parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
+        //Collect any additional yaml/properties/xml files that are NOT already in a source set.
+        ResourceParser rp = new ResourceParser(baseDir, subproject, extension, new JavaTypeCache());
+        return rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx);
     }
 
     private Stream<SourceFile> parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, List<Marker> projectProvenance, ExecutionContext ctx) {
