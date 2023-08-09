@@ -87,6 +87,7 @@ import java.util.stream.Stream;
 
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.*;
+import static org.openrewrite.PathUtils.separatorsToUnix;
 import static org.openrewrite.Tree.randomId;
 
 @SuppressWarnings("unused")
@@ -261,30 +262,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             buffer.append(LOG_INDENT_INCREMENT);
         }
         return buffer;
-    }
-
-    public Collection<Path> listSources() {
-        // Use a sorted collection so that gradle input detection isn't thrown off by ordering
-        ResourceParser rp = new ResourceParser(baseDir, project, extension, new JavaTypeCache());
-        Set<Path> result;
-        try {
-            result = new TreeSet<>(rp.listSources(project.getProjectDir().toPath()));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        //noinspection deprecation
-        JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
-        if (javaConvention != null) {
-            for (SourceSet sourceSet : javaConvention.getSourceSets()) {
-                sourceSet.getAllJava().getFiles().stream()
-                        .filter(it -> it.isFile() && (it.getName().endsWith(".java") || it.getName().endsWith(".kt")))
-                        .map(File::toPath)
-                        .map(Path::toAbsolutePath)
-                        .map(Path::normalize)
-                        .forEach(result::add);
-            }
-        }
-        return result;
     }
 
     public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
@@ -632,7 +609,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             Stream<SourceFile> sourceFiles = Stream.of();
             //noinspection DataFlowIssue
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
-                subproject.getExtensions().findByName("kotlin") != null && subproject.getExtensions().findByName("kotlin").getClass().getCanonicalName().startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
+                subproject.getExtensions().findByName("kotlin") != null && subproject.getExtensions().getByName("kotlin").getClass()
+                        .getCanonicalName().startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
                 sourceFiles = parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
             }
 
@@ -773,10 +751,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                     }
                 }
 
-                ResourceParser rp = new ResourceParser(baseDir, subproject, extension, javaTypeCache);
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if (resourcesDir.exists()) {
-                        sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, rp.parse(resourcesDir.toPath(), alreadyParsed, ctx));
+                        sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, omniParser(alreadyParsed)
+                                .parseAll(resourcesDir.toPath()));
                     }
                 }
 
@@ -843,8 +821,30 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     protected Stream<SourceFile> parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
         //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-        ResourceParser rp = new ResourceParser(baseDir, subproject, extension, new JavaTypeCache());
-        return rp.parse(subproject.getProjectDir().toPath(), alreadyParsed, ctx);
+        return omniParser(alreadyParsed).parseAll(subproject.getProjectDir().toPath());
+    }
+
+    private OmniParser omniParser(Set<Path> alreadyParsed) {
+        return OmniParser.builder()
+                .plainTextMasks(pathMatchers(baseDir, extension.getPlainTextMasks()))
+                .exclusionMatchers(pathMatchers(baseDir, mergeExclusions(project, baseDir, extension)))
+                .exclusions(alreadyParsed)
+                .sizeThresholdMb(extension.getSizeThresholdMb())
+                .build();
+    }
+
+    private static Collection<String> mergeExclusions(Project project, Path baseDir, RewriteExtension extension) {
+        return Stream.concat(
+                project.getSubprojects().stream()
+                        .map(subproject -> separatorsToUnix(baseDir.relativize(subproject.getProjectDir().toPath()).toString())),
+                extension.getExclusions().stream()
+        ).collect(toList());
+    }
+
+    private Collection<PathMatcher> pathMatchers(Path basePath, Collection<String> pathExpressions) {
+        return pathExpressions.stream()
+                .map(o -> basePath.getFileSystem().getPathMatcher("glob:" + o))
+                .collect(Collectors.toList());
     }
 
     private Stream<SourceFile> parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, List<Marker> projectProvenance, ExecutionContext ctx) {

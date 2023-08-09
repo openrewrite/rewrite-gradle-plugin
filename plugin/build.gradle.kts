@@ -106,6 +106,9 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-protobuf")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle")
+    "rewriteDependencies"("org.openrewrite.recipe:rewrite-all:$latest") {
+        isTransitive = false
+    }
     "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
@@ -113,6 +116,7 @@ dependencies {
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
 
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
+    implementation("org.openrewrite.recipe:rewrite-all:$latest")
     compileOnly("org.openrewrite:rewrite-core")
     compileOnly("org.openrewrite:rewrite-gradle")
     compileOnly("org.openrewrite.gradle.tooling:model:$latest")

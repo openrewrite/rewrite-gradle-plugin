@@ -18,7 +18,6 @@ package org.openrewrite.gradle;
 import org.gradle.internal.service.ServiceRegistry;
 
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -30,8 +29,6 @@ public interface GradleProjectParser {
     List<String> getAvailableStyles();
 
     void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry);
-
-    Collection<Path> listSources();
 
     void run(Consumer<Throwable> onError);
 

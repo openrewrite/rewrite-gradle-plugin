@@ -24,7 +24,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -89,10 +88,6 @@ public class DelegatingProjectParser implements GradleProjectParser {
             gpp.discoverRecipes(interactive, serviceRegistry);
             return null;
         });
-    }
-
-    public Collection<Path> listSources() {
-        return unwrapInvocationException(gpp::listSources);
     }
 
     public void run(Consumer<Throwable> onError) {
