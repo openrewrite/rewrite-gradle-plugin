@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Rewrite uses jackson for serialization/deserialization. So do lots of other build plugins.
  * Gradle plugins all share the same classpath at runtime.
- *
+ * <p>
  * This classloader exists to isolate rewrite's use of jackson from the rest of the build.
  */
 public class RewriteClassLoader extends URLClassLoader {
@@ -71,7 +71,6 @@ public class RewriteClassLoader extends URLClassLoader {
     }
 
     boolean shouldBeParentLoaded(String name) {
-
         for (String s : loadFromParent) {
             if (name.startsWith(s)) {
                 return true;

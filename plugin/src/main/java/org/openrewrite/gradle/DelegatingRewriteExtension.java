@@ -17,7 +17,6 @@ package org.openrewrite.gradle;
 
 
 import org.jetbrains.annotations.Nullable;
-import org.openrewrite.gradle.RewriteExtension;
 
 import javax.inject.Provider;
 import java.io.File;
@@ -32,7 +31,7 @@ import java.util.Map;
  * <p>
  * The one scenario where this is known to be problematic is when using the CLI on a build which applies the OSS plugin
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "unused"})
 public class DelegatingRewriteExtension implements RewriteExtension {
     final Object delegate;
     final Class<?> clazz;
@@ -237,6 +236,16 @@ public class DelegatingRewriteExtension implements RewriteExtension {
     public String getRewriteVersion() {
         try {
             return (String) clazz.getMethod("getRewriteVersion")
+                    .invoke(delegate);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public String getRewriteAllVersion() {
+        try {
+            return (String) clazz.getMethod("getRewriteAllVersion")
                     .invoke(delegate);
         } catch (Exception e) {
             throw new RuntimeException(e);
