@@ -106,9 +106,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-protobuf")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle")
-    "rewriteDependencies"("org.openrewrite.recipe:rewrite-all:$latest") {
-        isTransitive = false
-    }
+    "rewriteDependencies"("org.openrewrite.recipe:rewrite-all:$latest")
     "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
@@ -116,7 +114,6 @@ dependencies {
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
 
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
-    implementation("org.openrewrite.recipe:rewrite-all:$latest")
     compileOnly("org.openrewrite:rewrite-core")
     compileOnly("org.openrewrite:rewrite-gradle")
     compileOnly("org.openrewrite.gradle.tooling:model:$latest")
@@ -130,9 +127,7 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-protobuf")
     compileOnly("org.openrewrite:rewrite-xml")
     compileOnly("org.openrewrite:rewrite-yaml")
-    compileOnly("org.openrewrite.recipe:rewrite-all:$latest") {
-        isTransitive = false
-    }
+    compileOnly("org.openrewrite.recipe:rewrite-all:$latest")
     compileOnly("com.puppycrawl.tools:checkstyle:9.3")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
 
@@ -140,23 +135,6 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
 
-    //we declare rewrite dependencies as test runtime to avoid having to declare them as implementation dependencies
-    testRuntimeOnly("org.openrewrite:rewrite-core")
-    testRuntimeOnly("org.openrewrite:rewrite-gradle")
-    testRuntimeOnly("org.openrewrite.gradle.tooling:model:$latest")
-    testRuntimeOnly("org.openrewrite:rewrite-groovy")
-    testRuntimeOnly("org.openrewrite:rewrite-hcl")
-    testImplementation("org.openrewrite:rewrite-java")
-    testRuntimeOnly("org.openrewrite:rewrite-json")
-    testRuntimeOnly("org.openrewrite:rewrite-kotlin:$latest")
-    testRuntimeOnly("org.openrewrite:rewrite-python:$latest")
-    testRuntimeOnly("org.openrewrite:rewrite-properties")
-    testRuntimeOnly("org.openrewrite:rewrite-protobuf")
-    testRuntimeOnly("org.openrewrite:rewrite-xml")
-    testRuntimeOnly("org.openrewrite:rewrite-yaml")
-    testRuntimeOnly("org.openrewrite.recipe:rewrite-all:$latest") {
-        isTransitive = false
-    }
     testImplementation("org.openrewrite:rewrite-test")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.assertj:assertj-core:latest.release")
