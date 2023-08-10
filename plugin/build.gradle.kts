@@ -130,6 +130,9 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-protobuf")
     compileOnly("org.openrewrite:rewrite-xml")
     compileOnly("org.openrewrite:rewrite-yaml")
+    compileOnly("org.openrewrite.recipe:rewrite-all:$latest") {
+        isTransitive = false
+    }
     compileOnly("com.puppycrawl.tools:checkstyle:9.3")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
 
@@ -151,6 +154,9 @@ dependencies {
     testRuntimeOnly("org.openrewrite:rewrite-protobuf")
     testRuntimeOnly("org.openrewrite:rewrite-xml")
     testRuntimeOnly("org.openrewrite:rewrite-yaml")
+    testRuntimeOnly("org.openrewrite.recipe:rewrite-all:$latest") {
+        isTransitive = false
+    }
     testImplementation("org.openrewrite:rewrite-test")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.assertj:assertj-core:latest.release")

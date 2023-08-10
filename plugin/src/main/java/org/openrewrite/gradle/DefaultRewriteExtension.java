@@ -217,6 +217,14 @@ public class DefaultRewriteExtension implements RewriteExtension {
         return rewriteVersion;
     }
 
+    @Override
+    public String getRewriteAllVersion() {
+        if(rewriteVersion == null) {
+            return getVersionProps().getProperty("org.openrewrite.recipe:rewrite-all");
+        }
+        return rewriteVersion;
+    }
+
     private String rewriteGradleModelVersion;
     @Override
     public String getRewriteGradleModelVersion() {

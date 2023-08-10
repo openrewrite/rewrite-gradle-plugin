@@ -73,6 +73,7 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
                     deps.create("org.openrewrite:rewrite-protobuf:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
                     deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
+                    deps.create("org.openrewrite.recipe:rewrite-all:" + extension.getRewriteAllVersion()),
                     deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
 
                     // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
