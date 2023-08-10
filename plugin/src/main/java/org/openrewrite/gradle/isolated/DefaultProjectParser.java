@@ -68,6 +68,7 @@ import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.tree.ParseError;
+import org.openrewrite.tree.ParsingEventListener;
 import org.openrewrite.tree.ParsingExecutionContextView;
 import org.openrewrite.xml.tree.Xml;
 
@@ -264,6 +265,24 @@ public class DefaultProjectParser implements GradleProjectParser {
         return buffer;
     }
 
+    public Collection<Path> listSources() {
+        // Use a sorted collection so that gradle input detection isn't thrown off by ordering
+        Set<Path> result = new TreeSet<>(omniParser(emptySet()).acceptedPaths(project.getProjectDir().toPath()));
+        //noinspection deprecation
+        JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
+        if (javaConvention != null) {
+            for (SourceSet sourceSet : javaConvention.getSourceSets()) {
+                sourceSet.getAllJava().getFiles().stream()
+                        .filter(it -> it.isFile() && (it.getName().endsWith(".java") || it.getName().endsWith(".kt")))
+                        .map(File::toPath)
+                        .map(Path::toAbsolutePath)
+                        .map(Path::normalize)
+                        .forEach(result::add);
+            }
+        }
+        return result;
+    }
+
     public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
         ParsingExecutionContextView ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(onError));
         if (dumpGcActivity) {
@@ -278,15 +297,18 @@ public class DefaultProjectParser implements GradleProjectParser {
                     try (FileOutputStream fos = new FileOutputStream(rewriteGcLog, false);
                          BufferedWriter logWriter = new BufferedWriter(new PrintWriter(fos))) {
                         logWriter.write("file,jvm.gc.overhead,g1.old.gen.size\n");
-                        ctx.setParsingListener((input, sourceFile) -> {
-                            try {
-                                logWriter.write(input.getPath() + ",");
-                                logWriter.write(meterRegistry.get("jvm.gc.overhead").gauge().value() + ",");
-                                Gauge g1Used = meterRegistry.find("jvm.memory.used").tag("id", "G1 Old Gen").gauge();
-                                logWriter.write((g1Used == null ? "" : Double.toString(g1Used.value())) + "\n");
-                            } catch (IOException e) {
-                                logger.error("Unable to write rewrite GC log");
-                                throw new UncheckedIOException(e);
+                        ctx.setParsingListener(new ParsingEventListener() {
+                            @Override
+                            public void parsed(Parser.Input input, SourceFile sourceFile) {
+                                try {
+                                    logWriter.write(input.getPath() + ",");
+                                    logWriter.write(meterRegistry.get("jvm.gc.overhead").gauge().value() + ",");
+                                    Gauge g1Used = meterRegistry.find("jvm.memory.used").tag("id", "G1 Old Gen").gauge();
+                                    logWriter.write((g1Used == null ? "" : Double.toString(g1Used.value())) + "\n");
+                                } catch (IOException e) {
+                                    logger.error("Unable to write rewrite GC log");
+                                    throw new UncheckedIOException(e);
+                                }
                             }
                         });
                         dryRun(reportPath, listResults(ctx));

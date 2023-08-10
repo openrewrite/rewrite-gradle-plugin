@@ -24,6 +24,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -90,6 +91,10 @@ public class DelegatingProjectParser implements GradleProjectParser {
         });
     }
 
+    public Collection<Path> listSources() {
+        return unwrapInvocationException(gpp::listSources);
+    }
+
     public void run(Consumer<Throwable> onError) {
         unwrapInvocationException(() -> {
             gpp.run(onError);
@@ -132,7 +137,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
     }
 
     /**
-     * Bloating stacktraces with reflection errors isn't generally helpful for understanding what went wrong.
+     * Bloating stack traces with reflection errors isn't generally helpful for understanding what went wrong.
      * <p>
      * This highlights the actual cause of a problem, allowing Gradle's console to display something useful like
      * "Recipe validation errors detected ..." rather than only "InvocationTargetException ..."
