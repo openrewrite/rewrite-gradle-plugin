@@ -350,6 +350,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
                     "**.sql",
                     "**Dockerfile",
                     "**Jenkinsfile",
+                    "**/CODEOWNERS",
                     "**.kts"
             ));
         }
