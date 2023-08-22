@@ -60,8 +60,10 @@ import org.openrewrite.java.marker.JavaProject;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
+import org.openrewrite.java.tree.J;
 import org.openrewrite.java.tree.JavaSourceFile;
 import org.openrewrite.kotlin.KotlinParser;
+import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.quark.Quark;
@@ -1027,13 +1029,21 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
 
         org.openrewrite.java.style.Autodetect.Detector javaDetector = org.openrewrite.java.style.Autodetect.detector();
+        org.openrewrite.kotlin.style.Autodetect.Detector kotlinDetector = org.openrewrite.kotlin.style.Autodetect.detector();
         org.openrewrite.xml.style.Autodetect.Detector xmlDetector = org.openrewrite.xml.style.Autodetect.detector();
         List<SourceFile> sourceFiles = parse(ctx)
-                .peek(javaDetector::sample)
+                .peek(s -> {
+                    if (s instanceof K.CompilationUnit) {
+                        kotlinDetector.sample(s);
+                    } else if (s instanceof J.CompilationUnit) {
+                        javaDetector.sample(s);
+                    }
+                })
                 .peek(xmlDetector::sample)
                 .collect(toList());
         Map<Class<? extends Tree>, NamedStyles> stylesByType = new HashMap<>();
-        stylesByType.put(JavaSourceFile.class, javaDetector.build());
+        stylesByType.put(J.CompilationUnit.class, javaDetector.build());
+        stylesByType.put(K.CompilationUnit.class, kotlinDetector.build());
         stylesByType.put(Xml.Document.class, xmlDetector.build());
         sourceFiles = ListUtils.map(sourceFiles, applyAutodetectedStyle(stylesByType));
 
