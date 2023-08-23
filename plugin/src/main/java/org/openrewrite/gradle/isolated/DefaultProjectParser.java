@@ -61,7 +61,6 @@ import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.java.tree.J;
-import org.openrewrite.java.tree.JavaSourceFile;
 import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
@@ -70,6 +69,7 @@ import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.tree.ParseError;
+import org.openrewrite.tree.ParsingEventListener;
 import org.openrewrite.tree.ParsingExecutionContextView;
 import org.openrewrite.xml.tree.Xml;
 
@@ -303,15 +303,18 @@ public class DefaultProjectParser implements GradleProjectParser {
                     try (FileOutputStream fos = new FileOutputStream(rewriteGcLog, false);
                          BufferedWriter logWriter = new BufferedWriter(new PrintWriter(fos))) {
                         logWriter.write("file,jvm.gc.overhead,g1.old.gen.size\n");
-                        ctx.setParsingListener((input, sourceFile) -> {
-                            try {
-                                logWriter.write(input.getPath() + ",");
-                                logWriter.write(meterRegistry.get("jvm.gc.overhead").gauge().value() + ",");
-                                Gauge g1Used = meterRegistry.find("jvm.memory.used").tag("id", "G1 Old Gen").gauge();
-                                logWriter.write((g1Used == null ? "" : Double.toString(g1Used.value())) + "\n");
-                            } catch (IOException e) {
-                                logger.error("Unable to write rewrite GC log");
-                                throw new UncheckedIOException(e);
+                        ctx.setParsingListener(new ParsingEventListener() {
+                            @Override
+                            public void parsed(Parser.Input input, SourceFile sourceFile) {
+                                try {
+                                    logWriter.write(input.getPath() + ",");
+                                    logWriter.write(meterRegistry.get("jvm.gc.overhead").gauge().value() + ",");
+                                    Gauge g1Used = meterRegistry.find("jvm.memory.used").tag("id", "G1 Old Gen").gauge();
+                                    logWriter.write((g1Used == null ? "" : Double.toString(g1Used.value())) + "\n");
+                                } catch (IOException e) {
+                                    logger.error("Unable to write rewrite GC log");
+                                    throw new UncheckedIOException(e);
+                                }
                             }
                         });
                         dryRun(reportPath, listResults(ctx));
