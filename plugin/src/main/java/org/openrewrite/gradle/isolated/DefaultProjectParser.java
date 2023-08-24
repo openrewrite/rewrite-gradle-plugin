@@ -41,10 +41,7 @@ import org.openrewrite.config.Environment;
 import org.openrewrite.config.OptionDescriptor;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
-import org.openrewrite.gradle.DefaultRewriteExtension;
-import org.openrewrite.gradle.GradleProjectParser;
-import org.openrewrite.gradle.RewriteExtension;
-import org.openrewrite.gradle.SanitizedMarkerPrinter;
+import org.openrewrite.gradle.*;
 import org.openrewrite.gradle.isolated.ui.RecipeDescriptorTreePrompter;
 import org.openrewrite.gradle.marker.GradleProject;
 import org.openrewrite.gradle.marker.GradleProjectBuilder;
@@ -61,7 +58,6 @@ import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.java.tree.J;
-import org.openrewrite.java.tree.JavaSourceFile;
 import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
@@ -69,6 +65,7 @@ import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
+import org.openrewrite.text.PlainTextParser;
 import org.openrewrite.tree.ParseError;
 import org.openrewrite.tree.ParsingEventListener;
 import org.openrewrite.tree.ParsingExecutionContextView;
@@ -88,7 +85,7 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static java.util.Collections.emptySet;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.*;
 import static org.openrewrite.PathUtils.separatorsToUnix;
 import static org.openrewrite.Tree.randomId;
@@ -631,7 +628,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             Stream<SourceFile> sourceFiles = Stream.of();
-            //noinspection DataFlowIssue
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
                 subproject.getExtensions().findByName("kotlin") != null && subproject.getExtensions().getByName("kotlin").getClass()
                         .getCanonicalName().startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
@@ -786,61 +782,107 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceFiles = Stream.concat(sourceFiles, sourceSetSourceFiles.map(addProvenance(projectProvenance, sourceSetProvenance)));
             }
 
+            sourceFiles = Stream.concat(sourceFiles, parseGradleFiles(exclusions, alreadyParsed, ctx));
             sourceFiles = Stream.concat(sourceFiles, parseNonProjectResources(subproject, alreadyParsed, ctx, projectProvenance, sourceFiles)
                     .map(addProvenance(projectProvenance, null)));
-
-            // Attach GradleProject marker to the build script
-            if (this.project.getBuildscript().getSourceFile() != null) {
-                Path buildScriptPath = baseDir.relativize(this.project.getBuildscript().getSourceFile().toPath());
-                if (!isExcluded(exclusions, buildScriptPath)) {
-                    sourceFiles = sourceFiles.map(sourceFile -> {
-                        if (!sourceFile.getSourcePath().equals(buildScriptPath)) {
-                            return sourceFile;
-                        }
-                        try {
-                            GradleProject gp = GradleProjectBuilder.gradleProject(subproject);
-                            return sourceFile.withMarkers(sourceFile.getMarkers().add(gp));
-                        } catch (Exception e) {
-                            // Gradle dependency resolution exceptions may be cyclic, which can be a problem for serialization
-                            RuntimeException sanitizedException = new RuntimeException(e.getMessage());
-                            sanitizedException.setStackTrace(e.getStackTrace());
-                            return Markup.warn(sourceFile, sanitizedException);
-                        }
-                    });
-                }
-            }
-
-            if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0) {
-                Settings settings = null;
-                try {
-                    settings = ((DefaultGradle) this.project.getGradle()).getSettings();
-                } catch (IllegalStateException e) {
-                    // ignore
-                }
-                if (settings != null && settings.getBuildscript().getSourceFile() != null) {
-                    Path settingsScriptPath = baseDir.relativize(settings.getBuildscript().getSourceFile().toPath());
-                    if (!isExcluded(exclusions, settingsScriptPath)) {
-                        sourceFiles = sourceFiles.map(sourceFile -> {
-                            if (!sourceFile.getSourcePath().equals(settingsScriptPath)) {
-                                return sourceFile;
-                            }
-                            try {
-                                GradleSettings gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
-                                return sourceFile.withMarkers(sourceFile.getMarkers().add(gs));
-                            } catch (Exception e) {
-                                RuntimeException sanitizedException = new RuntimeException(e.getMessage());
-                                sanitizedException.setStackTrace(e.getStackTrace());
-                                return Markup.warn(sourceFile, sanitizedException);
-                            }
-                        });
-                    }
-                }
-            }
 
             return sourceFiles;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private GradleParser gradleParser() {
+        List<Path> settingsClasspath;
+        if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0) {
+            try {
+                Settings settings = ((DefaultGradle) project.getGradle()).getSettings();
+                settingsClasspath = settings.getBuildscript().getConfigurations().getByName("classpath").resolve()
+                        .stream()
+                        .map(File::toPath)
+                        .collect(toList());
+            } catch (IllegalStateException e) {
+                settingsClasspath = emptyList();
+            }
+        } else {
+            settingsClasspath = emptyList();
+        }
+        List<Path> buildscriptClasspath = project.getBuildscript().getConfigurations().getByName("classpath").resolve()
+                .stream()
+                .map(File::toPath)
+                .collect(toList());
+
+        return GradleParser.builder()
+                .groovyParser(GroovyParser.builder()
+                        .typeCache(new JavaTypeCache())
+                        .styles(styles)
+                        .logCompilationWarningsAndErrors(false))
+                .buildscriptClasspath(buildscriptClasspath)
+                .settingsClasspath(settingsClasspath)
+                .build();
+    }
+
+    private Stream<SourceFile> parseGradleFiles(
+            Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
+        Stream<SourceFile> sourceFiles = Stream.empty();
+        GradleParser gradleParser = null;
+        if (project.getBuildscript().getSourceFile() != null) {
+            File buildGradlFile = project.getBuildscript().getSourceFile();
+            Path buildScriptPath = baseDir.relativize(project.getBuildscript().getSourceFile().toPath());
+            if (!isExcluded(exclusions, buildScriptPath) && buildGradlFile.exists()) {
+                alreadyParsed.add(buildScriptPath);
+                GradleProject gp = GradleProjectBuilder.gradleProject(project);
+                if(buildScriptPath.toString().endsWith(".gradle")) {
+                    gradleParser = gradleParser();
+                    sourceFiles = gradleParser.parse(singleton(buildGradlFile.toPath()), baseDir, ctx);
+                } else {
+                    sourceFiles = PlainTextParser.builder().build()
+                            .parse(singleton(buildGradlFile.toPath()), baseDir, ctx);
+                }
+                sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gp)));
+                alreadyParsed.add(buildScriptPath);
+            }
+        }
+
+        if(project == project.getRootProject()) {
+            File settingsGradleFile = project.file("settings.gradle");
+            File settingsGradleKtsFile = project.file("settings.gradle.kts");
+            GradleSettings gs = null;
+            if(GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0 && (settingsGradleFile.exists() || settingsGradleKtsFile.exists())) {
+                gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
+            }
+            GradleSettings finalGs = gs;
+            if(settingsGradleFile.exists()) {
+                Path settingsPath = baseDir.relativize(settingsGradleFile.toPath());
+                if(gradleParser == null) {
+                    gradleParser = gradleParser();
+                }
+                sourceFiles = Stream.concat(
+                        sourceFiles,
+                        gradleParser
+                                .parse(singleton(settingsGradleFile.toPath()), baseDir, ctx)
+                                .map(sourceFile -> {
+                                    if(finalGs == null) {
+                                        return sourceFile;
+                                    }
+                                    return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
+                                }));
+            } else if (settingsGradleKtsFile.exists()) {
+                Path settingsPath = baseDir.relativize(settingsGradleKtsFile.toPath());
+                sourceFiles = Stream.concat(
+                        sourceFiles,
+                        PlainTextParser.builder().build()
+                                .parse(singleton(settingsGradleFile.toPath()), baseDir, ctx)
+                                .map(sourceFile -> {
+                                    if(finalGs == null) {
+                                        return sourceFile;
+                                    }
+                                    return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
+                                }));
+            }
+        }
+
+        return sourceFiles;
     }
 
     protected Stream<SourceFile> parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {

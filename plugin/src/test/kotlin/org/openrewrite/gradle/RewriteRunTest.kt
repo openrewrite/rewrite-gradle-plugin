@@ -426,19 +426,19 @@ class RewriteRunTest : RewritePluginTest {
     }
 
     @Test
-    fun gradleScriptWhichDefinesMethod(
+    fun gradleDependencyManagement(
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
-                name: org.openrewrite.test.RenameBuildGradle
+                name: org.openrewrite.test.RemoveJacksonCore
                 displayName: Rename build.gradle to build.gradle.kts
                 description: Rename build.gradle to build.gradle.kts
                 recipeList:
-                  - org.openrewrite.RenameFile:
-                      fileMatcher: build.gradle
-                      fileName: build.gradle.kts
+                  - org.openrewrite.gradle.RemoveDependency:
+                      groupId: com.fasterxml.jackson.core
+                      artifactId: jackson-core
             """)
             buildGradle("""
                 plugins {
@@ -457,8 +457,14 @@ class RewriteRunTest : RewritePluginTest {
                 def foo() {}
                 class A {}
                 
+                
+                dependencies {
+                    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+                    implementation("com.fasterxml.jackson.core:jackson-core:2.15.2")
+                }
+                
                 rewrite {
-                    activeRecipe("org.openrewrite.test.RenameBuildGradle")
+                    activeRecipe("org.openrewrite.test.RemoveJacksonCore")
                 }
             """)
         }
@@ -467,7 +473,34 @@ class RewriteRunTest : RewritePluginTest {
         val rewriteRunResult = result.task(":rewriteRun")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-        assertThat(projectDir.resolve("build.gradle.kts").exists()).isTrue
+        assertThat(projectDir.resolve("build.gradle").readText())
+            //language=groovy
+            .isEqualTo("""
+            plugins {
+                id("java")
+                id("org.openrewrite.rewrite")
+            }
+            
+            repositories {
+                mavenLocal()
+                mavenCentral()
+                maven {
+                   url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                }
+            }
+            
+            def foo() {}
+            class A {}
+            
+            
+            dependencies {
+                implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+            }
+            
+            rewrite {
+                activeRecipe("org.openrewrite.test.RemoveJacksonCore")
+            }
+            """.trimIndent())
     }
 
     @Test
