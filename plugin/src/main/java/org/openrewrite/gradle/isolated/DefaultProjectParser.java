@@ -867,6 +867,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                     }
                                     return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
                                 }));
+                alreadyParsed.add(settingsPath);
             } else if (settingsGradleKtsFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleKtsFile.toPath());
                 sourceFiles = Stream.concat(
@@ -879,6 +880,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                     }
                                     return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
                                 }));
+                alreadyParsed.add(settingsPath);
             }
         }
 
