@@ -243,9 +243,9 @@ public class DelegatingRewriteExtension implements RewriteExtension {
     }
 
     @Override
-    public String getRewriteAllVersion() {
+    public String getRewritePolyglotVersion() {
         try {
-            return (String) clazz.getMethod("getRewriteAllVersion")
+            return (String) clazz.getMethod("getRewritePolyglotVersion")
                     .invoke(delegate);
         } catch (Exception e) {
             throw new RuntimeException(e);

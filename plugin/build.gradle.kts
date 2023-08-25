@@ -105,7 +105,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-protobuf")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle")
-    "rewriteDependencies"("org.openrewrite.recipe:rewrite-all:$latest")
+    "rewriteDependencies"("org.openrewrite:rewrite-polyglot:$latest")
     "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
@@ -125,7 +125,7 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-protobuf")
     compileOnly("org.openrewrite:rewrite-xml")
     compileOnly("org.openrewrite:rewrite-yaml")
-    compileOnly("org.openrewrite.recipe:rewrite-all:$latest")
+    compileOnly("org.openrewrite:rewrite-polyglot:$latest")
     compileOnly("com.puppycrawl.tools:checkstyle:9.3")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
 

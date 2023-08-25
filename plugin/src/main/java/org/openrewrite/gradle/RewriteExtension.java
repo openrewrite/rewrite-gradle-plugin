@@ -65,7 +65,7 @@ public interface RewriteExtension {
 
     String getRewriteVersion();
 
-    String getRewriteAllVersion();
+    String getRewritePolyglotVersion();
 
     String getRewriteGradleModelVersion();
 

@@ -62,6 +62,7 @@ import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
+import org.openrewrite.polyglot.OmniParser;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
@@ -827,17 +828,17 @@ public class DefaultProjectParser implements GradleProjectParser {
         Stream<SourceFile> sourceFiles = Stream.empty();
         GradleParser gradleParser = null;
         if (project.getBuildscript().getSourceFile() != null) {
-            File buildGradlFile = project.getBuildscript().getSourceFile();
+            File buildGradleFile = project.getBuildscript().getSourceFile();
             Path buildScriptPath = baseDir.relativize(project.getBuildscript().getSourceFile().toPath());
-            if (!isExcluded(exclusions, buildScriptPath) && buildGradlFile.exists()) {
+            if (!isExcluded(exclusions, buildScriptPath) && buildGradleFile.exists()) {
                 alreadyParsed.add(buildScriptPath);
                 GradleProject gp = GradleProjectBuilder.gradleProject(project);
                 if(buildScriptPath.toString().endsWith(".gradle")) {
                     gradleParser = gradleParser();
-                    sourceFiles = gradleParser.parse(singleton(buildGradlFile.toPath()), baseDir, ctx);
+                    sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
                 } else {
                     sourceFiles = PlainTextParser.builder().build()
-                            .parse(singleton(buildGradlFile.toPath()), baseDir, ctx);
+                            .parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
                 }
                 sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gp)));
                 alreadyParsed.add(buildScriptPath);

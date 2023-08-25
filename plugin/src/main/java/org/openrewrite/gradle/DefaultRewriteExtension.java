@@ -218,9 +218,9 @@ public class DefaultRewriteExtension implements RewriteExtension {
     }
 
     @Override
-    public String getRewriteAllVersion() {
+    public String getRewritePolyglotVersion() {
         if(rewriteVersion == null) {
-            return getVersionProps().getProperty("org.openrewrite.recipe:rewrite-all");
+            return getVersionProps().getProperty("org.openrewrite:rewrite-polyglot");
         }
         return rewriteVersion;
     }
