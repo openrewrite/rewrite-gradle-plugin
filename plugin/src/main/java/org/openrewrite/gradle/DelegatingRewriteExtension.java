@@ -273,16 +273,6 @@ public class DelegatingRewriteExtension implements RewriteExtension {
     }
 
     @Override
-    public String getRewritePythonVersion() {
-        try {
-            return (String) clazz.getMethod("getRewritePythonVersion")
-                    .invoke(delegate);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
     public String getCheckstyleToolsVersion() {
         try {
             return (String) clazz.getMethod("getCheckstyleToolsVersion")

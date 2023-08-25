@@ -71,8 +71,6 @@ public interface RewriteExtension {
 
     String getRewriteKotlinVersion();
 
-    String getRewritePythonVersion();
-
     String getCheckstyleToolsVersion();
 
     void setRewriteVersion(String value);

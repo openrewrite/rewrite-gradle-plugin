@@ -243,15 +243,6 @@ public class DefaultRewriteExtension implements RewriteExtension {
         return rewriteKotlinVersion;
     }
 
-    private String rewritePythonVersion;
-    @Override
-    public String getRewritePythonVersion() {
-        if(rewritePythonVersion == null) {
-            rewritePythonVersion = getVersionProps().getProperty("org.openrewrite:rewrite-python");
-        }
-        return rewritePythonVersion;
-    }
-
     @Override
     public String getCheckstyleToolsVersion() {
         return getVersionProps().getProperty("com.puppycrawl.tools:checkstyle");
