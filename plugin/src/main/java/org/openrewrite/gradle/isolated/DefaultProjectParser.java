@@ -874,7 +874,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceFiles = Stream.concat(
                         sourceFiles,
                         PlainTextParser.builder().build()
-                                .parse(singleton(settingsGradleFile.toPath()), baseDir, ctx)
+                                .parse(singleton(settingsGradleKtsFile.toPath()), baseDir, ctx)
                                 .map(sourceFile -> {
                                     if(finalGs == null) {
                                         return sourceFile;
