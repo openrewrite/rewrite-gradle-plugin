@@ -64,6 +64,7 @@ import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.polyglot.OmniParser;
 import org.openrewrite.quark.Quark;
+import org.openrewrite.quark.QuarkParser;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.text.PlainTextParser;
@@ -833,7 +834,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             if (!isExcluded(exclusions, buildScriptPath) && buildGradleFile.exists()) {
                 alreadyParsed.add(buildScriptPath);
                 GradleProject gp = GradleProjectBuilder.gradleProject(project);
-                if(buildScriptPath.toString().endsWith(".gradle")) {
+                if (buildScriptPath.toString().endsWith(".gradle")) {
                     gradleParser = gradleParser();
                     sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
                 } else {
@@ -845,17 +846,17 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
-        if(project == project.getRootProject()) {
+        if (project == project.getRootProject()) {
             File settingsGradleFile = project.file("settings.gradle");
             File settingsGradleKtsFile = project.file("settings.gradle.kts");
             GradleSettings gs = null;
-            if(GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0 && (settingsGradleFile.exists() || settingsGradleKtsFile.exists())) {
+            if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0 && (settingsGradleFile.exists() || settingsGradleKtsFile.exists())) {
                 gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
             }
             GradleSettings finalGs = gs;
-            if(settingsGradleFile.exists()) {
+            if (settingsGradleFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleFile.toPath());
-                if(gradleParser == null) {
+                if (gradleParser == null) {
                     gradleParser = gradleParser();
                 }
                 sourceFiles = Stream.concat(
@@ -863,7 +864,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         gradleParser
                                 .parse(singleton(settingsGradleFile.toPath()), baseDir, ctx)
                                 .map(sourceFile -> {
-                                    if(finalGs == null) {
+                                    if (finalGs == null) {
                                         return sourceFile;
                                     }
                                     return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
@@ -876,7 +877,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         PlainTextParser.builder().build()
                                 .parse(singleton(settingsGradleKtsFile.toPath()), baseDir, ctx)
                                 .map(sourceFile -> {
-                                    if(finalGs == null) {
+                                    if (finalGs == null) {
                                         return sourceFile;
                                     }
                                     return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
@@ -894,8 +895,13 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private OmniParser omniParser(Set<Path> alreadyParsed) {
-        return OmniParser.builder()
-                .plainTextMasks(pathMatchers(baseDir, extension.getPlainTextMasks()))
+        return OmniParser.builder(
+                        OmniParser.RESOURCE_PARSERS,
+                        PlainTextParser.builder()
+                                .plainTextMasks(baseDir, extension.getPlainTextMasks())
+                                .build(),
+                        QuarkParser.builder().build()
+                )
                 .exclusionMatchers(pathMatchers(baseDir, mergeExclusions(project, baseDir, extension)))
                 .exclusions(alreadyParsed)
                 .sizeThresholdMb(extension.getSizeThresholdMb())
