@@ -50,6 +50,7 @@ import org.openrewrite.gradle.marker.GradleSettingsBuilder;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.internal.InMemoryLargeSourceSet;
 import org.openrewrite.internal.ListUtils;
+import org.openrewrite.internal.StringUtils;
 import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.internal.JavaTypeCache;
@@ -62,7 +63,7 @@ import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
-import org.openrewrite.polyglot.OmniParser;
+import org.openrewrite.polyglot.*;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.quark.QuarkParser;
 import org.openrewrite.remote.Remote;
@@ -602,15 +603,22 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     public Stream<SourceFile> parse(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
-        Collection<PathMatcher> exclusions = extension.getExclusions().stream()
-                .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
-                .collect(toList());
-        if (isExcluded(exclusions, subproject.getProjectDir().toPath())) {
-            logger.lifecycle("Skipping project {} because it is excluded", subproject.getName());
-            return Stream.empty();
-        }
+        String cliPort = System.getenv("MODERNE_CLI_PORT");
+        try (ProgressBar progressBar = StringUtils.isBlank(cliPort) ? new NoopProgressBar() :
+                new RemoteProgressBarSender(Integer.parseInt(cliPort))) {
+            SourceFileStream sourceFileStream = SourceFileStream.build(
+                    subproject.getName(),
+                    projectName -> progressBar.intermediateResult(":" + projectName)
+            );
 
-        try {
+            Collection<PathMatcher> exclusions = extension.getExclusions().stream()
+                    .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
+                    .collect(toList());
+            if (isExcluded(exclusions, subproject.getProjectDir().toPath())) {
+                logger.lifecycle("Skipping project {} because it is excluded", subproject.getName());
+                return Stream.empty();
+            }
+
             logger.lifecycle("Scanning sources in project {}", subproject.getName());
             List<NamedStyles> styles = getStyles();
             @SuppressWarnings("deprecation")
@@ -629,15 +637,16 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceSets = javaConvention.getSourceSets();
             }
 
-            Stream<SourceFile> sourceFiles = Stream.of();
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
                 subproject.getExtensions().findByName("kotlin") != null && subproject.getExtensions().getByName("kotlin").getClass()
                         .getCanonicalName().startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
-                sourceFiles = parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx);
+                sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx));
             }
 
             for (SourceSet sourceSet : sourceSets) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
+                int sourceSetSize = 0;
+
                 JavaTypeCache javaTypeCache = new JavaTypeCache();
                 JavaCompile javaCompileTask = (JavaCompile) subproject.getTasks().getByName(sourceSet.getCompileJavaTaskName());
                 JavaVersion javaVersion = new JavaVersion(randomId(), System.getProperty("java.runtime.version"),
@@ -698,6 +707,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .filter(Objects::nonNull)
                             .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
                     sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                    sourceSetSize += javaPaths.size();
                     logger.info("Scanned {} Java sources in {}/{}", javaPaths.size(), subproject.getName(), sourceSet.getName());
                 }
 
@@ -729,6 +739,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .filter(Objects::nonNull)
                                 .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
                         sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                        sourceSetSize += kotlinPaths.size();
                         logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getName(), sourceSet.getName());
                     }
                 }
@@ -769,26 +780,35 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .filter(Objects::nonNull)
                                 .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
                         sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                        sourceSetSize += groovyPaths.size();
                         logger.info("Scanned {} Groovy sources in {}/{}", groovyPaths.size(), subproject.getName(), sourceSet.getName());
                     }
                 }
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if (resourcesDir.exists()) {
-                        sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, omniParser(alreadyParsed)
-                                .parseAll(resourcesDir.toPath()));
+                        OmniParser omniParser = omniParser(alreadyParsed);
+                        List<Path> accepted = omniParser.acceptedPaths(resourcesDir.toPath());
+                        sourceSetSourceFiles = Stream.concat(
+                                sourceSetSourceFiles,
+                                omniParser.parse(accepted, resourcesDir.toPath(), new InMemoryExecutionContext())
+                        );
+                        sourceSetSize += accepted.size();
                     }
                 }
 
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
-                sourceFiles = Stream.concat(sourceFiles, sourceSetSourceFiles.map(addProvenance(projectProvenance, sourceSetProvenance)));
+                sourceFileStream = sourceFileStream.concat(sourceSetSourceFiles.map(addProvenance(projectProvenance, sourceSetProvenance)), sourceSetSize);
             }
 
-            sourceFiles = Stream.concat(sourceFiles, parseGradleFiles(exclusions, alreadyParsed, ctx));
-            sourceFiles = Stream.concat(sourceFiles, parseNonProjectResources(subproject, alreadyParsed, ctx, projectProvenance, sourceFiles)
-                    .map(addProvenance(projectProvenance, null)));
+            sourceFileStream = sourceFileStream.concat(parseGradleFiles(exclusions, alreadyParsed, ctx));
 
-            return sourceFiles;
+            SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx, projectProvenance, sourceFileStream);
+            sourceFileStream = sourceFileStream.concat(nonProjectResources
+                    .map(addProvenance(projectProvenance, null)), nonProjectResources.size());
+
+            progressBar.setMax(sourceFileStream.size());
+            return sourceFileStream.peek(it -> progressBar.step());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -824,9 +844,11 @@ public class DefaultProjectParser implements GradleProjectParser {
                 .build();
     }
 
-    private Stream<SourceFile> parseGradleFiles(
+    private SourceFileStream parseGradleFiles(
             Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
         Stream<SourceFile> sourceFiles = Stream.empty();
+        int gradleFileCount = 0;
+
         GradleParser gradleParser = null;
         if (project.getBuildscript().getSourceFile() != null) {
             File buildGradleFile = project.getBuildscript().getSourceFile();
@@ -837,9 +859,11 @@ public class DefaultProjectParser implements GradleProjectParser {
                 if (buildScriptPath.toString().endsWith(".gradle")) {
                     gradleParser = gradleParser();
                     sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
+                    gradleFileCount++;
                 } else {
                     sourceFiles = PlainTextParser.builder().build()
                             .parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
+                    gradleFileCount++;
                 }
                 sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gp)));
                 alreadyParsed.add(buildScriptPath);
@@ -869,6 +893,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                     }
                                     return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
                                 }));
+                gradleFileCount++;
                 alreadyParsed.add(settingsPath);
             } else if (settingsGradleKtsFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleKtsFile.toPath());
@@ -882,16 +907,21 @@ public class DefaultProjectParser implements GradleProjectParser {
                                     }
                                     return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
                                 }));
+                gradleFileCount++;
                 alreadyParsed.add(settingsPath);
             }
         }
 
-        return sourceFiles;
+        return SourceFileStream.build("", s -> {
+        }).concat(sourceFiles, gradleFileCount);
     }
 
-    protected Stream<SourceFile> parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
+    protected SourceFileStream parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
         //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-        return omniParser(alreadyParsed).parseAll(subproject.getProjectDir().toPath());
+        OmniParser omniParser = omniParser(alreadyParsed);
+        List<Path> accepted = omniParser.acceptedPaths(subproject.getProjectDir().toPath());
+        return SourceFileStream.build("", s -> {
+        }).concat(omniParser.parse(accepted, subproject.getProjectDir().toPath(), ctx), accepted.size());
     }
 
     private OmniParser omniParser(Set<Path> alreadyParsed) {
@@ -922,7 +952,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 .collect(Collectors.toList());
     }
 
-    private Stream<SourceFile> parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, List<Marker> projectProvenance, ExecutionContext ctx) {
+    private SourceFileStream parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, List<Marker> projectProvenance, ExecutionContext ctx) {
         Object kotlinExtension = subproject.getExtensions().getByName("kotlin");
         NamedDomainObjectContainer<KotlinSourceSet> sourceSets;
         try {
@@ -934,9 +964,12 @@ public class DefaultProjectParser implements GradleProjectParser {
         } catch (Exception e) {
             logger.warn("Failed to resolve KotlinMultiplatformExtension from {}. No sources files from KotlinMultiplatformExtension will be parsed.",
                     subproject.getPath());
-            return Stream.empty();
+            return SourceFileStream.build(subproject.getName(), s -> {
+            });
         }
 
+        SourceFileStream sourceFileStream = SourceFileStream.build(subproject.getName(), s -> {
+        });
         SortedSet<String> sourceSetNames;
         try {
             //noinspection unchecked
@@ -945,10 +978,9 @@ public class DefaultProjectParser implements GradleProjectParser {
         } catch (Exception e) {
             logger.warn("Failed to resolve SourceSetNames in KotlinMultiplatformExtension from {}. No sources files from KotlinMultiplatformExtension will be parsed.",
                     subproject.getPath());
-            return Stream.empty();
+            return sourceFileStream;
         }
 
-        Stream<SourceFile> sourceFiles = Stream.of();
         for (String sourceSetName : sourceSetNames) {
             try {
                 Object sourceSet = sourceSets.getClass().getMethod("getByName", String.class)
@@ -1012,17 +1044,17 @@ public class DefaultProjectParser implements GradleProjectParser {
                     }).filter(Objects::nonNull);
                     JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths, javaTypeCache, false);
 
-                    sourceFiles = Stream.concat(sourceFiles, cus.map(addProvenance(projectProvenance, sourceSetProvenance)));
+                    sourceFileStream = sourceFileStream.concat(cus.map(addProvenance(projectProvenance, sourceSetProvenance)), kotlinPaths.size());
                     logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getName(), kotlinDirectorySet.getName());
                 }
-                return sourceFiles;
+                return sourceFileStream;
             } catch (Exception e) {
                 logger.warn("Failed to resolve sourceSet from {}:{}. Some type information may be incomplete",
                         subproject.getPath(), sourceSetName);
             }
         }
 
-        return Stream.empty();
+        return sourceFileStream;
     }
 
     private SourceFile logParseErrors(SourceFile source) {

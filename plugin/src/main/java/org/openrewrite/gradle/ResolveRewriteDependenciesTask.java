@@ -28,6 +28,10 @@ import org.gradle.api.attributes.java.TargetJvmEnvironment;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
+import org.openrewrite.internal.StringUtils;
+import org.openrewrite.polyglot.NoopProgressBar;
+import org.openrewrite.polyglot.ProgressBar;
+import org.openrewrite.polyglot.RemoteProgressBarSender;
 
 import java.io.File;
 import java.util.Arrays;
@@ -114,6 +118,11 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
 
     @TaskAction
     void run() {
-        getResolvedDependencies();
+        String cliPort = System.getenv("MODERNE_CLI_PORT");
+        try (ProgressBar progressBar = StringUtils.isBlank(cliPort) ? new NoopProgressBar() :
+                new RemoteProgressBarSender(Integer.parseInt(cliPort))) {
+            progressBar.setExtraMessage(":" + getProject().getName() + ":" + getName());
+            getResolvedDependencies();
+        }
     }
 }
