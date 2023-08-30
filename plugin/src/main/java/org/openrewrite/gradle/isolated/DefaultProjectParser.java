@@ -273,7 +273,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
         if (javaConvention != null) {
             for (SourceSet sourceSet : javaConvention.getSourceSets()) {
-                sourceSet.getAllJava().getFiles().stream()
+                sourceSet.getAllSource().getFiles().stream()
                         .filter(it -> it.isFile() && (it.getName().endsWith(".java") || it.getName().endsWith(".kt")))
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
