@@ -800,8 +800,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
                 sourceFileStream = sourceFileStream.concat(sourceSetSourceFiles.map(addProvenance(projectProvenance, sourceSetProvenance)), sourceSetSize);
             }
-
-            sourceFileStream = sourceFileStream.concat(parseGradleFiles(exclusions, alreadyParsed, ctx));
+            SourceFileStream gradleFiles = parseGradleFiles(exclusions, alreadyParsed, ctx);
+            sourceFileStream = sourceFileStream.concat(gradleFiles
+                    .map(addProvenance(projectProvenance, null)), gradleFiles.size());
 
             SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx, projectProvenance, sourceFileStream);
             sourceFileStream = sourceFileStream.concat(nonProjectResources
