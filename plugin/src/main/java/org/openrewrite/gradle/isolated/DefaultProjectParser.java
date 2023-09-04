@@ -640,7 +640,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
                 subproject.getExtensions().findByName("kotlin") != null && subproject.getExtensions().getByName("kotlin").getClass()
                         .getCanonicalName().startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
-                sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, projectProvenance, ctx));
+                sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, ctx));
             }
 
             for (SourceSet sourceSet : sourceSets) {
@@ -798,18 +798,18 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
 
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
-                sourceFileStream = sourceFileStream.concat(sourceSetSourceFiles.map(addProvenance(projectProvenance, sourceSetProvenance)), sourceSetSize);
+                sourceFileStream = sourceFileStream.concat(sourceSetSourceFiles.map(addProvenance(sourceSetProvenance)), sourceSetSize);
             }
             SourceFileStream gradleFiles = parseGradleFiles(exclusions, alreadyParsed, ctx);
-            sourceFileStream = sourceFileStream.concat(gradleFiles
-                    .map(addProvenance(projectProvenance, null)), gradleFiles.size());
+            sourceFileStream = sourceFileStream.concat(gradleFiles, gradleFiles.size());
 
             SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx, projectProvenance, sourceFileStream);
-            sourceFileStream = sourceFileStream.concat(nonProjectResources
-                    .map(addProvenance(projectProvenance, null)), nonProjectResources.size());
+            sourceFileStream = sourceFileStream.concat(nonProjectResources, nonProjectResources.size());
 
             progressBar.setMax(sourceFileStream.size());
-            return sourceFileStream.peek(it -> progressBar.step());
+            return sourceFileStream
+                    .map(addProvenance(projectProvenance))
+                    .peek(it -> progressBar.step());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -953,7 +953,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 .collect(Collectors.toList());
     }
 
-    private SourceFileStream parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, List<Marker> projectProvenance, ExecutionContext ctx) {
+    private SourceFileStream parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
         Object kotlinExtension = subproject.getExtensions().getByName("kotlin");
         NamedDomainObjectContainer<KotlinSourceSet> sourceSets;
         try {
@@ -1045,7 +1045,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     }).filter(Objects::nonNull);
                     JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths, javaTypeCache, false);
 
-                    sourceFileStream = sourceFileStream.concat(cus.map(addProvenance(projectProvenance, sourceSetProvenance)), kotlinPaths.size());
+                    sourceFileStream = sourceFileStream.concat(cus.map(addProvenance(sourceSetProvenance)), kotlinPaths.size());
                     logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getPath(), kotlinDirectorySet.getName());
                 }
                 return sourceFileStream;
@@ -1151,18 +1151,24 @@ public class DefaultProjectParser implements GradleProjectParser {
         };
     }
 
-    private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance, @Nullable Marker sourceSet) {
+    private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance) {
         return s -> {
             Markers m = s.getMarkers();
             for (Marker marker : projectProvenance) {
-                m = m.add(marker);
-            }
-            if (sourceSet != null) {
-                m = m.add(sourceSet);
+                m = m.addIfAbsent(marker);
             }
             return s.withMarkers(m);
         };
     }
+
+    private <T extends SourceFile> UnaryOperator<T> addProvenance(Marker sourceSet) {
+        return s -> {
+            Markers m = s.getMarkers();
+            m = m.addIfAbsent(sourceSet);
+            return s.withMarkers(m);
+        };
+    }
+
 
     protected void logRecipesThatMadeChanges(Result result) {
         String indent = "    ";
