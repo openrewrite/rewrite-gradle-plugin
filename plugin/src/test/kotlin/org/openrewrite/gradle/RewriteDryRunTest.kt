@@ -193,4 +193,29 @@ class RewriteDryRunTest : RewritePluginTest {
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
+
+    // TODO: Extract out into RewritePluginTest? Does JUnit support that?
+    @Test
+    fun `rewriteDryRun satisfies the configuration cache`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("org.openrewrite.rewrite")
+                }
+
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+            """)
+        }
+        val result = runGradle(projectDir, "rewriteDryRun", "--configuration-cache")
+        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    }
 }

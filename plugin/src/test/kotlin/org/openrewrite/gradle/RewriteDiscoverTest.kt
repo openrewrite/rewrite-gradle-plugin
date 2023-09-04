@@ -61,4 +61,29 @@ class RewriteDiscoverTest : RewritePluginTest {
 
         assertThat(result.output).contains("Configured with 2 active recipes and 1 active styles.")
     }
+
+    // TODO: Extract out into RewritePluginTest? Does JUnit support that?
+    @Test
+    fun `rewriteDiscover satisfies the configuration cache`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("org.openrewrite.rewrite")
+                }
+
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+            """)
+        }
+        val result = runGradle(projectDir, "rewriteDiscover", "--configuration-cache")
+        val rewriteDryRunResult = result.task(":rewriteDiscover")!!
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    }
 }
