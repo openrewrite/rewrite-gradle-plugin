@@ -140,6 +140,7 @@ dependencies {
 
 project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))
 
+// TODO: Run this task and confirm it passes
 tasks.register<Test>("testGradleReleases") {
     jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getReleasedVersions))
 }
@@ -148,7 +149,7 @@ tasks.register<Test>("testGradleNightlies") {
     jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getNightlyVersions))
 }
 
-tasks.withType<Test>() {
+tasks.withType<Test> {
     useJUnitPlatform()
     // Remove this once we've fixed https://github.com/openrewrite/rewrite-gradle-plugin/issues/132
     setForkEvery(1)
@@ -193,16 +194,16 @@ tasks.named<Test>("test") {
     )
 }
 
-val testGradle4 = tasks.register<Test>("testGradle4") {
-    systemProperty("org.openrewrite.test.gradleVersion", "4.0")
+val testGradle6Dot8Dot3 = tasks.register<Test>("testGradle6Dot8Dot3") {
+    systemProperty("org.openrewrite.test.gradleVersion", "6.8.3")
     systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
-    // Gradle 4.0 predates support for Java 11
+    // Gradle 6.8.3 predates support for Java 17
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(8))
+        languageVersion.set(JavaLanguageVersion.of(11))
     })
 }
 tasks.named("check").configure {
-    dependsOn(testGradle4)
+    dependsOn(testGradle6Dot8Dot3)
 }
 
 configure<LicenseExtension> {

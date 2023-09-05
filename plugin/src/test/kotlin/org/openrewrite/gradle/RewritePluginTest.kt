@@ -39,7 +39,6 @@ interface RewritePluginTest {
             .forwardOutput()
             .build()
 
-
     fun lessThanGradle6_1(): Boolean {
         val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
         return currentVersion < GradleVersion.version("6.1")

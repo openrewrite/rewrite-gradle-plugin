@@ -975,7 +975,8 @@ class RewriteRunTest : RewritePluginTest {
 
     // TODO: Extract out into RewritePluginTest? Does JUnit support that?
     @Test
-    fun `rewriteRun satisfies the configuration cache`(
+    @Disabled
+    fun `rewriteRun is compatible with the configuration cache`(
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {

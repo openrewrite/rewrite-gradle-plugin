@@ -48,6 +48,7 @@ public class RewritePlugin implements Plugin<Project> {
 
         // We use this method of task creation because it works on old versions of Gradle
         // Don't replace with TaskContainer.register() (introduced in 4.9), or another overload of create() (introduced in 4.7)
+        // TODO: Replace with getTasks().register()
         ResolveRewriteDependenciesTask resolveRewriteDependenciesTask = project.getTasks().create("rewriteResolveDependencies", ResolveRewriteDependenciesTask.class)
                 .setExtension(extension)
                 .setConfiguration(rewriteConf);
@@ -91,6 +92,7 @@ public class RewritePlugin implements Plugin<Project> {
 
             //Collect Java metadata for each project (used for Java Provenance)
             //Using the older javaConvention because we need to support older versions of gradle.
+            // TODO: Can we migrate away fron JavaPluginConvention?
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
             javaConvention.getSourceSets().all(sourceSet -> {

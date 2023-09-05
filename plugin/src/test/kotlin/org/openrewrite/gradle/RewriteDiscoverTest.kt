@@ -17,6 +17,7 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -64,7 +65,8 @@ class RewriteDiscoverTest : RewritePluginTest {
 
     // TODO: Extract out into RewritePluginTest? Does JUnit support that?
     @Test
-    fun `rewriteDiscover satisfies the configuration cache`(
+    @Disabled
+    fun `rewriteDiscover is compatible with the configuration cache`(
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {

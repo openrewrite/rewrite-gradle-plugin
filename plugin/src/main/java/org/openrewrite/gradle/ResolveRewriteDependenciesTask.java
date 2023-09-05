@@ -15,11 +15,13 @@
  */
 package org.openrewrite.gradle;
 
+import groovy.lang.Closure;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.LibraryElements;
@@ -29,6 +31,7 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Set;
@@ -37,7 +40,7 @@ import java.util.stream.Stream;
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
 import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE;
 
-public class ResolveRewriteDependenciesTask extends DefaultTask {
+public abstract class ResolveRewriteDependenciesTask extends DefaultTask {
     private Set<File> resolvedDependencies;
     private Configuration configuration;
     protected RewriteExtension extension;
@@ -51,6 +54,9 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
         this.extension = extension;
         return this;
     }
+
+    @Inject
+    public abstract ObjectFactory getObjectFactory();
 
     @Internal
     public Set<File> getResolvedDependencies() {
@@ -94,17 +100,23 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
             Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
 
             try {
-                ObjectFactory objectFactory = project.getObjects();
+                ObjectFactory objectFactory = getObjectFactory();
                 detachedConf.attributes(attributes -> {
-                    // Taken from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
+                    // Adapted from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
                     attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
                     attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
                     attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
                     attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
-                    attributes.attribute(TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
+                    try {
+                        attributes.attribute(TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
+                    } catch (NoClassDefFoundError e) {
+                        // Old versions of Gradle don't have the class TargetJvmEnvironment and that's OK, we can always
+                        // try this attribute instead
+                        attributes.attribute(Attribute.of("org.gradle.jvm.environment", String.class), "standard-jvm");
+                    }
                 });
             } catch (NoClassDefFoundError e) {
-                // Old versions of gradle don't have all of these attributes and that's OK
+                // Old versions of Gradle don't have all of these attributes and that's OK
             }
 
             resolvedDependencies = detachedConf.resolve();
