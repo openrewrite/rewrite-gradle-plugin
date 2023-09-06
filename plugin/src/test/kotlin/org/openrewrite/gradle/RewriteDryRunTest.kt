@@ -197,7 +197,6 @@ class RewriteDryRunTest : RewritePluginTest {
 
     // TODO: Extract out into RewritePluginTest? Does JUnit support that?
     @Test
-    @Disabled
     fun `rewriteDryRun is compatible with the configuration cache`(
         @TempDir projectDir: File
     ) {

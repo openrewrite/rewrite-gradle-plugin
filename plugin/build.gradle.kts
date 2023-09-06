@@ -194,6 +194,7 @@ tasks.named<Test>("test") {
     )
 }
 
+// TODO: Downgrade to 4.3 (or even 4.0 is Provider.map isn't needed) as per https://github.com/openrewrite/rewrite-gradle-plugin/issues/227#issuecomment-1707455588 unless future comments change this
 val testGradle6Dot8Dot3 = tasks.register<Test>("testGradle6Dot8Dot3") {
     systemProperty("org.openrewrite.test.gradleVersion", "6.8.3")
     systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
