@@ -972,4 +972,81 @@ class RewriteRunTest : RewritePluginTest {
             .`as`("Applicability test should have prevented this file from being altered")
             .isEqualTo("jonathan")
     }
+
+    @Test
+    fun overlappingSourceSet(@TempDir buildRoot: File) {
+        gradleProject(buildRoot) {
+            rewriteYaml("""
+              type: specs.openrewrite.org/v1beta/recipe
+              name: org.openrewrite.test.FindSneaky
+              displayName: Find lombok SneakyThrows annotation
+              description: Find lombok SneakyThrows annotation
+              recipeList:
+                - org.openrewrite.java.search.FindTypes:
+                    fullyQualifiedTypeName: lombok.SneakyThrows
+            """)
+            buildGradle("""
+                plugins { 
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                sourceSets {
+                    create("overlapping") {
+                        java.srcDir("src/test/java")
+                    }
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.test.FindSneaky")
+                }
+                
+                dependencies {
+                    testImplementation("org.projectlombok:lombok:latest.release")
+                }
+            """)
+            sourceSet("test") {
+                java("""
+                    package com.foo;
+                    
+                    import lombok.SneakyThrows;
+                    
+                    public class ATest {
+                    
+                        @SneakyThrows
+                        public void fail() { 
+                        }
+                    }
+                """)
+            }
+        }
+
+        val result = runGradle(buildRoot, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val javaFile = buildRoot.resolve("src/test/java/com/foo/ATest.java")
+        assertThat(javaFile.readText())
+            //language=java
+            .isEqualTo("""
+                package com.foo;
+                
+                import lombok.SneakyThrows;
+                
+                public class ATest {
+                
+                    @/*~~>*/SneakyThrows
+                    public void fail() { 
+                    }
+                }
+                """.trimIndent()
+            )
+    }
 }

@@ -85,7 +85,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Collections.*;
@@ -119,7 +118,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         OperatingSystemProvenance.current(),
                         new BuildTool(randomId(), BuildTool.Type.Gradle, project.getGradle().getGradleVersion()))
                 .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     /**
@@ -185,7 +184,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     public List<String> getAvailableStyles() {
-        return environment().listStyles().stream().map(NamedStyles::getName).collect(Collectors.toList());
+        return environment().listStyles().stream().map(NamedStyles::getName).collect(toList());
     }
 
     public void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
@@ -623,18 +622,27 @@ public class DefaultProjectParser implements GradleProjectParser {
             List<NamedStyles> styles = getStyles();
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
-            Set<SourceSet> sourceSets;
+            List<SourceSet> sourceSets;
             List<Marker> projectProvenance;
             if (javaConvention == null) {
                 projectProvenance = sharedProvenance;
-                sourceSets = Collections.emptySet();
+                sourceSets = emptyList();
             } else {
                 projectProvenance = new ArrayList<>(sharedProvenance);
                 projectProvenance.add(new JavaProject(randomId(), subproject.getName(),
                         new JavaProject.Publication(subproject.getGroup().toString(),
                                 subproject.getName(),
                                 subproject.getVersion().toString())));
-                sourceSets = javaConvention.getSourceSets();
+                sourceSets = javaConvention.getSourceSets().stream()
+                        .sorted(Comparator.comparingInt(sourceSet -> {
+                            if ("main".equals(sourceSet.getName())) {
+                                return 0;
+                            } else if ("test".equals(sourceSet.getName())) {
+                                return 1;
+                            } else {
+                                return 2;
+                            }
+                        })).collect(toList());
             }
 
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
@@ -643,7 +651,16 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, ctx));
             }
 
+            Set<String> sourceDirs = new HashSet<>();
+            sourceSetLoop:
             for (SourceSet sourceSet : sourceSets) {
+                        // Detect SourceSets which overlap other sourceSets and disable the compilation task of the overlapping
+            // source set. Skip parsing directories already covered by another source set.
+                for (File file : sourceSet.getAllSource().getSourceDirectories().getFiles()) {
+                    if (!sourceDirs.add(file.getAbsolutePath())) {
+                        continue sourceSetLoop;
+                    }
+                }
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 int sourceSetSize = 0;
 
@@ -950,7 +967,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     private Collection<PathMatcher> pathMatchers(Path basePath, Collection<String> pathExpressions) {
         return pathExpressions.stream()
                 .map(o -> basePath.getFileSystem().getPathMatcher("glob:" + o))
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     private SourceFileStream parseMultiplatformKotlinProject(Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
