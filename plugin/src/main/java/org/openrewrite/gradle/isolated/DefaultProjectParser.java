@@ -268,7 +268,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public Collection<Path> listSources() {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
-        Set<Path> result = new TreeSet<>(omniParser(emptySet()).acceptedPaths(project.getProjectDir().toPath()));
+        Set<Path> result = new TreeSet<>(omniParser(emptySet()).build().acceptedPaths(baseDir, project.getProjectDir().toPath()));
         //noinspection deprecation
         JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
         if (javaConvention != null) {
@@ -292,6 +292,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 heapMetrics.bindTo(meterRegistry);
                 new JvmMemoryMetrics().bindTo(meterRegistry);
 
+                //noinspection deprecation
                 File rewriteBuildDir = new File(project.getBuildDir(), "/rewrite");
                 if (rewriteBuildDir.exists() || rewriteBuildDir.mkdirs()) {
                     File rewriteGcLog = new File(rewriteBuildDir, "rewrite-gc.csv");
@@ -715,6 +716,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .map(Supplier::get)
                             .flatMap(jp -> jp.parse(javaPaths, baseDir, ctx))
                             .map(cu -> {
+                                //noinspection deprecation
                                 if (isExcluded(exclusions, cu.getSourcePath()) ||
                                     cu.getSourcePath().startsWith(baseDir.relativize(subproject.getBuildDir().toPath()))) {
                                     return null;
@@ -804,12 +806,13 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if (resourcesDir.exists()) {
-                        OmniParser omniParser = omniParser(alreadyParsed);
-                        List<Path> accepted = omniParser.acceptedPaths(resourcesDir.toPath());
+                        OmniParser omniParser = omniParser(alreadyParsed).build();
+                        List<Path> accepted = omniParser.acceptedPaths(baseDir, resourcesDir.toPath());
                         sourceSetSourceFiles = Stream.concat(
                                 sourceSetSourceFiles,
-                                omniParser.parse(accepted, resourcesDir.toPath(), new InMemoryExecutionContext())
+                                omniParser.parse(accepted, baseDir, new InMemoryExecutionContext())
                         );
+                        alreadyParsed.addAll(accepted);
                         sourceSetSize += accepted.size();
                     }
                 }
@@ -936,13 +939,14 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     protected SourceFileStream parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
         //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-        OmniParser omniParser = omniParser(alreadyParsed);
-        List<Path> accepted = omniParser.acceptedPaths(subproject.getProjectDir().toPath());
-        return SourceFileStream.build("", s -> {
-        }).concat(omniParser.parse(accepted, subproject.getProjectDir().toPath(), ctx), accepted.size());
+        OmniParser omniParser = omniParser(alreadyParsed)
+                .build();
+        List<Path> accepted = omniParser.acceptedPaths(baseDir, subproject.getProjectDir().toPath());
+        return SourceFileStream.build("", s -> {})
+                .concat(omniParser.parse(accepted, baseDir, ctx), accepted.size());
     }
 
-    private OmniParser omniParser(Set<Path> alreadyParsed) {
+    private OmniParser.Builder omniParser(Set<Path> alreadyParsed) {
         return OmniParser.builder(
                         OmniParser.RESOURCE_PARSERS,
                         PlainTextParser.builder()
@@ -952,8 +956,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 )
                 .exclusionMatchers(pathMatchers(baseDir, mergeExclusions(project, baseDir, extension)))
                 .exclusions(alreadyParsed)
-                .sizeThresholdMb(extension.getSizeThresholdMb())
-                .build();
+                .sizeThresholdMb(extension.getSizeThresholdMb());
     }
 
     private static Collection<String> mergeExclusions(Project project, Path baseDir, RewriteExtension extension) {

@@ -156,12 +156,12 @@ class RewriteRunTest : RewritePluginTest {
     }
 
     @Test
-    fun `rewriteRun applies built-in AutoFormat to a multi-project build`(
+    fun `rewriteRun applies recipe to a multi-project build`(
         @TempDir projectDir: File
     ) {
         val bTestClassExpected = """
                 package com.foo;
-    
+                
                 import org.junit.Test;
                 
                 public class BTestClass {
@@ -171,6 +171,15 @@ class RewriteRunTest : RewritePluginTest {
                 }
         """.trimIndent()
         gradleProject(projectDir) {
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.FormatAndAddProperty
+                recipeList:
+                  - org.openrewrite.java.format.AutoFormat
+                  - org.openrewrite.properties.ChangePropertyKey:
+                      oldPropertyKey: foo
+                      newPropertyKey: bar
+            """)
             buildGradle("""
                 plugins {
                     id("org.openrewrite.rewrite")
@@ -178,7 +187,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 
                 rewrite {
-                    activeRecipe("org.openrewrite.java.format.AutoFormat")
+                    activeRecipe("org.openrewrite.FormatAndAddProperty")
                     exclusion("**/BTestClass.java")
                 }
                 
@@ -216,6 +225,7 @@ class RewriteRunTest : RewritePluginTest {
                             public void passes() { }
                         }
                     """)
+                    propertiesFile("test.properties", "foo=baz\n")
                 }
             }
             subproject("b") {
@@ -231,7 +241,7 @@ class RewriteRunTest : RewritePluginTest {
         //language=java
         val aTestClassExpected = """
             package com.foo;
-
+            
             import org.junit.Test;
             
             public class ATestClass {
@@ -245,6 +255,9 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(aTestClassFile.readText()).isEqualTo(aTestClassExpected)
         val bTestClassFile = File(projectDir, "b/src/test/java/com/foo/BTestClass.java")
         assertThat(bTestClassFile.readText()).isEqualTo(bTestClassExpected)
+
+        val propertiesFile = File(projectDir, "a/src/test/resources/test.properties")
+        assertThat(propertiesFile.readText()).isEqualTo("bar=baz\n")
     }
 
     @Suppress("ClassInitializerMayBeStatic", "StatementWithEmptyBody", "ConstantConditions")
