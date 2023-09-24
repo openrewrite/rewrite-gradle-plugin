@@ -947,7 +947,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     private OmniParser omniParser(Set<Path> alreadyParsed) {
         return OmniParser.builder(
-                        OmniParser.RESOURCE_PARSERS,
+                        OmniParser.defaultResourceParsers(),
                         PlainTextParser.builder()
                                 .plainTextMasks(baseDir, extension.getPlainTextMasks())
                                 .build(),
