@@ -343,7 +343,6 @@ public class DefaultRewriteExtension implements RewriteExtension {
                     "**.gitattributes",
                     "**.gitignore",
                     "**.java-version",
-                    "**Jenkinsfile",
                     "**.jsp",
                     "**.ksh",
                     "**.kts",
