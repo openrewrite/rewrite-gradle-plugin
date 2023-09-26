@@ -29,7 +29,7 @@ interface RewritePluginTest {
         GradleRunner.create()
             .withDebug(ManagementFactory.getRuntimeMXBean().inputArguments.toString().indexOf("-agentlib:jdwp") > 0)
             .withProjectDir(testDir)
-            .apply {
+            .apply{ 
                 if (gradleVersion != null) {
                     withGradleVersion(gradleVersion)
                 }

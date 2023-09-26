@@ -77,51 +77,51 @@ class GradleProjectSpec(
     fun build(): GradleProjectSpec {
         dir.mkdirs()
 
-        if(settingsGradle != null) {
+        if (settingsGradle != null) {
             File(dir, "settings.gradle").writeText(settingsGradle!!)
         }
 
-        if(groovyBuildScript != null) {
+        if (groovyBuildScript != null) {
             File(dir, "build.gradle").writeText(groovyBuildScript!!)
         }
 
-        if(rewriteYaml != null) {
+        if (rewriteYaml != null) {
             File(dir, "rewrite.yml").writeText(rewriteYaml!!)
         }
 
-        if(checkstyleXml != null) {
-            File(dir, "config/checkstyle/checkstyle.xml").apply {
+        if (checkstyleXml != null) {
+            File(dir, "config/checkstyle/checkstyle.xml").apply{ 
                 parentFile.mkdirs()
                 writeText(checkstyleXml!!)
             }
         }
 
-        for(props in propertiesFiles.entries) {
-            File(dir, props.key).apply {
+        for (props in propertiesFiles.entries) {
+            File(dir, props.key).apply{ 
                 parentFile.mkdirs()
                 writeText(props.value)
             }
         }
 
-        for(text in textFiles.entries) {
-            File(dir, text.key).apply {
+        for (text in textFiles.entries) {
+            File(dir, text.key).apply{ 
                 parentFile.mkdirs()
                 writeText(text.value)
             }
         }
 
-        for(sourceSet in sourceSets) {
+        for (sourceSet in sourceSets) {
             sourceSet.build(File(dir, "src"))
         }
 
         val settings = File(dir, "settings.gradle")
         val settingsText = "rootProject.name = \"${dir.name}\"\n"
-        if(subprojects.isEmpty()) {
+        if (subprojects.isEmpty()) {
             settings.writeText("rootProject.name = \"${dir.name}\"\n")
         } else {
-            val subprojectsDeclarations = subprojects.joinToString("\n") { subproject -> "include('${subproject.dir.name}')" }
+            val subprojectsDeclarations = subprojects.joinToString("\n") { subproject  ->  "include('${subproject.dir.name}')" }
             settings.writeText(settingsText + subprojectsDeclarations)
-            for(subproject in subprojects) {
+            for (subproject in subprojects) {
                 subproject.build()
             }
         }
@@ -161,8 +161,8 @@ class GradleSourceSetSpec(
     @Suppress("RegExpSimplifiable")
     fun build(dir: File): GradleSourceSetSpec {
         dir.mkdirs()
-        for(javaSource in javaSources) {
-            val peckage = if(javaSource.startsWith("package")) {
+        for (javaSource in javaSources) {
+            val peckage = if (javaSource.startsWith("package")) {
                 "package\\s+([a-zA-Z0-9.]+);".toRegex(RegexOption.MULTILINE)
                     .find(javaSource)!!
                     .groupValues[1]
@@ -170,18 +170,18 @@ class GradleSourceSetSpec(
                 ""
             }.replace(".", "/")
             val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+)".toRegex(RegexOption.MULTILINE).find(javaSource)!!.groupValues[2]
-            val path = if(peckage.isEmpty()) {
+            val path = if (peckage.isEmpty()) {
                 "$name/java/$clazz.java"
             } else {
                 "$name/java/$peckage/$clazz.java"
             }
-            File(dir, path).apply {
+            File(dir, path).apply{ 
                 parentFile.mkdirs()
                 writeText(javaSource)
             }
         }
-        for(kotlinSource in kotlinSources) {
-            val peckage = if(kotlinSource.startsWith("package")) {
+        for (kotlinSource in kotlinSources) {
+            val peckage = if (kotlinSource.startsWith("package")) {
                 "package\\s+([a-zA-Z0-9.]+)".toRegex(RegexOption.MULTILINE)
                     .find(kotlinSource)!!
                     .groupValues[1]
@@ -189,18 +189,18 @@ class GradleSourceSetSpec(
                 ""
             }.replace(".", "/")
             val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+)".toRegex(RegexOption.MULTILINE).find(kotlinSource)!!.groupValues[2]
-            val path = if(peckage.isEmpty()) {
+            val path = if (peckage.isEmpty()) {
                 "$name/kotlin/$clazz.kt"
             } else {
                 "$name/kotlin/$peckage/$clazz.kt"
             }
-            File(dir, path).apply {
+            File(dir, path).apply{ 
                 parentFile.mkdirs()
                 writeText(kotlinSource)
             }
         }
-        for(groovySource in groovyClasses) {
-            val peckage = if(groovySource.startsWith("package")) {
+        for (groovySource in groovyClasses) {
+            val peckage = if (groovySource.startsWith("package")) {
                 "package\\s+([a-zA-Z0-9.]+);?".toRegex(RegexOption.MULTILINE)
                     .find(groovySource)!!
                     .groupValues[1]
@@ -208,27 +208,27 @@ class GradleSourceSetSpec(
                 ""
             }.replace(".", "/")
             val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+)".toRegex(RegexOption.MULTILINE).find(groovySource)!!.groupValues[2]
-            val path = if(peckage.isEmpty()) {
+            val path = if (peckage.isEmpty()) {
                 "$name/groovy/$clazz.groovy"
             } else {
                 "$name/groovy/$peckage/$clazz.groovy"
             }
-            File(dir, path).apply {
+            File(dir, path).apply{ 
                 parentFile.mkdirs()
                 writeText(groovySource)
             }
         }
-        if(propertiesFiles.isNotEmpty()) {
-            for(props in propertiesFiles.entries) {
-                File(dir, "$name/resources/${props.key}").apply {
+        if (propertiesFiles.isNotEmpty()) {
+            for (props in propertiesFiles.entries) {
+                File(dir, "$name/resources/${props.key}").apply{ 
                     parentFile.mkdirs()
                     writeText(props.value)
                 }
             }
         }
-        if(yamlFiles.isNotEmpty()) {
-            for(yaml in yamlFiles.entries) {
-                File(dir, "$name/resources/${yaml.key}").apply {
+        if (yamlFiles.isNotEmpty()) {
+            for (yaml in yamlFiles.entries) {
+                File(dir, "$name/resources/${yaml.key}").apply{ 
                     parentFile.mkdirs()
                     writeText(yaml.value)
                 }

@@ -40,7 +40,7 @@ class RewriteRunTest : RewritePluginTest {
         // Gradle provides no control over how it arbitrarily orders its classpath
         // So even if isolation isn't working at all, this could pass if it happens to put the rewrite's required version
         // of jackson first on the classpath.
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             buildGradle("""
                 buildscript {
                     repositories {
@@ -69,7 +69,7 @@ class RewriteRunTest : RewritePluginTest {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                 }
             """)
-            sourceSet("test") {
+            sourceSet("test") { 
                 java("""
                     package com.foo;
                     
@@ -89,7 +89,7 @@ class RewriteRunTest : RewritePluginTest {
     fun `rewriteRun will alter the source file according to the provided active recipe`(
         @TempDir projectDir: File
     ) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
@@ -119,7 +119,7 @@ class RewriteRunTest : RewritePluginTest {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
                 }
             """)
-            sourceSet("main") {
+            sourceSet("main") { 
                 java("""
                     package org.openrewrite.before;
                     
@@ -170,7 +170,7 @@ class RewriteRunTest : RewritePluginTest {
                     public void passes() { }
                 }
         """.trimIndent()
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.FormatAndAddProperty
@@ -212,8 +212,8 @@ class RewriteRunTest : RewritePluginTest {
                     }
                 }
             """)
-            subproject("a") {
-                sourceSet("test") {
+            subproject("a") { 
+                sourceSet("test") { 
                     java("""
                         package com.foo;
             
@@ -228,8 +228,8 @@ class RewriteRunTest : RewritePluginTest {
                     propertiesFile("test.properties", "foo=baz\n")
                 }
             }
-            subproject("b") {
-                sourceSet("test") {
+            subproject("b") { 
+                sourceSet("test") { 
                     java(bTestClassExpected)
                 }
             }
@@ -265,7 +265,7 @@ class RewriteRunTest : RewritePluginTest {
     fun `Checkstyle configuration is applied as a style`(
         @TempDir projectDir: File
     ) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             checkstyleXml("""
                 <!DOCTYPE module PUBLIC
                     "-//Checkstyle//DTD Checkstyle Configuration 1.2//EN"
@@ -299,7 +299,7 @@ class RewriteRunTest : RewritePluginTest {
                     rewrite("org.openrewrite.recipe:rewrite-static-analysis:1.0.4")
                 }
             """)
-            sourceSet("main") {
+            sourceSet("main") { 
                 java("""
                     package com.foo;
                     
@@ -314,7 +314,7 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(projectDir,"rewriteRun")
+        val result = runGradle(projectDir, "rewriteRun")
         val rewriteRunResult = result.task(":rewriteRun")!!
 
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
@@ -338,7 +338,7 @@ class RewriteRunTest : RewritePluginTest {
     fun `can apply non-java recipe to files inside and outside of java resources directories`(
         @TempDir projectDir: File
     ) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: com.example.RenameSam
@@ -368,7 +368,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
             """)
             propertiesFile("outside-of-sourceset.properties", "sam=true\n")
-            sourceSet("main") {
+            sourceSet("main") { 
                 propertiesFile("in-sourceset.properties", "sam=true\n")
             }
         }
@@ -385,7 +385,7 @@ class RewriteRunTest : RewritePluginTest {
     fun `Recipes that generate sources have those sources written out to disk successfully`(
         @TempDir projectDir: File
     ) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.AddGradleWrapper
@@ -442,7 +442,7 @@ class RewriteRunTest : RewritePluginTest {
     fun gradleDependencyManagement(
         @TempDir projectDir: File
     ) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.RemoveJacksonCore
@@ -518,7 +518,7 @@ class RewriteRunTest : RewritePluginTest {
 
     @Test
     fun mergeConfiguredAndAutodetectedStyles(@TempDir projectDir: File) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             propertiesFile("gradle.properties", "systemProp.rewrite.activeStyles=org.openrewrite.testStyle")
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/style
@@ -545,7 +545,7 @@ class RewriteRunTest : RewritePluginTest {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                 }
             """)
-            sourceSet("main") {
+            sourceSet("main") { 
                 // Uses spaces, to be converted to tabs
                 java("""
                     package com.foo;
@@ -588,7 +588,7 @@ class RewriteRunTest : RewritePluginTest {
 
     @Test
     fun reformatToIntelliJStyle(@TempDir projectDir: File) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             buildGradle("""
                 plugins {
                     id("java")
@@ -608,7 +608,7 @@ class RewriteRunTest : RewritePluginTest {
                     activeStyle("org.openrewrite.java.IntelliJ")
                 }
             """)
-            sourceSet("main") {
+            sourceSet("main") { 
                 java("""
                     package com.foo;
                     
@@ -663,7 +663,7 @@ class RewriteRunTest : RewritePluginTest {
 
     @Test
     fun groovySourceGetsTypesFromJavaSource(@TempDir projectDir: File) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.FindA
@@ -696,7 +696,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 
             """)
-            sourceSet("main") {
+            sourceSet("main") { 
                 java("""
                     package com.foo;
                     
@@ -738,7 +738,7 @@ class RewriteRunTest : RewritePluginTest {
     @DisabledIf("lessThanGradle6_1")
     @Test
     fun kotlinSource(@TempDir projectDir: File) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             buildGradle(
                 """
                 plugins {
@@ -765,7 +765,7 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.java.search.FindTypes:
                       fullyQualifiedTypeName: kotlin.String
             """)
-            sourceSet("main") {
+            sourceSet("main") { 
                 kotlin("""
                     package com.foo
                     
@@ -789,7 +789,7 @@ class RewriteRunTest : RewritePluginTest {
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/128")
     @Test
     fun deleteEmptyDirectory(@TempDir projectDir: File) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             rewriteYaml("""
               type: specs.openrewrite.org/v1beta/recipe
               name: org.openrewrite.test.DeleteFoo
@@ -836,26 +836,26 @@ class RewriteRunTest : RewritePluginTest {
 
     @Test
     fun `build root and repository root do not need to be the same`(@TempDir repositoryRoot: File) {
-        repositoryRoot.apply {
-            resolve(".git").apply {
+        repositoryRoot.apply{ 
+            resolve(".git").apply{ 
                 mkdirs()
-                resolve("HEAD").apply {
+                resolve("HEAD").apply{ 
                     createNewFile()
                     writeText("ref: refs/heads/main")
                 }
-                resolve("objects").apply {
+                resolve("objects").apply{ 
                     mkdir()
                 }
-                resolve("refs").apply {
+                resolve("refs").apply{ 
                     mkdir()
                 }
-                resolve("reftable").apply {
+                resolve("reftable").apply{ 
                     mkdir()
                 }
             }
         }
-        val buildRoot = repositoryRoot.resolve("test-project").apply { mkdirs() }
-        gradleProject(buildRoot) {
+        val buildRoot = repositoryRoot.resolve("test-project").apply{  mkdirs() }
+        gradleProject(buildRoot) { 
             buildGradle("""
                 plugins {
                     id("java")
@@ -874,7 +874,7 @@ class RewriteRunTest : RewritePluginTest {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                 }
             """)
-            sourceSet("main") {
+            sourceSet("main") { 
                 java("""
                     package org.openrewrite.before;
                 
@@ -918,20 +918,20 @@ class RewriteRunTest : RewritePluginTest {
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/176")
     @Test
     fun runRecipeFromProjectDependency(@TempDir projectDir: File) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             settingsGradle("""
                 rootProject.name = 'multi-project-recipe'
 
                 include("recipe")
                 include("product")
             """)
-            subproject("recipe") {
+            subproject("recipe") { 
                 buildGradle("""
                     plugins { 
                         id("java")
                     }
                 """)
-                sourceSet("main") {
+                sourceSet("main") { 
                     yamlFile("META-INF/rewrite/recipe.yml", """
                         type: specs.openrewrite.org/v1beta/recipe
                         name: com.example.TextToSam
@@ -947,7 +947,7 @@ class RewriteRunTest : RewritePluginTest {
                     """)
                 }
             }
-            subproject("product") {
+            subproject("product") { 
                 buildGradle("""
                     plugins {
                         id("org.openrewrite.rewrite")
@@ -988,7 +988,7 @@ class RewriteRunTest : RewritePluginTest {
 
     @Test
     fun overlappingSourceSet(@TempDir buildRoot: File) {
-        gradleProject(buildRoot) {
+        gradleProject(buildRoot) { 
             rewriteYaml("""
               type: specs.openrewrite.org/v1beta/recipe
               name: org.openrewrite.test.FindSneaky
@@ -1026,7 +1026,7 @@ class RewriteRunTest : RewritePluginTest {
                     testImplementation("org.projectlombok:lombok:latest.release")
                 }
             """)
-            sourceSet("test") {
+            sourceSet("test") { 
                 java("""
                     package com.foo;
                     
