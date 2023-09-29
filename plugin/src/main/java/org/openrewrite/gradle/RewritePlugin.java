@@ -118,7 +118,7 @@ public class RewritePlugin implements Plugin<Project> {
                             return 2;
                         }
                     })).forEach(sourceSet -> {
-                        for (File file : sourceSet.getAllSource().getSourceDirectories().getFiles()) {
+                        for (File file : sourceSet.getAllJava().getSourceDirectories().getFiles()) {
                             if (!sourceDirs.add(file.getAbsolutePath())) {
                                 Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());
                                 compileTask.setEnabled(false);

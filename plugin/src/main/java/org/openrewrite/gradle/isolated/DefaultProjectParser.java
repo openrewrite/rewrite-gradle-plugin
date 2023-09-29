@@ -85,6 +85,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Collections.*;
@@ -653,15 +654,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             Set<String> sourceDirs = new HashSet<>();
-            sourceSetLoop:
             for (SourceSet sourceSet : sourceSets) {
-                        // Detect SourceSets which overlap other sourceSets and disable the compilation task of the overlapping
-            // source set. Skip parsing directories already covered by another source set.
-                for (File file : sourceSet.getAllSource().getSourceDirectories().getFiles()) {
-                    if (!sourceDirs.add(file.getAbsolutePath())) {
-                        continue sourceSetLoop;
-                    }
-                }
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 int sourceSetSize = 0;
 
@@ -672,11 +665,24 @@ public class DefaultProjectParser implements GradleProjectParser {
                         javaCompileTask.getSourceCompatibility(),
                         javaCompileTask.getTargetCompatibility());
 
-                List<Path> javaPaths = sourceSet.getAllJava().getFiles().stream()
-                        .filter(it -> it.isFile() && it.getName().endsWith(".java"))
-                        .map(File::toPath)
+                List<Path> unparsedSources = sourceSet.getAllSource()
+                        .getSourceDirectories()
+                        .filter(it -> it.exists() && !alreadyParsed.contains(baseDir.relativize(it.toPath())))
+                        .getFiles()
+                        .stream()
+                        .flatMap(sourceDir -> {
+                            try {
+                                return Files.walk(sourceDir.toPath());
+                            } catch (IOException e) {
+                                throw new UncheckedIOException(e);
+                            }
+                        })
+                        .filter(Files::isRegularFile)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
+                        .collect(Collectors.toList());
+                List<Path> javaPaths = unparsedSources.stream()
+                        .filter(it -> it.toString().endsWith(".java"))
                         .collect(toList());
 
                 // classpath doesn't include the transitive dependencies of the implementation configuration
@@ -731,11 +737,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
 
                 if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.jvm")) {
-                    List<Path> kotlinPaths = sourceSet.getAllSource().getFiles().stream()
-                            .filter(it -> it.isFile() && it.getName().endsWith(".kt"))
-                            .map(File::toPath)
-                            .map(Path::toAbsolutePath)
-                            .map(Path::normalize)
+                    List<Path> kotlinPaths = unparsedSources.stream()
+                            .filter(it -> it.toString().endsWith(".kt"))
                             .collect(toList());
 
                     if (!kotlinPaths.isEmpty()) {
@@ -762,13 +765,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                         logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getPath(), sourceSet.getName());
                     }
                 }
-
                 if (subproject.getPlugins().hasPlugin(GroovyPlugin.class)) {
-                    List<Path> groovyPaths = sourceSet.getAllSource().getFiles().stream()
-                            .filter(it -> it.isFile() && it.getName().endsWith(".groovy"))
-                            .map(File::toPath)
-                            .map(Path::toAbsolutePath)
-                            .map(Path::normalize)
+                    List<Path> groovyPaths = unparsedSources.stream()
+                            .filter(it -> it.toString().endsWith(".groovy"))
                             .collect(toList());
 
                     if (!groovyPaths.isEmpty()) {
@@ -805,7 +804,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
-                    if (resourcesDir.exists()) {
+                    if (resourcesDir.exists() && !alreadyParsed.contains(baseDir.relativize(resourcesDir.toPath()))) {
                         OmniParser omniParser = omniParser(alreadyParsed);
                         List<Path> accepted = omniParser.acceptedPaths(baseDir, resourcesDir.toPath());
                         sourceSetSourceFiles = Stream.concat(
@@ -819,6 +818,11 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
                 sourceFileStream = sourceFileStream.concat(sourceSetSourceFiles.map(addProvenance(sourceSetProvenance)), sourceSetSize);
+                // Some source sets get misconfigured to have the same directories as other source sets
+                // This causes duplicate source files to be parsed, so once a source set has been parsed exclude it from future parsing
+                for (File file : sourceSet.getAllSource().getSourceDirectories().getFiles()) {
+                    alreadyParsed.add(baseDir.relativize(file.toPath()));
+                }
             }
             SourceFileStream gradleFiles = parseGradleFiles(exclusions, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(gradleFiles, gradleFiles.size());
