@@ -622,6 +622,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             logger.lifecycle("Scanning sources in project {}", subproject.getPath());
             List<NamedStyles> styles = getStyles();
+            logger.lifecycle("Using active styles {}", styles.stream().map(NamedStyles::getName).collect(toList()));
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
             List<SourceSet> sourceSets;
