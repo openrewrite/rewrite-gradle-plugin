@@ -275,7 +275,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         if (javaConvention != null) {
             for (SourceSet sourceSet : javaConvention.getSourceSets()) {
                 sourceSet.getAllSource().getFiles().stream()
-                        .filter(it -> it.isFile() && (it.getName().endsWith(".java") || it.getName().endsWith(".kt")))
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
@@ -668,7 +667,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 List<Path> unparsedSources = sourceSet.getAllSource()
                         .getSourceDirectories()
-                        .filter(it -> it.exists() && !alreadyParsed.contains(baseDir.relativize(it.toPath())))
+                        .filter(it -> it.exists() && !alreadyParsed.contains(it.toPath()))
                         .getFiles()
                         .stream()
                         .flatMap(sourceDir -> {
@@ -681,9 +680,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .filter(Files::isRegularFile)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
+                        .distinct()
                         .collect(Collectors.toList());
                 List<Path> javaPaths = unparsedSources.stream()
-                        .filter(it -> it.toString().endsWith(".java"))
+                        .filter(it -> it.toString().endsWith(".java") && !alreadyParsed.contains(it))
                         .collect(toList());
 
                 // classpath doesn't include the transitive dependencies of the implementation configuration
@@ -805,7 +805,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
-                    if (resourcesDir.exists() && !alreadyParsed.contains(baseDir.relativize(resourcesDir.toPath()))) {
+                    if (resourcesDir.exists() && !alreadyParsed.contains(resourcesDir.toPath())) {
                         OmniParser omniParser = omniParser(alreadyParsed);
                         List<Path> accepted = omniParser.acceptedPaths(baseDir, resourcesDir.toPath());
                         sourceSetSourceFiles = Stream.concat(
@@ -822,7 +822,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 // Some source sets get misconfigured to have the same directories as other source sets
                 // This causes duplicate source files to be parsed, so once a source set has been parsed exclude it from future parsing
                 for (File file : sourceSet.getAllSource().getSourceDirectories().getFiles()) {
-                    alreadyParsed.add(baseDir.relativize(file.toPath()));
+                    alreadyParsed.add(file.toPath());
                 }
             }
             SourceFileStream gradleFiles = parseGradleFiles(exclusions, alreadyParsed, ctx);
@@ -892,7 +892,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     gradleFileCount++;
                 }
                 sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gp)));
-                alreadyParsed.add(buildScriptPath);
+                alreadyParsed.add(project.getBuildscript().getSourceFile().toPath());
             }
         }
 
@@ -920,7 +920,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                     return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
                                 }));
                 gradleFileCount++;
-                alreadyParsed.add(settingsPath);
+                alreadyParsed.add(settingsGradleFile.toPath());
             } else if (settingsGradleKtsFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleKtsFile.toPath());
                 sourceFiles = Stream.concat(
@@ -934,7 +934,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                     return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
                                 }));
                 gradleFileCount++;
-                alreadyParsed.add(settingsPath);
+                alreadyParsed.add(settingsGradleKtsFile.toPath());
             }
         }
 
