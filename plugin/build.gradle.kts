@@ -7,7 +7,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
 plugins {
-    kotlin("jvm") version("1.9.0")
+    kotlin("jvm") version("1.8.0")
     id("com.gradle.plugin-publish") version "1.1.0"
     id("com.github.hierynomus.license") version "0.16.1"
 }
@@ -89,7 +89,7 @@ tasks.withType<KotlinCompile>().configureEach {
 val rewriteDependencies = configurations.create("rewriteDependencies")
 
 dependencies {
-    "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:8.6.2"))
+    "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:$latest"))
     "rewriteDependencies"("org.openrewrite:rewrite-core")
     "rewriteDependencies"("org.openrewrite:rewrite-hcl")
     "rewriteDependencies"("org.openrewrite:rewrite-java")
@@ -97,35 +97,35 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-java-11")
     "rewriteDependencies"("org.openrewrite:rewrite-java-8")
     "rewriteDependencies"("org.openrewrite:rewrite-json")
-    "rewriteDependencies"("org.openrewrite:rewrite-kotlin:1.4.11")
+    "rewriteDependencies"("org.openrewrite:rewrite-kotlin:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-xml")
     "rewriteDependencies"("org.openrewrite:rewrite-yaml")
     "rewriteDependencies"("org.openrewrite:rewrite-properties")
     "rewriteDependencies"("org.openrewrite:rewrite-protobuf")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle")
-    "rewriteDependencies"("org.openrewrite:rewrite-polyglot:1.6.1")
-    "rewriteDependencies"("org.openrewrite.gradle.tooling:model:1.3.1")
+    "rewriteDependencies"("org.openrewrite:rewrite-polyglot:$latest")
+    "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
     @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3")
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
 
-    implementation(platform("org.openrewrite:rewrite-bom:8.6.2"))
+    implementation(platform("org.openrewrite:rewrite-bom:$latest"))
     compileOnly("org.openrewrite:rewrite-core")
     compileOnly("org.openrewrite:rewrite-gradle")
-    compileOnly("org.openrewrite.gradle.tooling:model:1.3.1")
+    compileOnly("org.openrewrite.gradle.tooling:model:$latest")
     compileOnly("org.openrewrite:rewrite-groovy")
     compileOnly("org.openrewrite:rewrite-hcl")
     compileOnly("org.openrewrite:rewrite-java")
     compileOnly("org.openrewrite:rewrite-json")
-    compileOnly("org.openrewrite:rewrite-kotlin:1.4.11")
+    compileOnly("org.openrewrite:rewrite-kotlin:$latest")
     compileOnly("org.openrewrite:rewrite-properties")
     compileOnly("org.openrewrite:rewrite-protobuf")
     compileOnly("org.openrewrite:rewrite-xml")
     compileOnly("org.openrewrite:rewrite-yaml")
-    compileOnly("org.openrewrite:rewrite-polyglot:1.6.1")
+    compileOnly("org.openrewrite:rewrite-polyglot:$latest")
     @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
     compileOnly("com.puppycrawl.tools:checkstyle:9.3")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
