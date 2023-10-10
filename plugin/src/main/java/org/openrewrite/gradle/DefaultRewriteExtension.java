@@ -217,12 +217,13 @@ public class DefaultRewriteExtension implements RewriteExtension {
         return rewriteVersion;
     }
 
+    private String rewritePolyglotVersion;
     @Override
     public String getRewritePolyglotVersion() {
-        if (rewriteVersion == null) {
+        if (rewritePolyglotVersion == null) {
             return getVersionProps().getProperty("org.openrewrite:rewrite-polyglot");
         }
-        return rewriteVersion;
+        return rewritePolyglotVersion;
     }
 
     private String rewriteGradleModelVersion;
