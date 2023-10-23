@@ -106,6 +106,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-gradle")
     "rewriteDependencies"("org.openrewrite:rewrite-polyglot:$latest")
     "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
+    "rewriteDependencies"("org.openrewrite.gradle.tooling:parser:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
     @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
@@ -116,6 +117,7 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-core")
     compileOnly("org.openrewrite:rewrite-gradle")
     compileOnly("org.openrewrite.gradle.tooling:model:$latest")
+    compileOnly("org.openrewrite.gradle.tooling:parser:$latest")
     compileOnly("org.openrewrite:rewrite-groovy")
     compileOnly("org.openrewrite:rewrite-hcl")
     compileOnly("org.openrewrite:rewrite-java")
