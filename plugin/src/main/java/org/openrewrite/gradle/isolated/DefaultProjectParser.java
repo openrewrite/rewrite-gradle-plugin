@@ -80,6 +80,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -614,7 +615,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             Collection<PathMatcher> exclusions = extension.getExclusions().stream()
                     .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
                     .collect(toList());
-            if (isExcluded(exclusions, subproject.getProjectDir().toPath())) {
+            if (isExcluded(exclusions, baseDir.relativize(subproject.getProjectDir().toPath()))) {
                 logger.lifecycle("Skipping project {} because it is excluded", subproject.getPath());
                 return Stream.empty();
             }
@@ -909,31 +910,35 @@ public class DefaultProjectParser implements GradleProjectParser {
                 if (gradleParser == null) {
                     gradleParser = gradleParser();
                 }
-                sourceFiles = Stream.concat(
-                        sourceFiles,
-                        gradleParser
-                                .parse(singleton(settingsGradleFile.toPath()), baseDir, ctx)
-                                .map(sourceFile -> {
-                                    if (finalGs == null) {
-                                        return sourceFile;
-                                    }
-                                    return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
-                                }));
-                gradleFileCount++;
+                if(!isExcluded(exclusions, settingsPath)) {
+                    sourceFiles = Stream.concat(
+                            sourceFiles,
+                            gradleParser
+                                    .parse(singleton(settingsGradleFile.toPath()), baseDir, ctx)
+                                    .map(sourceFile -> {
+                                        if (finalGs == null) {
+                                            return sourceFile;
+                                        }
+                                        return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
+                                    }));
+                    gradleFileCount++;
+                }
                 alreadyParsed.add(settingsGradleFile.toPath());
             } else if (settingsGradleKtsFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleKtsFile.toPath());
-                sourceFiles = Stream.concat(
-                        sourceFiles,
-                        PlainTextParser.builder().build()
-                                .parse(singleton(settingsGradleKtsFile.toPath()), baseDir, ctx)
-                                .map(sourceFile -> {
-                                    if (finalGs == null) {
-                                        return sourceFile;
-                                    }
-                                    return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
-                                }));
-                gradleFileCount++;
+                if(!isExcluded(exclusions, settingsPath)) {
+                    sourceFiles = Stream.concat(
+                            sourceFiles,
+                            PlainTextParser.builder().build()
+                                    .parse(singleton(settingsGradleKtsFile.toPath()), baseDir, ctx)
+                                    .map(sourceFile -> {
+                                        if (finalGs == null) {
+                                            return sourceFile;
+                                        }
+                                        return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
+                                    }));
+                    gradleFileCount++;
+                }
                 alreadyParsed.add(settingsGradleKtsFile.toPath());
             }
         }
@@ -1098,6 +1103,11 @@ public class DefaultProjectParser implements GradleProjectParser {
             if (excluded.matches(path)) {
                 return true;
             }
+        }
+        // PathMather will not evaluate the path "build.gradle" to be matched by the pattern "**/build.gradle"
+        // This is counter-intuitive for most users and would otherwise require separate exclusions for files at the root and files in subdirectories
+        if(!path.isAbsolute() && !path.startsWith(File.separator)) {
+            return isExcluded(exclusions, Paths.get("/" + path));
         }
         return false;
     }
