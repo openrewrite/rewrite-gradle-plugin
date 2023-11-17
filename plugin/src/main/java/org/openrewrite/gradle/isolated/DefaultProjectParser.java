@@ -1080,7 +1080,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                     sourceFileStream = sourceFileStream.concat(cus.map(addProvenance(sourceSetProvenance)), kotlinPaths.size());
                     logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getPath(), kotlinDirectorySet.getName());
                 }
-                return sourceFileStream;
             } catch (Exception e) {
                 logger.warn("Failed to resolve sourceSet from {}:{}. Some type information may be incomplete",
                         subproject.getPath(), sourceSetName);
