@@ -29,7 +29,7 @@ interface RewritePluginTest {
         GradleRunner.create()
             .withDebug(ManagementFactory.getRuntimeMXBean().inputArguments.toString().indexOf("-agentlib:jdwp") > 0)
             .withProjectDir(testDir)
-            .apply{ 
+            .apply{
                 if (gradleVersion != null) {
                     withGradleVersion(gradleVersion)
                 }
@@ -43,5 +43,10 @@ interface RewritePluginTest {
     fun lessThanGradle6_1(): Boolean {
         val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
         return currentVersion < GradleVersion.version("6.1")
+    }
+
+    fun lessThanGradle6_8(): Boolean {
+        val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
+        return currentVersion < GradleVersion.version("6.8")
     }
 }

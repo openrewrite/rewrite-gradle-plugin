@@ -888,12 +888,11 @@ public class DefaultProjectParser implements GradleProjectParser {
                 if (buildScriptPath.toString().endsWith(".gradle")) {
                     gradleParser = gradleParser();
                     sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
-                    gradleFileCount++;
                 } else {
                     sourceFiles = PlainTextParser.builder().build()
                             .parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
-                    gradleFileCount++;
                 }
+                gradleFileCount++;
                 sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gp)));
                 alreadyParsed.add(project.getBuildscript().getSourceFile().toPath());
             }

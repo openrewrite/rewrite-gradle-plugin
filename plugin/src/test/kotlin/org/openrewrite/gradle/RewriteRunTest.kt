@@ -21,7 +21,6 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.condition.DisabledOnOs
@@ -446,8 +445,8 @@ class RewriteRunTest : RewritePluginTest {
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.RemoveJacksonCore
-                displayName: Rename build.gradle to build.gradle.kts
-                description: Rename build.gradle to build.gradle.kts
+                displayName: Remove jackson-core
+                description: Remove jackson-core
                 recipeList:
                   - org.openrewrite.gradle.RemoveDependency:
                       groupId: com.fasterxml.jackson.core
@@ -514,6 +513,73 @@ class RewriteRunTest : RewritePluginTest {
                 activeRecipe("org.openrewrite.test.RemoveJacksonCore")
             }
             """.trimIndent())
+    }
+
+
+    @DisabledIf("lessThanGradle6_8")
+    @Test
+    fun dependencyRepositoriesDeclaredInSettings(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.UpgradeJacksonCore
+                displayName: Remove jackson-core
+                description: Remove jackson-core
+                recipeList:
+                  - org.openrewrite.gradle.UpgradeDependencyVersion:
+                      groupId: com.fasterxml.jackson.core
+                      artifactId: jackson-core
+                      nevVersion: 2.16.0
+            """)
+            settingsGradle("""
+                dependencyResolutionManagement {
+                    repositories {
+                        mavenLocal()
+                        mavenCentral()
+                        maven {
+                           url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                        }
+                    }
+                }
+            """)
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                dependencies {
+                    implementation("com.fasterxml.jackson.core:jackson-core:2.15.1")
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.test.UpgradeJacksonCore")
+                }
+            """)
+        }
+
+        val result = runGradle(projectDir, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        assertThat(projectDir.resolve("build.gradle").readText())
+            //language=groovy
+            .isEqualTo("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                dependencies {
+                    implementation("com.fasterxml.jackson.core:jackson-core:2.16.0")
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.test.UpgradeJacksonCore")
+                }
+                """.trimIndent())
     }
 
     @Test
@@ -913,7 +979,6 @@ class RewriteRunTest : RewritePluginTest {
             )
     }
 
-    @Disabled("Applicability tests are no longer supported for YAML recipes")
     @DisabledOnOs(OS.WINDOWS) // A file handle I haven't been able to track down is left open, causing JUnit to fail to clean up the directory on Windows
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/176")
     @Test
@@ -937,10 +1002,9 @@ class RewriteRunTest : RewritePluginTest {
                         name: com.example.TextToSam
                         displayName: Changes contents of sam.txt
                         description: Change contents of sam.txt to "sam"
-                        applicability:
-                          singleSource:
-                            - org.openrewrite.FindSourceFiles:
-                                filePattern: "**/sam.txt"
+                        preconditions:
+                          - org.openrewrite.FindSourceFiles:
+                              filePattern: "**/sam.txt"
                         recipeList:
                           - org.openrewrite.text.ChangeText:
                               toText: sam

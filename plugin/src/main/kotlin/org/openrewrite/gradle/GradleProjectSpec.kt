@@ -22,10 +22,10 @@ import java.io.File
  * Utility to help with writing gradle projects to disk to assist with plugin testing
  */
 class GradleProjectSpec(
-    val dir: File
+    private val dir: File
 ) {
-    val subprojects: MutableList<GradleProjectSpec> = mutableListOf()
-    val sourceSets: MutableList<GradleSourceSetSpec> = mutableListOf()
+    private val subprojects: MutableList<GradleProjectSpec> = mutableListOf()
+    private val sourceSets: MutableList<GradleSourceSetSpec> = mutableListOf()
 
     @Language("groovy")
     var groovyBuildScript: String? = null
@@ -37,7 +37,7 @@ class GradleProjectSpec(
     @Language("groovy")
     var settingsGradle: String? = null
     fun settingsGradle(@Language("groovy") text: String) {
-        settingsGradle = text.trimIndent();
+        settingsGradle = text.trimIndent()
     }
 
     @Language("yaml")
@@ -52,12 +52,12 @@ class GradleProjectSpec(
         checkstyleXml = text.trimIndent()
     }
 
-    val propertiesFiles: MutableMap<String, String> = mutableMapOf()
+    private val propertiesFiles: MutableMap<String, String> = mutableMapOf()
     fun propertiesFile(name: String, @Language("properties") text: String) {
         propertiesFiles[name] = text
     }
 
-    val textFiles: MutableMap<String, String> = mutableMapOf()
+    private val textFiles: MutableMap<String, String> = mutableMapOf()
     fun textFile(name: String, text: String) {
         textFiles[name] = text
     }
@@ -77,8 +77,17 @@ class GradleProjectSpec(
     fun build(): GradleProjectSpec {
         dir.mkdirs()
 
-        if (settingsGradle != null) {
-            File(dir, "settings.gradle").writeText(settingsGradle!!)
+        val settings = File(dir, "settings.gradle")
+        if(settingsGradle == null) {
+            val settingsText = "rootProject.name = \"${dir.name}\"\n"
+            if (subprojects.isEmpty()) {
+                settings.writeText("rootProject.name = \"${dir.name}\"\n")
+            } else {
+                val subprojectsDeclarations = subprojects.joinToString("\n") { subproject  ->  "include('${subproject.dir.name}')" }
+                settings.writeText(settingsText + subprojectsDeclarations)
+            }
+        } else {
+            settings.writeText(settingsGradle!!)
         }
 
         if (groovyBuildScript != null) {
@@ -90,21 +99,21 @@ class GradleProjectSpec(
         }
 
         if (checkstyleXml != null) {
-            File(dir, "config/checkstyle/checkstyle.xml").apply{ 
+            File(dir, "config/checkstyle/checkstyle.xml").apply{
                 parentFile.mkdirs()
                 writeText(checkstyleXml!!)
             }
         }
 
         for (props in propertiesFiles.entries) {
-            File(dir, props.key).apply{ 
+            File(dir, props.key).apply{
                 parentFile.mkdirs()
                 writeText(props.value)
             }
         }
 
         for (text in textFiles.entries) {
-            File(dir, text.key).apply{ 
+            File(dir, text.key).apply{
                 parentFile.mkdirs()
                 writeText(text.value)
             }
@@ -113,46 +122,37 @@ class GradleProjectSpec(
         for (sourceSet in sourceSets) {
             sourceSet.build(File(dir, "src"))
         }
-
-        val settings = File(dir, "settings.gradle")
-        val settingsText = "rootProject.name = \"${dir.name}\"\n"
-        if (subprojects.isEmpty()) {
-            settings.writeText("rootProject.name = \"${dir.name}\"\n")
-        } else {
-            val subprojectsDeclarations = subprojects.joinToString("\n") { subproject  ->  "include('${subproject.dir.name}')" }
-            settings.writeText(settingsText + subprojectsDeclarations)
-            for (subproject in subprojects) {
-                subproject.build()
-            }
+        for (subproject in subprojects) {
+            subproject.build()
         }
         return this
     }
 }
 
 class GradleSourceSetSpec(
-    val name: String
+    private val name: String
 ) {
-    val javaSources: MutableList<String> = mutableListOf()
+    private val javaSources: MutableList<String> = mutableListOf()
     fun java(@Language("java") source: String) {
         javaSources.add(source.trimIndent())
     }
 
-    val kotlinSources: MutableList<String> = mutableListOf()
+    private val kotlinSources: MutableList<String> = mutableListOf()
     fun kotlin(@Language("kotlin") source: String) {
         kotlinSources.add(source.trimIndent())
     }
 
-    val propertiesFiles: MutableMap<String, String> = mutableMapOf()
+    private val propertiesFiles: MutableMap<String, String> = mutableMapOf()
     fun propertiesFile(name: String, @Language("properties") text: String) {
         propertiesFiles[name] = text
     }
 
-    val yamlFiles: MutableMap<String, String> = mutableMapOf()
+    private val yamlFiles: MutableMap<String, String> = mutableMapOf()
     fun yamlFile(name: String, @Language("yaml") text: String) {
         yamlFiles[name] = text
     }
 
-    val groovyClasses: MutableList<String> = mutableListOf()
+    private val groovyClasses: MutableList<String> = mutableListOf()
     fun groovyClass(@Language("groovy") source: String) {
         groovyClasses.add(source.trimIndent())
     }
@@ -162,7 +162,7 @@ class GradleSourceSetSpec(
     fun build(dir: File): GradleSourceSetSpec {
         dir.mkdirs()
         for (javaSource in javaSources) {
-            val peckage = if (javaSource.startsWith("package")) {
+            val packageDecl = if (javaSource.startsWith("package")) {
                 "package\\s+([a-zA-Z0-9.]+);".toRegex(RegexOption.MULTILINE)
                     .find(javaSource)!!
                     .groupValues[1]
@@ -170,18 +170,18 @@ class GradleSourceSetSpec(
                 ""
             }.replace(".", "/")
             val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+)".toRegex(RegexOption.MULTILINE).find(javaSource)!!.groupValues[2]
-            val path = if (peckage.isEmpty()) {
+            val path = if (packageDecl.isEmpty()) {
                 "$name/java/$clazz.java"
             } else {
-                "$name/java/$peckage/$clazz.java"
+                "$name/java/$packageDecl/$clazz.java"
             }
-            File(dir, path).apply{ 
+            File(dir, path).apply{
                 parentFile.mkdirs()
                 writeText(javaSource)
             }
         }
         for (kotlinSource in kotlinSources) {
-            val peckage = if (kotlinSource.startsWith("package")) {
+            val packageDecl = if (kotlinSource.startsWith("package")) {
                 "package\\s+([a-zA-Z0-9.]+)".toRegex(RegexOption.MULTILINE)
                     .find(kotlinSource)!!
                     .groupValues[1]
@@ -189,18 +189,18 @@ class GradleSourceSetSpec(
                 ""
             }.replace(".", "/")
             val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+)".toRegex(RegexOption.MULTILINE).find(kotlinSource)!!.groupValues[2]
-            val path = if (peckage.isEmpty()) {
+            val path = if (packageDecl.isEmpty()) {
                 "$name/kotlin/$clazz.kt"
             } else {
-                "$name/kotlin/$peckage/$clazz.kt"
+                "$name/kotlin/$packageDecl/$clazz.kt"
             }
-            File(dir, path).apply{ 
+            File(dir, path).apply{
                 parentFile.mkdirs()
                 writeText(kotlinSource)
             }
         }
         for (groovySource in groovyClasses) {
-            val peckage = if (groovySource.startsWith("package")) {
+            val packageDecl = if (groovySource.startsWith("package")) {
                 "package\\s+([a-zA-Z0-9.]+);?".toRegex(RegexOption.MULTILINE)
                     .find(groovySource)!!
                     .groupValues[1]
@@ -208,19 +208,19 @@ class GradleSourceSetSpec(
                 ""
             }.replace(".", "/")
             val clazz = ".*(class|interface|enum)\\s+([a-zA-Z0-9-_]+)".toRegex(RegexOption.MULTILINE).find(groovySource)!!.groupValues[2]
-            val path = if (peckage.isEmpty()) {
+            val path = if (packageDecl.isEmpty()) {
                 "$name/groovy/$clazz.groovy"
             } else {
-                "$name/groovy/$peckage/$clazz.groovy"
+                "$name/groovy/$packageDecl/$clazz.groovy"
             }
-            File(dir, path).apply{ 
+            File(dir, path).apply{
                 parentFile.mkdirs()
                 writeText(groovySource)
             }
         }
         if (propertiesFiles.isNotEmpty()) {
             for (props in propertiesFiles.entries) {
-                File(dir, "$name/resources/${props.key}").apply{ 
+                File(dir, "$name/resources/${props.key}").apply{
                     parentFile.mkdirs()
                     writeText(props.value)
                 }
@@ -228,7 +228,7 @@ class GradleSourceSetSpec(
         }
         if (yamlFiles.isNotEmpty()) {
             for (yaml in yamlFiles.entries) {
-                File(dir, "$name/resources/${yaml.key}").apply{ 
+                File(dir, "$name/resources/${yaml.key}").apply{
                     parentFile.mkdirs()
                     writeText(yaml.value)
                 }
