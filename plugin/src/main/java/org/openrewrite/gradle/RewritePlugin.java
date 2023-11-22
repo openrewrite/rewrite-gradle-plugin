@@ -42,6 +42,11 @@ import java.util.stream.Stream;
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
 import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE;
 
+import java.io.File;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * When applied to the root project of a multi-project build, applies to all subprojects.
  * When applied to the root project the "rewrite" configuration and "rewrite" DSL created in the root project apply to
@@ -59,7 +64,7 @@ public class RewritePlugin implements Plugin<Project> {
         if (!isRootProject && project.getRootProject().getPluginManager().hasPlugin("org.openrewrite.rewrite")) {
             return;
         }
-        if(project.getRootProject().getPluginManager().hasPlugin("io.moderne.rewrite")) {
+        if (project.getRootProject().getPluginManager().hasPlugin("io.moderne.rewrite")) {
             // Moderne plugin provides superset of rewrite plugin functionality, no need to apply both
             return;
         }
@@ -85,7 +90,7 @@ public class RewritePlugin implements Plugin<Project> {
                 .setResolvedDependencies(resolvedDependenciesProvider);
         rewriteDiscover.dependsOn(rewriteConf);
 
-        if(isRootProject) {
+        if (isRootProject) {
             project.allprojects(subproject -> configureProject(subproject, extension, rewriteDryRun, rewriteRun));
         } else {
             configureProject(project, extension, rewriteDryRun, rewriteRun);
@@ -96,14 +101,14 @@ public class RewritePlugin implements Plugin<Project> {
         // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
         // Do not replace all() with any form of collection iteration which does not share this important property
         project.getPlugins().all(plugin -> {
-            if(plugin instanceof CheckstylePlugin) {
+            if (plugin instanceof CheckstylePlugin) {
                 // A multi-project build could hypothetically have different checkstyle configuration per-project
                 // In practice all projects tend to have the same configuration
                 CheckstyleExtension checkstyleExtension = project.getExtensions().getByType(CheckstyleExtension.class);
                 extension.setCheckstyleConfigProvider(checkstyleExtension::getConfigFile);
                 extension.setCheckstylePropertiesProvider(checkstyleExtension::getConfigProperties);
             }
-            if(!(plugin instanceof JavaBasePlugin)) {
+            if (!(plugin instanceof JavaBasePlugin)) {
                 return;
             }
 
@@ -118,6 +123,27 @@ public class RewritePlugin implements Plugin<Project> {
                 rewriteRun.dependsOn(compileTask);
                 rewriteDryRun.dependsOn(compileTask);
             });
+
+            // Detect SourceSets which overlap other sourceSets and disable the compilation task of the overlapping
+            // source set. Some plugins will create source sets not intended to be compiled for their own purposes.
+            Set<String> sourceDirs = new HashSet<>();
+            project.afterEvaluate(unused -> javaConvention.getSourceSets().stream()
+                    .sorted(Comparator.comparingInt(sourceSet -> {
+                        if ("main".equals(sourceSet.getName())) {
+                            return 0;
+                        } else if ("test".equals(sourceSet.getName())) {
+                            return 1;
+                        } else {
+                            return 2;
+                        }
+                    })).forEach(sourceSet -> {
+                        for (File file : sourceSet.getAllJava().getSourceDirectories().getFiles()) {
+                            if (!sourceDirs.add(file.getAbsolutePath())) {
+                                Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());
+                                compileTask.setEnabled(false);
+                            }
+                        }
+                    }));
         });
     }
 

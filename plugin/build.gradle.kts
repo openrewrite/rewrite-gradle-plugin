@@ -7,7 +7,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
 plugins {
-    kotlin("jvm") version("1.8.0")
+    kotlin("jvm") version("1.9.0")
     id("com.gradle.plugin-publish") version "1.1.0"
     id("com.github.hierynomus.license") version "0.16.1"
 }
@@ -67,7 +67,6 @@ configurations.all {
     }
 }
 
-
 java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(17))
@@ -109,6 +108,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
+    @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3")
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
 
@@ -126,6 +126,7 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-xml")
     compileOnly("org.openrewrite:rewrite-yaml")
     compileOnly("org.openrewrite:rewrite-polyglot:$latest")
+    @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
     compileOnly("com.puppycrawl.tools:checkstyle:9.3")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
 
@@ -156,7 +157,7 @@ tasks.withType<Test> {
 }
 
 val gVP = tasks.register("generateVersionsProperties") {
-    val outputFile = file("$buildDir/rewrite/versions.properties")
+    val outputFile = file("${project.layout.buildDirectory.get().asFile}/rewrite/versions.properties")
     description = "Creates a versions.properties in $outputFile"
     group = "Build"
 

@@ -54,7 +54,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
                     .getResource("/org/openrewrite/gradle/isolated/DefaultProjectParser.class")
                     .toString());
             classpathUrls.add(currentJar);
-            if(rewriteClassLoader == null || !classpathUrls.equals(rewriteClasspath)) {
+            if (rewriteClassLoader == null || !classpathUrls.equals(rewriteClasspath)) {
                 if (rewriteClassLoader != null) {
                     rewriteClassLoader.close();
                 }

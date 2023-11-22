@@ -38,7 +38,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
     private File configFile;
 
     private Provider<File> checkstyleConfigProvider;
-    private Provider<Map<String,Object>> checkstylePropertiesProvider;
+    private Provider<Map<String, Object>> checkstylePropertiesProvider;
     private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
     private boolean enableExperimentalGradleBuildScriptParsing = true;
@@ -98,10 +98,10 @@ public class DefaultRewriteExtension implements RewriteExtension {
     @Override
     @Nullable
     public File getCheckstyleConfigFile() {
-        if(checkstyleConfigFile == null && checkstyleConfigProvider != null) {
+        if (checkstyleConfigFile == null && checkstyleConfigProvider != null) {
             try {
                 return checkstyleConfigProvider.get();
-            } catch(Exception e) {
+            } catch (Exception e) {
                 return null;
             }
         }
@@ -110,7 +110,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
 
     @Override
     public Map<String, Object> getCheckstyleProperties() {
-        if(checkstyleConfigProvider == null) {
+        if (checkstyleConfigProvider == null) {
             return emptyMap();
         }
         return checkstylePropertiesProvider.get();
@@ -195,11 +195,11 @@ public class DefaultRewriteExtension implements RewriteExtension {
     }
 
     private Properties getVersionProps() {
-        if(versionProps == null) {
-            try(InputStream is = DefaultRewriteExtension.class.getResourceAsStream("/rewrite/versions.properties")) {
+        if (versionProps == null) {
+            try (InputStream is = DefaultRewriteExtension.class.getResourceAsStream("/rewrite/versions.properties")) {
                 versionProps = new Properties();
                 versionProps.load(is);
-            } catch(IOException e) {
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -211,24 +211,25 @@ public class DefaultRewriteExtension implements RewriteExtension {
      */
     @Override
     public String getRewriteVersion() {
-        if(rewriteVersion == null) {
+        if (rewriteVersion == null) {
             return getVersionProps().getProperty("org.openrewrite:rewrite-core");
         }
         return rewriteVersion;
     }
 
+    private String rewritePolyglotVersion;
     @Override
     public String getRewritePolyglotVersion() {
-        if(rewriteVersion == null) {
+        if (rewritePolyglotVersion == null) {
             return getVersionProps().getProperty("org.openrewrite:rewrite-polyglot");
         }
-        return rewriteVersion;
+        return rewritePolyglotVersion;
     }
 
     private String rewriteGradleModelVersion;
     @Override
     public String getRewriteGradleModelVersion() {
-        if(rewriteGradleModelVersion == null) {
+        if (rewriteGradleModelVersion == null) {
             rewriteGradleModelVersion = getVersionProps().getProperty("org.openrewrite.gradle.tooling:model");
         }
         return rewriteGradleModelVersion;
@@ -237,7 +238,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
     private String rewriteKotlinVersion;
     @Override
     public String getRewriteKotlinVersion() {
-        if(rewriteKotlinVersion == null) {
+        if (rewriteKotlinVersion == null) {
             rewriteKotlinVersion = getVersionProps().getProperty("org.openrewrite:rewrite-kotlin");
         }
         return rewriteKotlinVersion;
@@ -343,7 +344,6 @@ public class DefaultRewriteExtension implements RewriteExtension {
                     "**.gitattributes",
                     "**.gitignore",
                     "**.java-version",
-                    "**Jenkinsfile",
                     "**.jsp",
                     "**.ksh",
                     "**.kts",
@@ -385,7 +385,7 @@ public class DefaultRewriteExtension implements RewriteExtension {
 
     @Override
     public boolean getThrowOnParseFailures() {
-        if(project.getProperties().containsKey("rewrite.throwOnParseFailures")) {
+        if (project.getProperties().containsKey("rewrite.throwOnParseFailures")) {
             return true;
         }
         return throwOnParseFailures;

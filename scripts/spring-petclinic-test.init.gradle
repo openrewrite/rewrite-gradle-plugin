@@ -1,62 +1,62 @@
-initscript {
-    repositories {
-        repositories {
+initscript{
+    repositories{
+        repositories{
             mavenLocal()
-            maven {
+            maven{
                 url = uri("https://oss.sonatype.org/content/repositories/snapshots")
             }
             mavenCentral()
         }
     }
-    dependencies {
+    dependencies{
         classpath("org.openrewrite:plugin:latest.integration")
     }
 }
 
-projectsEvaluated {
-    rootProject {
-        apply plugin: org.openrewrite.gradle.RewritePlugin
+projectsEvaluated{
+    rootProject{
+        applyplugin: org.openrewrite.gradle.RewritePlugin
 
-        repositories {
+        repositories{
             mavenLocal()
-            maven {
+            maven{
                 url = uri("https://oss.sonatype.org/content/repositories/snapshots")
             }
             mavenCentral()
         }
 
-        rewrite {
+        rewrite{
             failOnInvalidActiveRecipes = true
             activeRecipe("org.openrewrite.java.spring.boot2.SpringBoot1To2Migration")
         }
 
-        dependencies {
+        dependencies{
             rewrite("org.openrewrite.recipe:rewrite-spring:latest.integration")
         }
 
         tasks.create("validateRewrite") {
              dependsOn(tasks.getByName("rewriteDryRun"))
-             doLast {
+             doLast{
                  File patchFile = file("build/reports/rewrite/rewrite.patch")
-                 if(!patchFile.exists()) {
+                 if (!patchFile.exists()) {
                      throw new RuntimeException("Running rewrite dryRun failed to produce a patch report at " + patchFile.absolutePath);
                  }
 
                  // Spot-check for some expected changes
                  String patch = patchFile.text
-                 if(!patch.contains('+++ b/src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java')) {
+                 if (!patch.contains('+++ b/src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java')) {
                     throw new RuntimeException("Expected the recipe to make changes to OwnerController.java");
                  }
-                 if(!patch.contains('-    @RequestMapping(value = "/owners/what")\n+    @GetMapping("/owners/what")')) {
+                 if (!patch.contains('-    @RequestMapping(value = "/owners/what")\n+    @GetMapping("/owners/what")')) {
                      throw new RuntimeException("Expected the recipe to change @RequestMapping into @GetMapping")
                  }
-                 if(!patch.contains('-    public JCacheManagerCustomizer cacheManagerCustomizer() {\n+    JCacheManagerCustomizer cacheManagerCustomizer() {')) {
+                 if (!patch.contains('-    public JCacheManagerCustomizer cacheManagerCustomizer() {\n+    JCacheManagerCustomizer cacheManagerCustomizer() {')) {
                      throw new RuntimeException("Expected the recipe to reduce visibility of bean methods that don't need to be public")
                  }
-                 if(!patch.contains('-@RunWith(MockitoJUnitRunner.class)\n+@ExtendWith(MockitoExtension.class)\n public class PetTypeFormatterTests {')) {
+                 if (!patch.contains('-@RunWith(MockitoJUnitRunner.class)\n+@ExtendWith(MockitoExtension.class)\n public class PetTypeFormatterTests {')) {
                      throw new RuntimeException("Expected the recipe to swap MockitoJUnitRunner for MockitoExtension")
                  }
-                 if(!patch.contains('-spring.datasource.schema=classpath*:db/${database}/schema.sql\n' +
+                 if (!patch.contains('-spring.datasource.schema=classpath*:db/${database}/schema.sql\n' +
                          '-spring.datasource.data=classpath*:db/${database}/data.sql\n' +
                          '+spring.sql.init.schema-locations=classpath*:db/${database}/schema.sql\n' +
                          '+spring.sql.init.data-locations=classpath*:db/${database}/data.sql')) {

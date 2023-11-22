@@ -36,7 +36,7 @@ class RewriteDryRunTest : RewritePluginTest {
                 }public static void main(String[] args) {   sayGoodbye(); }
             }
         """.trimIndent()
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
@@ -66,7 +66,7 @@ class RewriteDryRunTest : RewritePluginTest {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
                 }
             """)
-            sourceSet("main") {
+            sourceSet("main") { 
                 java(helloWorld)
             }
         }
@@ -83,7 +83,7 @@ class RewriteDryRunTest : RewritePluginTest {
     fun `A recipe with optional configuration can be activated directly`(
         @TempDir projectDir: File
     ) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             buildGradle("""
                 plugins {
                     id("java")
@@ -98,7 +98,7 @@ class RewriteDryRunTest : RewritePluginTest {
                     }
                 }
             """)
-            sourceSet("main") {
+            sourceSet("main") { 
                 java("""
                     package org.openrewrite.before;
                 
@@ -128,7 +128,7 @@ class RewriteDryRunTest : RewritePluginTest {
     @DisabledIf("lessThanGradle6_1")
     @Test
     fun testMultiplatform(@TempDir projectDir: File) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             buildGradle("""
                 plugins {
                     id("java")
@@ -178,7 +178,7 @@ class RewriteDryRunTest : RewritePluginTest {
                 }
                 rootProject.name = "example"
             """)
-            sourceSet("commonMain") {
+            sourceSet("commonMain") { 
                 kotlin("""
                     class HelloWorld {
                         fun sayHello() {

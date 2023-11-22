@@ -29,7 +29,7 @@ class RewriteDiscoverTest : RewritePluginTest {
     fun `rewriteDiscover prints recipes from external dependencies`(
         @TempDir projectDir: File
     ) {
-        gradleProject(projectDir) {
+        gradleProject(projectDir) { 
             buildGradle("""
                 plugins {
                     id("java")
