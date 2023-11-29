@@ -28,14 +28,14 @@ jobs:
         with:
           path: rewrite-gradle-plugin
       - name: setup-plugin-setup-java-11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 11
       - name: setup-plugin-pTML
         run: ./rewrite-gradle-plugin/gradlew --project-dir rewrite-gradle-plugin pTML
       - name: setup-java-${{ matrix.java }}
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
