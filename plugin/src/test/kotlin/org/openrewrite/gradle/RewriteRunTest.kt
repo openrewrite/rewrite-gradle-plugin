@@ -1128,4 +1128,57 @@ class RewriteRunTest : RewritePluginTest {
                 """.trimIndent()
             )
     }
+
+    @Test
+    fun `parse gradle wrapper properties`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            buildGradle("""
+            plugins {
+                id("java")
+                id("org.openrewrite.rewrite")
+            }
+            
+            repositories {
+                mavenLocal()
+                mavenCentral()
+                maven {
+                    url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                }
+            }
+            
+            rewrite {
+                activeRecipe("org.openrewrite.gradle.FindDistributionUrl")
+            }
+            """.trimIndent())
+            propertiesFile("gradle/wrapper/gradle-wrapper.properties", """
+            distributionBase=GRADLE_USER_HOME
+            distributionPath=wrapper/dists
+            distributionUrl=https\://services.gradle.org/distributions/gradle-6.8.3-bin.zip
+            zipStoreBase=GRADLE_USER_HOME
+            zipStorePath=wrapper/dists
+            """.trimIndent())
+            rewriteYaml("""
+            type: specs.openrewrite.org/v1beta/recipe
+            name: org.openrewrite.gradle.FindDistributionUrl
+            recipeList:
+              - org.openrewrite.properties.search.FindProperties:
+                  propertyKey: distributionUrl
+            """.trimIndent())
+        }
+        val result = runGradle(projectDir, "rewriteRun")
+        val task = result.task(":rewriteRun")!!
+        assertThat(task.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val propertiesFile = projectDir.resolve("gradle/wrapper/gradle-wrapper.properties")
+        assertThat(propertiesFile.readText())
+            .isEqualTo("""
+                distributionBase=GRADLE_USER_HOME
+                distributionPath=wrapper/dists
+                distributionUrl=~~>https\://services.gradle.org/distributions/gradle-6.8.3-bin.zip
+                zipStoreBase=GRADLE_USER_HOME
+                zipStorePath=wrapper/dists
+                """.trimIndent()
+            )
+    }
 }
