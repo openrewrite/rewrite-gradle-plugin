@@ -831,6 +831,9 @@ public class DefaultProjectParser implements GradleProjectParser {
             SourceFileStream gradleFiles = parseGradleFiles(exclusions, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(gradleFiles, gradleFiles.size());
 
+            SourceFileStream gradleWrapperFiles = parseGradleWrapperFiles(exclusions, alreadyParsed, ctx);
+            sourceFileStream = sourceFileStream.concat(gradleWrapperFiles, gradleWrapperFiles.size());
+
             SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx, projectProvenance, sourceFileStream);
             sourceFileStream = sourceFileStream.concat(nonProjectResources, nonProjectResources.size());
 
@@ -911,7 +914,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 if (gradleParser == null) {
                     gradleParser = gradleParser();
                 }
-                if(!isExcluded(exclusions, settingsPath)) {
+                if (!isExcluded(exclusions, settingsPath)) {
                     sourceFiles = Stream.concat(
                             sourceFiles,
                             gradleParser
@@ -927,7 +930,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 alreadyParsed.add(settingsGradleFile.toPath());
             } else if (settingsGradleKtsFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleKtsFile.toPath());
-                if(!isExcluded(exclusions, settingsPath)) {
+                if (!isExcluded(exclusions, settingsPath)) {
                     sourceFiles = Stream.concat(
                             sourceFiles,
                             PlainTextParser.builder().build()
@@ -948,12 +951,37 @@ public class DefaultProjectParser implements GradleProjectParser {
         }).concat(sourceFiles, gradleFileCount);
     }
 
+    /**
+     * Parse Gradle wrapper files separately from other resource files, as Moderne CLI skips `parseNonProjectResources`.
+     */
+    private SourceFileStream parseGradleWrapperFiles(Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
+        Stream<SourceFile> sourceFiles = Stream.empty();
+        int fileCount = 0;
+        if (project == project.getRootProject()) {
+            OmniParser omniParser = omniParser(alreadyParsed);
+            List<Path> gradleWrapperFiles = Stream.of(
+                            "gradlew", "gradlew.bat",
+                            "gradle/wrapper/gradle-wrapper.jar",
+                            "gradle/wrapper/gradle-wrapper.properties")
+                    .map(project::file)
+                    .filter(File::exists)
+                    .map(File::toPath)
+                    .filter(it -> !isExcluded(exclusions, it))
+                    .filter(omniParser::accept)
+                    .collect(toList());
+            sourceFiles = omniParser.parse(gradleWrapperFiles, baseDir, ctx);
+            fileCount = gradleWrapperFiles.size();
+        }
+        return SourceFileStream.build("wrapper", s -> {
+        }).concat(sourceFiles, fileCount);
+    }
+
     protected SourceFileStream parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
         //Collect any additional yaml/properties/xml files that are NOT already in a source set.
         OmniParser omniParser = omniParser(alreadyParsed);
         List<Path> accepted = omniParser.acceptedPaths(baseDir, subproject.getProjectDir().toPath());
-        return SourceFileStream.build("", s -> {})
-                .concat(omniParser.parse(accepted, baseDir, ctx), accepted.size());
+        return SourceFileStream.build("", s -> {
+        }).concat(omniParser.parse(accepted, baseDir, ctx), accepted.size());
     }
 
     private OmniParser omniParser(Set<Path> alreadyParsed) {
@@ -1106,7 +1134,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
         // PathMather will not evaluate the path "build.gradle" to be matched by the pattern "**/build.gradle"
         // This is counter-intuitive for most users and would otherwise require separate exclusions for files at the root and files in subdirectories
-        if(!path.isAbsolute() && !path.startsWith(File.separator)) {
+        if (!path.isAbsolute() && !path.startsWith(File.separator)) {
             return isExcluded(exclusions, Paths.get("/" + path));
         }
         return false;
