@@ -828,7 +828,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     alreadyParsed.add(file.toPath());
                 }
             }
-            SourceFileStream gradleFiles = parseGradleFiles(exclusions, alreadyParsed, ctx);
+            SourceFileStream gradleFiles = parseGradleFiles(subproject, exclusions, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(gradleFiles, gradleFiles.size());
 
             SourceFileStream gradleWrapperFiles = parseGradleWrapperFiles(exclusions, alreadyParsed, ctx);
@@ -877,14 +877,14 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private SourceFileStream parseGradleFiles(
-            Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
+            Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
         Stream<SourceFile> sourceFiles = Stream.empty();
         int gradleFileCount = 0;
 
         GradleParser gradleParser = null;
-        if (project.getBuildscript().getSourceFile() != null) {
-            File buildGradleFile = project.getBuildscript().getSourceFile();
-            Path buildScriptPath = baseDir.relativize(project.getBuildscript().getSourceFile().toPath());
+        File buildGradleFile = subproject.getBuildscript().getSourceFile();
+        if (buildGradleFile!= null) {
+            Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
             if (!isExcluded(exclusions, buildScriptPath) && buildGradleFile.exists()) {
                 alreadyParsed.add(buildScriptPath);
                 GradleProject gp = GradleProjectBuilder.gradleProject(project);
@@ -897,13 +897,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
                 gradleFileCount++;
                 sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gp)));
-                alreadyParsed.add(project.getBuildscript().getSourceFile().toPath());
+                alreadyParsed.add(buildGradleFile.toPath());
             }
         }
 
-        if (project == project.getRootProject()) {
-            File settingsGradleFile = project.file("settings.gradle");
-            File settingsGradleKtsFile = project.file("settings.gradle.kts");
+        if (subproject == project.getRootProject()) {
+            File settingsGradleFile = subproject.file("settings.gradle");
+            File settingsGradleKtsFile = subproject.file("settings.gradle.kts");
             GradleSettings gs = null;
             if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0 && (settingsGradleFile.exists() || settingsGradleKtsFile.exists())) {
                 gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
