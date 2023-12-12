@@ -883,7 +883,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         GradleParser gradleParser = null;
         File buildGradleFile = subproject.getBuildscript().getSourceFile();
-        if (buildGradleFile!= null) {
+        if (buildGradleFile != null) {
             Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
             if (!isExcluded(exclusions, buildScriptPath) && buildGradleFile.exists()) {
                 alreadyParsed.add(buildScriptPath);
