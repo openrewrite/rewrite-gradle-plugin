@@ -15,7 +15,9 @@ gradleEnterprise {
     buildCache {
         remote(HttpBuildCache::class) {
             url = uri("https://ge.openrewrite.org/cache/")
-            isPush = isCiServer
+            // Check access key presence to avoid build cache errors on PR builds when access key is not present
+            val accessKey = System.getenv("GRADLE_ENTERPRISE_ACCESS_KEY")
+            isPush = isCiServer && !accessKey.isNullOrEmpty()
         }
     }
 
