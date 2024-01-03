@@ -42,7 +42,7 @@ class RewriteResolveDependenciesTest : RewritePluginTest {
                 }
                 
                 rewrite {
-                    rewriteVersion = "8.6.1"
+                    rewriteVersion = "8.8.0"
                 }
             """)
         }

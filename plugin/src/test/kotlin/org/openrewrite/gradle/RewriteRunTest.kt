@@ -573,7 +573,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 
                 dependencies {
-                    implementation("com.fasterxml.jackson.core:jackson-core:2.16.0")
+                    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
                 }
                 
                 rewrite {
