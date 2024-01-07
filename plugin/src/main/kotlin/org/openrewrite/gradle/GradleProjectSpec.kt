@@ -241,3 +241,15 @@ class GradleSourceSetSpec(
 fun gradleProject(dir: File, init: GradleProjectSpec.()->Unit): GradleProjectSpec {
     return GradleProjectSpec(dir).apply(init).build()
 }
+
+fun commitFilesToGitRepo(dir: File) {
+    exec("git init", dir)
+    exec("git config user.email user@test.com", dir)
+    exec("git config user.name TestUser", dir)
+    exec("git add .", dir)
+    exec("git commit -m \"Initial commit\"", dir)
+}
+
+private fun exec(command: String, workingDirectory: File) {
+    Runtime.getRuntime().exec(command, null, workingDirectory)
+}
