@@ -57,6 +57,18 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
         if (resolvedDependencies == null) {
             String rewriteVersion = extension.getRewriteVersion();
             Project project = getProject();
+            if (project.getRepositories().isEmpty()) {
+                project.getRepositories().mavenCentral();
+                if (rewriteVersion.endsWith("-SNAPSHOT")) {
+                    project.getRepositories().maven(mavenArtifactRepository -> {
+                        mavenArtifactRepository.setUrl("https://oss.sonatype.org/content/repositories/snapshots/");
+                        mavenArtifactRepository.mavenContent(mavenContent -> {
+                            mavenContent.includeGroup("org.openrewrite");
+                            mavenContent.includeGroup("org.openrewrite.gradle.tooling");
+                        });
+                    });
+                }
+            }
             DependencyHandler deps = project.getDependencies();
             Dependency[] dependencies = new Dependency[]{
                     deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),

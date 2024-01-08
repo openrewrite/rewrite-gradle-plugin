@@ -24,10 +24,11 @@ import java.io.File
 class RewriteResolveDependenciesTest : RewritePluginTest {
     @Test
     fun `Specifying a rewriteVersion does not cause build failures`(
-            @TempDir projectDir: File
+        @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            buildGradle("""
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -44,7 +45,8 @@ class RewriteResolveDependenciesTest : RewritePluginTest {
                 rewrite {
                     rewriteVersion = "8.8.0"
                 }
-            """)
+            """
+            )
         }
 
         val result = runGradle(projectDir, "rewriteResolveDependencies")
@@ -52,4 +54,21 @@ class RewriteResolveDependenciesTest : RewritePluginTest {
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 
+    @Test
+    fun `No repositories still resolves`(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            buildGradle(
+                """
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+            """
+            )
+        }
+
+        val result = runGradle(projectDir, "rewriteResolveDependencies")
+        val rewriteDryRunResult = result.task(":rewriteResolveDependencies")!!
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    }
 }
