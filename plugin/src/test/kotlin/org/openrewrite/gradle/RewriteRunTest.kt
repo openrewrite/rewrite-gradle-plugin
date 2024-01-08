@@ -26,6 +26,8 @@ import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.condition.DisabledOnOs
 import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.openrewrite.Issue
 import java.io.File
 
@@ -256,6 +258,66 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(bTestClassFile.readText()).isEqualTo(bTestClassExpected)
 
         val propertiesFile = File(projectDir, "a/src/test/resources/test.properties")
+        assertThat(propertiesFile.readText()).isEqualTo("bar=baz\n")
+    }
+
+    @Test
+    fun `resources in subproject committed to git are correctly processed`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.ChangeFooToBar
+                recipeList:
+                  - org.openrewrite.properties.ChangePropertyKey:
+                      oldPropertyKey: foo
+                      newPropertyKey: bar
+            """)
+            buildGradle("""
+                plugins {
+                    id("org.openrewrite.rewrite")
+                    id("java")
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.ChangeFooToBar")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                subprojects {
+                    apply plugin: "java"
+                
+                    repositories {
+                        mavenCentral()
+                    }
+                
+                    dependencies {
+                        implementation(project(":"))
+                        implementation("junit:junit:4.12")
+                    }
+                }
+            """.trimIndent())
+            subproject("a") {
+                sourceSet("main") {
+                    propertiesFile("test.properties", "foo=baz\n")
+                }
+            }
+        }
+        commitFilesToGitRepo(projectDir)
+
+        val result = runGradle(projectDir, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val propertiesFile = File(projectDir, "a/src/main/resources/test.properties")
         assertThat(propertiesFile.readText()).isEqualTo("bar=baz\n")
     }
 
@@ -531,7 +593,7 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.gradle.UpgradeDependencyVersion:
                       groupId: com.fasterxml.jackson.core
                       artifactId: jackson-core
-                      nevVersion: 2.16.0
+                      newVersion: 2.16.0
             """)
             settingsGradle("""
                 dependencyResolutionManagement {
@@ -573,7 +635,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 
                 dependencies {
-                    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
+                    implementation("com.fasterxml.jackson.core:jackson-core:2.16.0")
                 }
                 
                 rewrite {

@@ -270,7 +270,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public Collection<Path> listSources() {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
-        Set<Path> result = new TreeSet<>(omniParser(emptySet()).acceptedPaths(baseDir, project.getProjectDir().toPath()));
+        Set<Path> result = new TreeSet<>(omniParser(emptySet(), project).acceptedPaths(baseDir, project.getProjectDir().toPath()));
         //noinspection deprecation
         JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
         if (javaConvention != null) {
@@ -809,7 +809,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if (resourcesDir.exists() && !alreadyParsed.contains(resourcesDir.toPath())) {
-                        OmniParser omniParser = omniParser(alreadyParsed);
+                        OmniParser omniParser = omniParser(alreadyParsed, subproject);
                         List<Path> accepted = omniParser.acceptedPaths(baseDir, resourcesDir.toPath());
                         sourceSetSourceFiles = Stream.concat(
                                 sourceSetSourceFiles,
@@ -958,7 +958,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         Stream<SourceFile> sourceFiles = Stream.empty();
         int fileCount = 0;
         if (project == project.getRootProject()) {
-            OmniParser omniParser = omniParser(alreadyParsed);
+            OmniParser omniParser = omniParser(alreadyParsed, project);
             List<Path> gradleWrapperFiles = Stream.of(
                             "gradlew", "gradlew.bat",
                             "gradle/wrapper/gradle-wrapper.jar",
@@ -978,13 +978,13 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     protected SourceFileStream parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
         //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-        OmniParser omniParser = omniParser(alreadyParsed);
+        OmniParser omniParser = omniParser(alreadyParsed, subproject);
         List<Path> accepted = omniParser.acceptedPaths(baseDir, subproject.getProjectDir().toPath());
         return SourceFileStream.build("", s -> {
         }).concat(omniParser.parse(accepted, baseDir, ctx), accepted.size());
     }
 
-    private OmniParser omniParser(Set<Path> alreadyParsed) {
+    private OmniParser omniParser(Set<Path> alreadyParsed, Project project) {
         return OmniParser.builder(
                         OmniParser.defaultResourceParsers(),
                         PlainTextParser.builder()
