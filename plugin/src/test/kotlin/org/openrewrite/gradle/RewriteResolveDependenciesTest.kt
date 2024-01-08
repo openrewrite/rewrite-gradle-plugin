@@ -45,7 +45,7 @@ class RewriteResolveDependenciesTest : RewritePluginTest {
                 rewrite {
                     rewriteVersion = "8.8.0"
                 }
-            """
+                """
             )
         }
 
@@ -63,7 +63,7 @@ class RewriteResolveDependenciesTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-            """
+                """
             )
         }
 
