@@ -60,13 +60,8 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
             if (project.getRepositories().isEmpty()) {
                 project.getRepositories().mavenCentral();
                 if (rewriteVersion.endsWith("-SNAPSHOT")) {
-                    project.getRepositories().maven(mavenArtifactRepository -> {
-                        mavenArtifactRepository.setUrl("https://oss.sonatype.org/content/repositories/snapshots/");
-                        mavenArtifactRepository.mavenContent(mavenContent -> {
-                            mavenContent.includeGroup("org.openrewrite");
-                            mavenContent.includeGroup("org.openrewrite.gradle.tooling");
-                        });
-                    });
+                    project.getRepositories().maven(mavenArtifactRepository ->
+                            mavenArtifactRepository.setUrl("https://oss.sonatype.org/content/repositories/snapshots/"));
                 }
             }
             DependencyHandler deps = project.getDependencies();
