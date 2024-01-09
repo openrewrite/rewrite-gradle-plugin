@@ -54,14 +54,7 @@ public class RewritePlugin implements Plugin<Project> {
 
         // At least add mavenLocal() to the repositories, so that the rewrite dependencies can be resolved
         if (isRootProject && project.getRepositories().isEmpty()) {
-            MavenArtifactRepository mavenLocal = project.getRepositories().mavenLocal();
-            // Remove mavenLocal() again if dependency resolution management is present
-            project.getGradle().settingsEvaluated(settings -> {
-                RepositoryHandler repositories = settings.getDependencyResolutionManagement().getRepositories();
-                if (!repositories.isEmpty()) {
-                    project.getRepositories().remove(mavenLocal);
-                }
-            });
+            project.getRepositories().mavenLocal();
         }
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
