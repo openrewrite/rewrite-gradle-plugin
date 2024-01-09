@@ -48,12 +48,9 @@ public class RewritePlugin implements Plugin<Project> {
         }
         RewriteExtension extension = project.getExtensions().create("rewrite", DefaultRewriteExtension.class, project);
 
+        // At least add mavenLocal() to the repositories, so that the rewrite dependencies can be resolved
         if (project.getRepositories().isEmpty()) {
-            project.getRepositories().mavenCentral();
-            if (extension.getRewriteVersion().endsWith("-SNAPSHOT")) {
-                project.getRepositories().maven(mavenArtifactRepository ->
-                        mavenArtifactRepository.setUrl("https://oss.sonatype.org/content/repositories/snapshots/"));
-            }
+            project.getRepositories().mavenLocal();
         }
 
         // Rewrite module dependencies put here will be available to all rewrite tasks

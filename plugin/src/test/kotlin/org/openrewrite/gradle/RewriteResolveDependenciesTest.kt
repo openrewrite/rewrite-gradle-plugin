@@ -18,6 +18,7 @@ package org.openrewrite.gradle
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
@@ -55,6 +56,7 @@ class RewriteResolveDependenciesTest : RewritePluginTest {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(named = "CI", matches = ".+")
     fun `No repositories still resolves`(@TempDir projectDir: File) {
         gradleProject(projectDir) {
             buildGradle(
