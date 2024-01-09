@@ -1,7 +1,7 @@
 plugins {
     id("nebula.release") version "17.1.0"
     id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
-    id("org.owasp.dependencycheck") version "8.1.0" apply false
+    id("org.owasp.dependencycheck") version "latest.release" apply false
     id("nebula.maven-resolved-dependencies") version "18.4.0" apply false
 }
 
@@ -20,6 +20,7 @@ allprojects {
         analyzers.assemblyEnabled = false
         failBuildOnCVSS = 9.0F
         suppressionFile = "suppressions.xml"
+        nvd.apiKey = System.getenv("NVD_API_KEY")
     }
 }
 
