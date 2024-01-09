@@ -57,6 +57,9 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
         if (resolvedDependencies == null) {
             String rewriteVersion = extension.getRewriteVersion();
             Project project = getProject();
+            if (project.getRepositories().isEmpty()) {
+                project.getRepositories().mavenLocal();
+            }
             DependencyHandler deps = project.getDependencies();
             Dependency[] dependencies = new Dependency[]{
                     deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),

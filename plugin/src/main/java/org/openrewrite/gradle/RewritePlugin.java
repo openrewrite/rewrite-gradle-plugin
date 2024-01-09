@@ -52,11 +52,6 @@ public class RewritePlugin implements Plugin<Project> {
         }
         RewriteExtension extension = project.getExtensions().create("rewrite", DefaultRewriteExtension.class, project);
 
-        // At least add mavenLocal() to the repositories, so that the rewrite dependencies can be resolved
-        if (isRootProject && project.getRepositories().isEmpty()) {
-            project.getRepositories().mavenLocal();
-        }
-
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
 
