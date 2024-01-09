@@ -15,8 +15,12 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.*;
+import org.gradle.api.Plugin;
+import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
@@ -49,8 +53,15 @@ public class RewritePlugin implements Plugin<Project> {
         RewriteExtension extension = project.getExtensions().create("rewrite", DefaultRewriteExtension.class, project);
 
         // At least add mavenLocal() to the repositories, so that the rewrite dependencies can be resolved
-        if (project.getRepositories().isEmpty()) {
-            project.getRepositories().mavenLocal();
+        if (isRootProject && project.getRepositories().isEmpty()) {
+            MavenArtifactRepository mavenLocal = project.getRepositories().mavenLocal();
+            // Remove mavenLocal() again if dependency resolution management is present
+            project.getGradle().settingsEvaluated(settings -> {
+                RepositoryHandler repositories = settings.getDependencyResolutionManagement().getRepositories();
+                if (!repositories.isEmpty()) {
+                    project.getRepositories().remove(mavenLocal);
+                }
+            });
         }
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
