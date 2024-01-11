@@ -66,7 +66,7 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
             DependencyHandler deps = project.getDependencies();
             String classpathProp = System.getProperty("moderne.gradle.classpath");
             if (classpathProp != null) {
-                try(Stream<Path> paths = Files.walk(Paths.get(classpathProp))) {
+                try (Stream<Path> paths = Files.walk(Paths.get(classpathProp))) {
                     resolvedDependencies = paths
                             .map(Path::toFile)
                             .collect(Collectors.toSet());
