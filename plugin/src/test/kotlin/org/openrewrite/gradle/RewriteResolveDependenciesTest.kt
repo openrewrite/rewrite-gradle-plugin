@@ -17,6 +17,7 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
 import org.junit.jupiter.api.io.TempDir
@@ -56,7 +57,7 @@ class RewriteResolveDependenciesTest : RewritePluginTest {
     }
 
     @Test
-    @DisabledIfEnvironmentVariable(named = "CI", matches = ".+")
+    @Disabled("Requires `moderne.gradle.classpath` to be set to a folder contains jars")
     fun `No repositories still resolves`(@TempDir projectDir: File) {
         gradleProject(projectDir) {
             buildGradle(
