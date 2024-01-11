@@ -691,9 +691,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 // So we use the runtime classpath to get complete type information
                 // The implementation configuration doesn't include build/source directories from project dependencies
                 // So mash it and our rewriteImplementation together to get everything
-                List<Path> dependencyPaths = Stream.concat(
-                                sourceSet.getRuntimeClasspath().getFiles().stream(),
-                                sourceSet.getCompileClasspath().getFiles().stream())
+                List<Path> dependencyPaths = sourceSet.getRuntimeClasspath().getFiles().stream()
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
