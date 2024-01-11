@@ -26,8 +26,6 @@ import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.condition.DisabledOnOs
 import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
 import org.openrewrite.Issue
 import java.io.File
 
