@@ -36,10 +36,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.toSet;
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
 import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE;
 
@@ -61,72 +62,79 @@ public class ResolveRewriteDependenciesTask extends DefaultTask {
     @Internal
     public Set<File> getResolvedDependencies() {
         if (resolvedDependencies == null) {
-            String rewriteVersion = extension.getRewriteVersion();
-            Project project = getProject();
-            DependencyHandler deps = project.getDependencies();
-            String classpathProp = System.getProperty("moderne.gradle.classpath");
-            if (classpathProp != null) {
-                try (Stream<Path> paths = Files.walk(Paths.get(classpathProp))) {
-                    resolvedDependencies = paths
-                            .map(Path::toFile)
-                            .collect(Collectors.toSet());
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            } else {
-                Dependency[] dependencies = new Dependency[]{
-                        deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-kotlin:" + extension.getRewriteKotlinVersion()),
-                        deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-java-21:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-java-17:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-maven:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-protobuf:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
-                        deps.create("org.openrewrite:rewrite-polyglot:" + extension.getRewritePolyglotVersion()),
-                        deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
-
-                        // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
-                        deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion()),
-                        deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
-                        deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
-                };
-                if (configuration != null) {
-                    dependencies = Stream.concat(
-                            Arrays.stream(dependencies),
-                            configuration.getDependencies().stream()
-                    ).toArray(Dependency[]::new);
-                }
-                // By using a detached configuration, we separate this dependency resolution from the rest of the project's
-                // configuration. This also means that Gradle has no criteria with which to select between variants of
-                // dependencies which expose differing capabilities. So those must be manually configured
-                Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
-
-                try {
-                    ObjectFactory objectFactory = project.getObjects();
-                    detachedConf.attributes(attributes -> {
-                        // Taken from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
-                        attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
-                        attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
-                        attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
-                        attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
-                        attributes.attribute(TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
-                    });
-                } catch (NoClassDefFoundError e) {
-                    // Old versions of gradle don't have all of these attributes and that's OK
-                }
-                resolvedDependencies = detachedConf.resolve();
-            }
+            resolvedDependencies = Optional.of("moderne.gradle.classpath")
+                    .map(System::getProperty)
+                    .map(this::resolveFromClasspathProperty)
+                    .filter(cp -> !cp.isEmpty())
+                    .orElseGet(this::resolveFromDetachedConfiguration);
         }
         return resolvedDependencies;
+    }
+
+    private Set<File> resolveFromClasspathProperty(String classpathProp) {
+        try (Stream<Path> paths = Files.walk(Paths.get(classpathProp))) {
+            return paths
+                    .map(Path::toFile)
+                    .collect(toSet());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private Set<File> resolveFromDetachedConfiguration() {
+        String rewriteVersion = extension.getRewriteVersion();
+        Project project = getProject();
+        DependencyHandler deps = project.getDependencies();
+        Dependency[] dependencies = new Dependency[]{
+                deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-kotlin:" + extension.getRewriteKotlinVersion()),
+                deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-21:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-17:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-maven:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-protobuf:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-polyglot:" + extension.getRewritePolyglotVersion()),
+                deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
+
+                // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
+                deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion()),
+                deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
+                deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
+        };
+        if (configuration != null) {
+            dependencies = Stream.concat(
+                    Arrays.stream(dependencies),
+                    configuration.getDependencies().stream()
+            ).toArray(Dependency[]::new);
+        }
+        // By using a detached configuration, we separate this dependency resolution from the rest of the project's
+        // configuration. This also means that Gradle has no criteria with which to select between variants of
+        // dependencies which expose differing capabilities. So those must be manually configured
+        Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
+
+        try {
+            ObjectFactory objectFactory = project.getObjects();
+            detachedConf.attributes(attributes -> {
+                // Taken from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+                attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+                attributes.attribute(TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
+            });
+        } catch (NoClassDefFoundError e) {
+            // Old versions of gradle don't have all of these attributes and that's OK
+        }
+        return detachedConf.resolve();
     }
 
     @TaskAction
