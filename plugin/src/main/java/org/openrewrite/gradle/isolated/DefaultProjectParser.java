@@ -15,6 +15,7 @@
  */
 package org.openrewrite.gradle.isolated;
 
+import com.android.build.api.dsl.AndroidSourceSet;
 import com.android.build.gradle.AppExtension;
 import com.android.build.gradle.BaseExtension;
 import com.android.build.gradle.LibraryExtension;
@@ -22,6 +23,7 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import kotlin.Pair;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -628,20 +630,17 @@ public class DefaultProjectParser implements GradleProjectParser {
             logger.lifecycle("Using active styles {}", styles.stream().map(NamedStyles::getName).collect(toList()));
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
-            AndroidParser androidParser = new AndroidParser();
             List<SourceSet> sourceSets;
-            List<Path> androidSources;
             List<Marker> projectProvenance;
-            BaseExtension baseExtension = subproject.getExtensions().findByType(BaseExtension.class);
+            AndroidParser androidParser = new AndroidParser();
+            boolean isAndroidProject = androidParser.isAndroidProject(subproject);
 
-            if (baseExtension != null) {
+            if (isAndroidProject) {
                 projectProvenance = sharedProvenance;
                 sourceSets = emptyList();
-                androidSources = androidParser.parseAndroidSources(subproject, alreadyParsed);
             } else if (javaConvention == null) {
                 projectProvenance = sharedProvenance;
                 sourceSets = emptyList();
-                androidSources = emptyList();
             } else {
                 projectProvenance = new ArrayList<>(sharedProvenance);
                 projectProvenance.add(new JavaProject(randomId(), subproject.getName(),
@@ -658,7 +657,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 return 2;
                             }
                         })).collect(toList());
-                androidSources = emptyList();
             }
 
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
@@ -842,34 +840,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
             }
 
-            List<Path> androidKotlinSources = androidParser.getKotlinSrouces(androidSources, alreadyParsed);
-
-            if (!androidKotlinSources.isEmpty()) {
-                JavaTypeCache javaTypeCache = new JavaTypeCache();
-
-                alreadyParsed.addAll(androidKotlinSources);
-                Stream<SourceFile> cus = Stream
-                        .of((Supplier<KotlinParser>) () -> KotlinParser.builder()
-                                .styles(styles)
-                                .typeCache(javaTypeCache)
-                                .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                                .build())
-                        .map(Supplier::get)
-                        .flatMap(kp -> kp.parse(androidKotlinSources, baseDir, ctx))
-                        .map(cu -> {
-                            if (isExcluded(exclusions, cu.getSourcePath())) {
-                                return null;
-                            }
-                            return cu;
-                        })
-                        .filter(Objects::nonNull);
-//                        .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
-                sourceFileStream = sourceFileStream.concat(cus, 1);
-
-//                sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
-//                sourceSetSize += kotlinPaths.size();
-                logger.lifecycle("Scanned {} Kotlin sources in {}/{}", androidKotlinSources.size(), subproject.getPath(), "not a real sourceset");
-            }
+            Pair<Stream<SourceFile>, Integer> androidSourceFiles = androidParser.parseAndroidSources(subproject, exclusions, alreadyParsed, ctx);
+            sourceFileStream = sourceFileStream.concat(androidSourceFiles.getFirst(), androidSourceFiles.getSecond());
 
             SourceFileStream gradleFiles = parseGradleFiles(subproject, exclusions, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(gradleFiles, gradleFiles.size());
