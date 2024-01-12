@@ -61,7 +61,7 @@ class AndroidParser(
         ctx: ExecutionContext
     ): Pair<Stream<SourceFile>, Int> {
 
-        val variants = subproject.extensions.getByType(BaseExtension::class.java).variants ?: return EMPTY_STREAM
+        val variants = subproject.extensions.findByType(BaseExtension::class.java)?.variants ?: return EMPTY_STREAM
 
         val sources = variants.map { variant ->
             variant.sourceSets.flatMap { it.kotlinDirectories + it.javaDirectories }
@@ -83,6 +83,7 @@ class AndroidParser(
 
             // process kotlin
             val allKotlinFiles = getKotlinSrouces(allSourceFiles, alreadyParsed)
+            alreadyParsed.addAll(allKotlinFiles)
             val (parsedKotlinFiles, kotlinCount) = parseKotlinFiles(allKotlinFiles, javaTypeCache, exclusions, ctx)
             parsedCount += kotlinCount
             streamToReturn = Stream.concat(streamToReturn, parsedKotlinFiles)
