@@ -28,6 +28,8 @@ gradlePlugin {
 }
 
 repositories {
+    gradlePluginPortal()
+    google()
     if (!project.hasProperty("releasing")) {
         mavenLocal {
             mavenContent {
@@ -74,7 +76,7 @@ java {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    options.release.set(8)
+    options.release.set(11)
     options.encoding = "UTF-8"
     options.compilerArgs.add("-parameters")
     options.isFork = true
@@ -82,7 +84,7 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.withType<KotlinCompile>().configureEach {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 
@@ -113,6 +115,7 @@ dependencies {
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
 
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
+    implementation("com.android.tools.build:gradle:8.1.4")
     compileOnly("org.openrewrite:rewrite-core")
     compileOnly("org.openrewrite:rewrite-gradle")
     compileOnly("org.openrewrite.gradle.tooling:model:$latest")
