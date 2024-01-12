@@ -632,7 +632,11 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
             List<SourceSet> sourceSets;
             List<Marker> projectProvenance;
-            AndroidParser androidParser = new AndroidParser();
+            AndroidParser androidParser = new AndroidParser(
+                    extension,
+                    styles,
+                    baseDir
+            );
             boolean isAndroidProject = androidParser.isAndroidProject(subproject);
 
             if (isAndroidProject) {
