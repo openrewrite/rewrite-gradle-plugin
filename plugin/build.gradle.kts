@@ -149,7 +149,7 @@ tasks.register<Test>("testGradleNightlies") {
     jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getNightlyVersions))
 }
 
-tasks.withType<Test>() {
+tasks.withType<Test> {
     useJUnitPlatform()
     // Remove this once we've fixed https://github.com/openrewrite/rewrite-gradle-plugin/issues/132
     setForkEvery(1)
