@@ -21,6 +21,7 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.condition.DisabledOnOs
@@ -256,6 +257,66 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(bTestClassFile.readText()).isEqualTo(bTestClassExpected)
 
         val propertiesFile = File(projectDir, "a/src/test/resources/test.properties")
+        assertThat(propertiesFile.readText()).isEqualTo("bar=baz\n")
+    }
+
+    @Test
+    fun `resources in subproject committed to git are correctly processed`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.ChangeFooToBar
+                recipeList:
+                  - org.openrewrite.properties.ChangePropertyKey:
+                      oldPropertyKey: foo
+                      newPropertyKey: bar
+            """)
+            buildGradle("""
+                plugins {
+                    id("org.openrewrite.rewrite")
+                    id("java")
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.ChangeFooToBar")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                subprojects {
+                    apply plugin: "java"
+                
+                    repositories {
+                        mavenCentral()
+                    }
+                
+                    dependencies {
+                        implementation(project(":"))
+                        implementation("junit:junit:4.12")
+                    }
+                }
+            """.trimIndent())
+            subproject("a") {
+                sourceSet("main") {
+                    propertiesFile("test.properties", "foo=baz\n")
+                }
+            }
+        }
+        commitFilesToGitRepo(projectDir)
+
+        val result = runGradle(projectDir, "rewriteRun")
+        val rewriteRunResult = result.task(":rewriteRun")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val propertiesFile = File(projectDir, "a/src/main/resources/test.properties")
         assertThat(propertiesFile.readText()).isEqualTo("bar=baz\n")
     }
 
@@ -531,7 +592,7 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.gradle.UpgradeDependencyVersion:
                       groupId: com.fasterxml.jackson.core
                       artifactId: jackson-core
-                      nevVersion: 2.16.0
+                      newVersion: 2.16.0
             """)
             settingsGradle("""
                 dependencyResolutionManagement {
@@ -1129,6 +1190,59 @@ class RewriteRunTest : RewritePluginTest {
             )
     }
 
+    @Test
+    fun `parse gradle wrapper properties`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            buildGradle("""
+            plugins {
+                id("java")
+                id("org.openrewrite.rewrite")
+            }
+            
+            repositories {
+                mavenLocal()
+                mavenCentral()
+                maven {
+                    url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                }
+            }
+            
+            rewrite {
+                activeRecipe("org.openrewrite.gradle.FindDistributionUrl")
+            }
+            """.trimIndent())
+            propertiesFile("gradle/wrapper/gradle-wrapper.properties", """
+            distributionBase=GRADLE_USER_HOME
+            distributionPath=wrapper/dists
+            distributionUrl=https\://services.gradle.org/distributions/gradle-6.8.3-bin.zip
+            zipStoreBase=GRADLE_USER_HOME
+            zipStorePath=wrapper/dists
+            """.trimIndent())
+            rewriteYaml("""
+            type: specs.openrewrite.org/v1beta/recipe
+            name: org.openrewrite.gradle.FindDistributionUrl
+            recipeList:
+              - org.openrewrite.properties.search.FindProperties:
+                  propertyKey: distributionUrl
+            """.trimIndent())
+        }
+        val result = runGradle(projectDir, "rewriteRun")
+        val task = result.task(":rewriteRun")!!
+        assertThat(task.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val propertiesFile = projectDir.resolve("gradle/wrapper/gradle-wrapper.properties")
+        assertThat(propertiesFile.readText())
+            .isEqualTo("""
+                distributionBase=GRADLE_USER_HOME
+                distributionPath=wrapper/dists
+                distributionUrl=~~>https\://services.gradle.org/distributions/gradle-6.8.3-bin.zip
+                zipStoreBase=GRADLE_USER_HOME
+                zipStorePath=wrapper/dists
+                """.trimIndent()
+            )
+    }
+
     // TODO: Extract out into RewritePluginTest? Does JUnit support that?
     @Test
     @Disabled
@@ -1140,7 +1254,6 @@ class RewriteRunTest : RewritePluginTest {
                 plugins {
                     id("org.openrewrite.rewrite")
                 }
-
                 repositories {
                     mavenLocal()
                     mavenCentral()

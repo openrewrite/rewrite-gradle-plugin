@@ -4,8 +4,8 @@ include("plugin")
 include("metrics")
 
 plugins {
-    id("com.gradle.enterprise") version "3.12.3"
-    id("com.gradle.common-custom-user-data-gradle-plugin") version "1.8.2"
+    id("com.gradle.enterprise") version "3.16"
+    id("com.gradle.common-custom-user-data-gradle-plugin") version "1.12.1"
 }
 
 gradleEnterprise {
@@ -15,7 +15,9 @@ gradleEnterprise {
     buildCache {
         remote(HttpBuildCache::class) {
             url = uri("https://ge.openrewrite.org/cache/")
-            isPush = isCiServer
+            // Check access key presence to avoid build cache errors on PR builds when access key is not present
+            val accessKey = System.getenv("GRADLE_ENTERPRISE_ACCESS_KEY")
+            isPush = isCiServer && !accessKey.isNullOrEmpty()
         }
     }
 

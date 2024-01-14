@@ -33,8 +33,6 @@ public class RewriteClassLoader extends URLClassLoader {
         "org.openrewrite.gradle.GradleProjectParser",
         "org.openrewrite.gradle.DefaultRewriteExtension",
         "org.openrewrite.gradle.RewriteExtension",
-        "io.moderne.gradle.SerializingGradleProjectParser",
-        "io.moderne.gradle.ModerneExtension",
         "org.slf4j",
         "org.gradle",
         "groovy",
@@ -70,7 +68,7 @@ public class RewriteClassLoader extends URLClassLoader {
         return foundClass;
     }
 
-    boolean shouldBeParentLoaded(String name) {
+    protected boolean shouldBeParentLoaded(String name) {
         for (String s : loadFromParent) {
             if (name.startsWith(s)) {
                 return true;

@@ -270,7 +270,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public Collection<Path> listSources() {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
-        Set<Path> result = new TreeSet<>(omniParser(emptySet()).acceptedPaths(baseDir, project.getProjectDir().toPath()));
+        Set<Path> result = new TreeSet<>(omniParser(emptySet(), project).acceptedPaths(baseDir, project.getProjectDir().toPath()));
         //noinspection deprecation
         JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
         if (javaConvention != null) {
@@ -383,7 +383,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 logger.warn("    {}", reportPath.normalize());
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
-                if (project.getExtensions().getByType(DefaultRewriteExtension.class).getFailOnDryRunResults()) {
+                if (project.getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
                     throw new RuntimeException("Applying recipes would make changes. See logs for more details.");
                 }
             } else {
@@ -687,25 +687,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .filter(it -> it.toString().endsWith(".java") && !alreadyParsed.contains(it))
                         .collect(toList());
 
-                // classpath doesn't include the transitive dependencies of the implementation configuration
-                // These aren't needed for compilation, but we want them so recipes have access to comprehensive type information
-                // The implementation configuration isn't resolvable, so we need a new configuration that extends from it
-                Configuration implementation = subproject.getConfigurations().getByName(sourceSet.getImplementationConfigurationName());
-                Configuration rewriteImplementation = subproject.getConfigurations().maybeCreate("rewrite" + sourceSet.getImplementationConfigurationName());
-                rewriteImplementation.extendsFrom(implementation);
-
-                Set<File> implementationClasspath;
-                try {
-                    implementationClasspath = rewriteImplementation.resolve();
-                } catch (Exception e) {
-                    logger.warn("Failed to resolve dependencies from {}:{}. Some type information may be incomplete",
-                            subproject.getPath(), sourceSet.getImplementationConfigurationName());
-                    implementationClasspath = emptySet();
-                }
-
-                // The implementation configuration doesn't include build/source directories from project dependencies
-                // So mash it and our rewriteImplementation together to get everything
-                List<Path> dependencyPaths = Stream.concat(implementationClasspath.stream(), sourceSet.getCompileClasspath().getFiles().stream())
+                // The compilation classpath doesn't include the transitive dependencies
+                // So we use the runtime classpath to get complete type information
+                List<Path> dependencyPaths = sourceSet.getRuntimeClasspath().getFiles().stream()
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
@@ -809,7 +793,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 for (File resourcesDir : sourceSet.getResources().getSourceDirectories()) {
                     if (resourcesDir.exists() && !alreadyParsed.contains(resourcesDir.toPath())) {
-                        OmniParser omniParser = omniParser(alreadyParsed);
+                        OmniParser omniParser = omniParser(alreadyParsed, subproject);
                         List<Path> accepted = omniParser.acceptedPaths(baseDir, resourcesDir.toPath());
                         sourceSetSourceFiles = Stream.concat(
                                 sourceSetSourceFiles,
@@ -828,8 +812,11 @@ public class DefaultProjectParser implements GradleProjectParser {
                     alreadyParsed.add(file.toPath());
                 }
             }
-            SourceFileStream gradleFiles = parseGradleFiles(exclusions, alreadyParsed, ctx);
+            SourceFileStream gradleFiles = parseGradleFiles(subproject, exclusions, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(gradleFiles, gradleFiles.size());
+
+            SourceFileStream gradleWrapperFiles = parseGradleWrapperFiles(exclusions, alreadyParsed, ctx);
+            sourceFileStream = sourceFileStream.concat(gradleWrapperFiles, gradleWrapperFiles.size());
 
             SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx, projectProvenance, sourceFileStream);
             sourceFileStream = sourceFileStream.concat(nonProjectResources, nonProjectResources.size());
@@ -874,14 +861,14 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private SourceFileStream parseGradleFiles(
-            Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
+            Project subproject, Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
         Stream<SourceFile> sourceFiles = Stream.empty();
         int gradleFileCount = 0;
 
         GradleParser gradleParser = null;
-        if (project.getBuildscript().getSourceFile() != null) {
-            File buildGradleFile = project.getBuildscript().getSourceFile();
-            Path buildScriptPath = baseDir.relativize(project.getBuildscript().getSourceFile().toPath());
+        File buildGradleFile = subproject.getBuildscript().getSourceFile();
+        if (buildGradleFile != null) {
+            Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
             if (!isExcluded(exclusions, buildScriptPath) && buildGradleFile.exists()) {
                 alreadyParsed.add(buildScriptPath);
                 GradleProject gp = GradleProjectBuilder.gradleProject(project);
@@ -894,13 +881,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
                 gradleFileCount++;
                 sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gp)));
-                alreadyParsed.add(project.getBuildscript().getSourceFile().toPath());
+                alreadyParsed.add(buildGradleFile.toPath());
             }
         }
 
-        if (project == project.getRootProject()) {
-            File settingsGradleFile = project.file("settings.gradle");
-            File settingsGradleKtsFile = project.file("settings.gradle.kts");
+        if (subproject == project.getRootProject()) {
+            File settingsGradleFile = subproject.file("settings.gradle");
+            File settingsGradleKtsFile = subproject.file("settings.gradle.kts");
             GradleSettings gs = null;
             if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0 && (settingsGradleFile.exists() || settingsGradleKtsFile.exists())) {
                 gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
@@ -911,7 +898,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 if (gradleParser == null) {
                     gradleParser = gradleParser();
                 }
-                if(!isExcluded(exclusions, settingsPath)) {
+                if (!isExcluded(exclusions, settingsPath)) {
                     sourceFiles = Stream.concat(
                             sourceFiles,
                             gradleParser
@@ -927,7 +914,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 alreadyParsed.add(settingsGradleFile.toPath());
             } else if (settingsGradleKtsFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleKtsFile.toPath());
-                if(!isExcluded(exclusions, settingsPath)) {
+                if (!isExcluded(exclusions, settingsPath)) {
                     sourceFiles = Stream.concat(
                             sourceFiles,
                             PlainTextParser.builder().build()
@@ -948,15 +935,40 @@ public class DefaultProjectParser implements GradleProjectParser {
         }).concat(sourceFiles, gradleFileCount);
     }
 
-    protected SourceFileStream parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
-        //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-        OmniParser omniParser = omniParser(alreadyParsed);
-        List<Path> accepted = omniParser.acceptedPaths(baseDir, subproject.getProjectDir().toPath());
-        return SourceFileStream.build("", s -> {})
-                .concat(omniParser.parse(accepted, baseDir, ctx), accepted.size());
+    /**
+     * Parse Gradle wrapper files separately from other resource files, as Moderne CLI skips `parseNonProjectResources`.
+     */
+    private SourceFileStream parseGradleWrapperFiles(Collection<PathMatcher> exclusions, Set<Path> alreadyParsed, ExecutionContext ctx) {
+        Stream<SourceFile> sourceFiles = Stream.empty();
+        int fileCount = 0;
+        if (project == project.getRootProject()) {
+            OmniParser omniParser = omniParser(alreadyParsed, project);
+            List<Path> gradleWrapperFiles = Stream.of(
+                            "gradlew", "gradlew.bat",
+                            "gradle/wrapper/gradle-wrapper.jar",
+                            "gradle/wrapper/gradle-wrapper.properties")
+                    .map(project::file)
+                    .filter(File::exists)
+                    .map(File::toPath)
+                    .filter(it -> !isExcluded(exclusions, it))
+                    .filter(omniParser::accept)
+                    .collect(toList());
+            sourceFiles = omniParser.parse(gradleWrapperFiles, baseDir, ctx);
+            fileCount = gradleWrapperFiles.size();
+        }
+        return SourceFileStream.build("wrapper", s -> {
+        }).concat(sourceFiles, fileCount);
     }
 
-    private OmniParser omniParser(Set<Path> alreadyParsed) {
+    protected SourceFileStream parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
+        //Collect any additional yaml/properties/xml files that are NOT already in a source set.
+        OmniParser omniParser = omniParser(alreadyParsed, subproject);
+        List<Path> accepted = omniParser.acceptedPaths(baseDir, subproject.getProjectDir().toPath());
+        return SourceFileStream.build("", s -> {
+        }).concat(omniParser.parse(accepted, baseDir, ctx), accepted.size());
+    }
+
+    private OmniParser omniParser(Set<Path> alreadyParsed, Project project) {
         return OmniParser.builder(
                         OmniParser.defaultResourceParsers(),
                         PlainTextParser.builder()
@@ -1106,7 +1118,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
         // PathMather will not evaluate the path "build.gradle" to be matched by the pattern "**/build.gradle"
         // This is counter-intuitive for most users and would otherwise require separate exclusions for files at the root and files in subdirectories
-        if(!path.isAbsolute() && !path.startsWith(File.separator)) {
+        if (!path.isAbsolute() && !path.startsWith(File.separator)) {
             return isExcluded(exclusions, Paths.get("/" + path));
         }
         return false;
