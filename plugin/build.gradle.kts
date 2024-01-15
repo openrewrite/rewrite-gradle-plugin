@@ -57,9 +57,9 @@ configurations.all {
     resolutionStrategy {
         cacheChangingModulesFor(0, TimeUnit.SECONDS)
         cacheDynamicVersionsFor(0, TimeUnit.SECONDS)
-        if(name.startsWith("test")) {
+        if (name.startsWith("test")) {
             eachDependency {
-                if(requested.name == "groovy-xml") {
+                if (requested.name == "groovy-xml") {
                     useVersion("3.0.9")
                 }
             }
@@ -109,8 +109,12 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
     @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
-    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3")
+    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3") {
+        because("Latest version supporting gradle 4.x")
+    }
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
+    "rewriteDependencies"("com.google.guava:guava:latest.release")
+
 
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
     compileOnly("org.openrewrite:rewrite-core")
@@ -127,8 +131,11 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-yaml")
     compileOnly("org.openrewrite:rewrite-polyglot:$latest")
     @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
-    compileOnly("com.puppycrawl.tools:checkstyle:9.3")
+    compileOnly("com.puppycrawl.tools:checkstyle:9.3") {
+        because("Latest version supporting gradle 4.x")
+    }
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
+    compileOnly("com.google.guava:guava:latest.release")
 
     testImplementation(platform("org.junit:junit-bom:latest.release"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
@@ -137,6 +144,15 @@ dependencies {
     testImplementation("org.openrewrite:rewrite-test")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.assertj:assertj-core:latest.release")
+
+    modules {
+        module("com.google.guava:listenablefuture") {
+            replacedBy("com.google.guava:guava", "listenablefuture is part of guava")
+        }
+        module("com.google.collections:google-collections") {
+            replacedBy("com.google.guava:guava", "google-collections is part of guava")
+        }
+    }
 }
 
 project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))
@@ -166,14 +182,14 @@ val gVP = tasks.register("generateVersionsProperties") {
     outputs.file(outputFile)
 
     doLast {
-        if(outputFile.exists()) {
+        if (outputFile.exists()) {
             outputFile.delete()
         } else {
             outputFile.parentFile.mkdirs()
         }
         val resolvedModules = rewriteDependencies.resolvedConfiguration.firstLevelModuleDependencies
         val props = Properties()
-        for(module in resolvedModules) {
+        for (module in resolvedModules) {
             props["${module.moduleGroup}:${module.moduleName}"] = module.moduleVersion
         }
         outputFile.outputStream().use {
@@ -190,7 +206,7 @@ tasks.named<Copy>("processResources") {
 
 tasks.named<Test>("test") {
     systemProperty(
-        "org.openrewrite.test.gradleVersion", project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
+            "org.openrewrite.test.gradleVersion", project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
     )
 }
 
