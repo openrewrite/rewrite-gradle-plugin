@@ -195,7 +195,6 @@ class RewriteDryRunTest : RewritePluginTest {
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
 
-    // TODO: Extract out into RewritePluginTest? Does JUnit support that?
     @Test
     fun `rewriteDryRun is compatible with the configuration cache`(
         @TempDir projectDir: File

@@ -141,7 +141,6 @@ dependencies {
 
 project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))
 
-// TODO: Run this task and confirm it passes
 tasks.register<Test>("testGradleReleases") {
     jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getReleasedVersions))
 }
@@ -195,17 +194,16 @@ tasks.named<Test>("test") {
     )
 }
 
-// TODO: Downgrade to 4.3 (or even 4.0 is Provider.map isn't needed) as per https://github.com/openrewrite/rewrite-gradle-plugin/issues/227#issuecomment-1707455588 unless future comments change this
-val testGradle6Dot8Dot3 = tasks.register<Test>("testGradle6Dot8Dot3") {
-    systemProperty("org.openrewrite.test.gradleVersion", "6.8.3")
+val testGradle4Dot10Dot0 = tasks.register<Test>("testGradle4Dot10Dot0") {
+    systemProperty("org.openrewrite.test.gradleVersion", "4.10.0")
     systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
-    // Gradle 6.8.3 predates support for Java 17
+    // Gradle 4.10.0 predates support for Java 11
     javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(11))
+        languageVersion.set(JavaLanguageVersion.of(8))
     })
 }
 tasks.named("check").configure {
-    dependsOn(testGradle6Dot8Dot3)
+    dependsOn(testGradle4Dot10Dot0)
 }
 
 configure<LicenseExtension> {

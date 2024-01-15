@@ -16,11 +16,13 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.options.Option;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -33,6 +35,10 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     protected boolean dumpGcActivity;
     protected GradleProjectParser gpp;
     protected RewriteExtension extension;
+
+    protected AbstractRewriteTask() {
+        notCompatibleWithConfigurationCache("rewrite needs to parse the whole project");
+    }
 
     public <T extends AbstractRewriteTask> T setExtension(RewriteExtension extension) {
         this.extension = extension;
@@ -55,6 +61,9 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     public boolean isDumpGcActivity() {
         return dumpGcActivity;
     }
+
+    @Inject
+    public abstract ProjectLayout getProjectLayout();
 
     @Internal
     protected <T extends GradleProjectParser> T getProjectParser() {

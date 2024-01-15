@@ -23,7 +23,7 @@ import org.gradle.api.tasks.options.Option;
 
 import javax.inject.Inject;
 
-public class RewriteRunTask extends AbstractRewriteTask {
+public abstract class RewriteRunTask extends AbstractRewriteTask {
 
     private static final Logger logger = Logging.getLogger(RewriteRunTask.class);
 

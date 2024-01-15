@@ -63,9 +63,7 @@ class RewriteDiscoverTest : RewritePluginTest {
         assertThat(result.output).contains("Configured with 2 active recipes and 1 active styles.")
     }
 
-    // TODO: Extract out into RewritePluginTest? Does JUnit support that?
     @Test
-    @Disabled
     fun `rewriteDiscover is compatible with the configuration cache`(
         @TempDir projectDir: File
     ) {

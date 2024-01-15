@@ -114,7 +114,6 @@ public class RewritePlugin implements Plugin<Project> {
 
             //Collect Java metadata for each project (used for Java Provenance)
             //Using the older javaConvention because we need to support older versions of gradle.
-            // TODO: Can we migrate away fron JavaPluginConvention?
             @SuppressWarnings("deprecation")
             JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
             javaConvention.getSourceSets().all(sourceSet -> {

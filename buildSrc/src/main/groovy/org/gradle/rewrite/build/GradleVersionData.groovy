@@ -24,8 +24,7 @@ class GradleVersionData {
                 .findAll { !it.rcFor || it.activeRc } // filter out inactive rcs
                 .findAll { !it.milestoneFor } // filter out milestones
                 .<String, VersionNumber, String> collectEntries { [(it.version): VersionNumber.parse(it.version as String)] }
-                // TODO: Downgrade to 4.3 (or even 4.0 is Provider.map isn't needed) as per https://github.com/openrewrite/rewrite-gradle-plugin/issues/227#issuecomment-1707455588 unless future comments change this
-                .findAll { it.value >= VersionNumber.parse("6.8.3") } // only 6.8.3 and above
+                .findAll { it.value.major >= 5 } // only 5.0 and above
                 .inject([] as List<Map.Entry<String, VersionNumber>>) { releasesToTest, version -> // only test against latest patch versions
                     if (!releasesToTest.any { it.value.major == version.value.major && it.value.minor == version.value.minor }) {
                         releasesToTest + version

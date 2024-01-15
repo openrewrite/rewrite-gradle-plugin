@@ -1243,9 +1243,7 @@ class RewriteRunTest : RewritePluginTest {
             )
     }
 
-    // TODO: Extract out into RewritePluginTest? Does JUnit support that?
     @Test
-    @Disabled
     fun `rewriteRun is compatible with the configuration cache`(
         @TempDir projectDir: File
     ) {
