@@ -22,6 +22,17 @@ allprojects {
         suppressionFile = "suppressions.xml"
         nvd.apiKey = System.getenv("NVD_API_KEY")
     }
+
+    dependencies{
+        modules {
+            module("com.google.guava:listenablefuture") {
+                replacedBy("com.google.guava:guava", "listenablefuture is part of guava")
+            }
+            module("com.google.collections:google-collections") {
+                replacedBy("com.google.guava:guava", "google-collections is part of guava")
+            }
+        }
+    }
 }
 
 nexusPublishing {

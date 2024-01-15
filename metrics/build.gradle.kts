@@ -28,6 +28,13 @@ dependencies {
     api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
     api("io.rsocket:rsocket-transport-netty:latest.release")
 
+    implementation(platform("io.netty:netty-bom:latest.release"))
+    implementation("io.projectreactor.netty:reactor-netty-core:latest.release")
+    implementation("io.projectreactor.netty:reactor-netty-http:latest.release")
+    implementation("com.google.guava:guava:latest.release")
+
+    runtimeOnly("org.xerial.snappy:snappy-java:latest.release")
+
     testImplementation(localGroovy())
     testImplementation("org.spockframework:spock-core:2.0-groovy-3.0") {
         exclude(group = "org.codehaus.groovy")
