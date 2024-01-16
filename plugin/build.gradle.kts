@@ -115,7 +115,7 @@ dependencies {
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
 
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
-    implementation("com.android.tools.build:gradle:8.1.4")
+    compileOnly("com.android.tools.build:gradle:8.1.4")
     compileOnly("org.openrewrite:rewrite-core")
     compileOnly("org.openrewrite:rewrite-gradle")
     compileOnly("org.openrewrite.gradle.tooling:model:$latest")
