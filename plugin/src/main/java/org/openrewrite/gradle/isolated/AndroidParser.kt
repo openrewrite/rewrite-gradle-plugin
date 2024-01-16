@@ -5,6 +5,7 @@ import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.BaseVariant
+import com.android.build.gradle.internal.api.TestedVariant
 import org.gradle.api.DomainObjectSet
 import org.gradle.api.Project
 import org.gradle.api.logging.Logger
@@ -39,6 +40,13 @@ class AndroidParser(
             else -> null
         }
 
+    private val BaseVariant.testVariants: List<BaseVariant>
+        get() = if (this is TestedVariant) {
+            listOfNotNull(testVariant, unitTestVariant)
+        } else {
+            emptyList()
+        }
+
     private fun getKotlinParser(javaTypeCache: JavaTypeCache): KotlinParser {
         return KotlinParser.builder()
             .styles(styles)
@@ -58,12 +66,21 @@ class AndroidParser(
         ctx: ExecutionContext
     ): Pair<Stream<SourceFile>, Int> {
 
-        val variants = subproject.extensions.findByType(BaseExtension::class.java)?.variants ?: return Stream.empty<SourceFile>() to 0
+        val extension = subproject.extensions.findByType(BaseExtension::class.java) ?: return Stream.empty<SourceFile>() to 0
+        val variants = extension.variants ?: return Stream.empty<SourceFile>() to 0
 
-        val sources = variants.map { variant ->
-            variant.sourceSets.flatMap { it.kotlinDirectories + it.javaDirectories }
+        extension.productFlavors.forEach {
+            it.name
         }
-        logger.lifecycle("Sources=$sources")
+
+        logger.lifecycle("Project: ${subproject.name}")
+        val sources = variants.map { variant ->
+            logger.lifecycle("  Variant: ${variant.name}")
+            val sources = variant.sourceSets.flatMap { it.kotlinDirectories + it.javaDirectories }
+            val testSources = variant.testVariants.flatMap { it.sourceSets.flatMap { it.javaDirectories + it.kotlinDirectories } }
+            sources + testSources
+        }
+//        logger.lifecycle("Sources=$sources")
 
         val javaTypeCache = JavaTypeCache()
 
