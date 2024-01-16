@@ -4,10 +4,10 @@ import com.android.build.gradle.AppExtension
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.TestExtension
-import com.android.build.gradle.api.AndroidSourceSet
 import com.android.build.gradle.api.BaseVariant
 import org.gradle.api.DomainObjectSet
 import org.gradle.api.Project
+import org.gradle.api.logging.Logger
 import org.openrewrite.ExecutionContext
 import org.openrewrite.SourceFile
 import org.openrewrite.gradle.RewriteExtension
@@ -25,14 +25,11 @@ import java.util.stream.Collectors
 import java.util.stream.Stream
 
 class AndroidParser(
+    val logger: Logger,
     val rewriteExtension: RewriteExtension,
     val styles: List<NamedStyles>,
     val baseDir: Path,
 ) {
-
-    companion object {
-        private val EMPTY_STREAM: Pair<Stream<SourceFile>, Int> = Stream.empty<SourceFile>() to 0
-    }
 
     private val BaseExtension.variants: DomainObjectSet<out BaseVariant>?
         get() = when (this) {
@@ -61,11 +58,13 @@ class AndroidParser(
         ctx: ExecutionContext
     ): Pair<Stream<SourceFile>, Int> {
 
-        val variants = subproject.extensions.findByType(BaseExtension::class.java)?.variants ?: return EMPTY_STREAM
+        val variants = subproject.extensions.findByType(BaseExtension::class.java)?.variants ?: return Stream.empty<SourceFile>() to 0
 
         val sources = variants.map { variant ->
             variant.sourceSets.flatMap { it.kotlinDirectories + it.javaDirectories }
         }
+        logger.lifecycle("Sources=$sources")
+
         val javaTypeCache = JavaTypeCache()
 
         var streamToReturn = Stream.empty<SourceFile>()
@@ -82,6 +81,7 @@ class AndroidParser(
 //            streamToReturn = Stream.concat(streamToReturn, parsedJavaFiles)
 
             // process kotlin
+            logger.lifecycle("Parsing kotlin sources for $sourceDirectories")
             val allKotlinFiles = getKotlinSrouces(allSourceFiles, alreadyParsed)
             alreadyParsed.addAll(allKotlinFiles)
             val (parsedKotlinFiles, kotlinCount) = parseKotlinFiles(allKotlinFiles, javaTypeCache, exclusions, ctx)

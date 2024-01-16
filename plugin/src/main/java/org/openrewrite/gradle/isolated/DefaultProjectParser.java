@@ -633,6 +633,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             List<SourceSet> sourceSets;
             List<Marker> projectProvenance;
             AndroidParser androidParser = new AndroidParser(
+                    logger,
                     extension,
                     styles,
                     baseDir
@@ -843,6 +844,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     alreadyParsed.add(file.toPath());
                 }
             }
+            logger.lifecycle("Before androidSourceFiles isAndroid={}", isAndroidProject);
 
             Pair<Stream<SourceFile>, Integer> androidSourceFiles = androidParser.parseAndroidSources(subproject, exclusions, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(androidSourceFiles.getFirst(), androidSourceFiles.getSecond());
