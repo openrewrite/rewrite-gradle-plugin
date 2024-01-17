@@ -689,12 +689,19 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 // The compilation classpath doesn't include the transitive dependencies
                 // So we use the runtime classpath to get complete type information
-                List<Path> dependencyPaths = sourceSet.getRuntimeClasspath().getFiles().stream()
-                        .map(File::toPath)
-                        .map(Path::toAbsolutePath)
-                        .map(Path::normalize)
-                        .distinct()
-                        .collect(toList());
+                List<Path> dependencyPathsNonFinal;
+                try {
+                    dependencyPathsNonFinal = sourceSet.getRuntimeClasspath().getFiles().stream()
+                            .map(File::toPath)
+                            .map(Path::toAbsolutePath)
+                            .map(Path::normalize)
+                            .distinct()
+                            .collect(toList());
+                } catch (Exception e) {
+                    logger.warn("Unable to resolve classpath for sourceSet {}:{}", subproject.getPath(), sourceSet.getName(), e);
+                    dependencyPathsNonFinal = emptyList();
+                }
+                List<Path> dependencyPaths = dependencyPathsNonFinal;
 
                 if (!javaPaths.isEmpty()) {
                     alreadyParsed.addAll(javaPaths);
