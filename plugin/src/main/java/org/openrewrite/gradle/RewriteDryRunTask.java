@@ -24,7 +24,7 @@ import org.gradle.api.tasks.TaskAction;
 import javax.inject.Inject;
 import java.io.File;
 
-public abstract class RewriteDryRunTask extends AbstractRewriteTask {
+public class RewriteDryRunTask extends AbstractRewriteTask {
 
     private static final Logger logger = Logging.getLogger(RewriteDryRunTask.class);
 

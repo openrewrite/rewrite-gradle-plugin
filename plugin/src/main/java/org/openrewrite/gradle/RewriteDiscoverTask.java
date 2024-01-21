@@ -21,7 +21,7 @@ import org.gradle.api.tasks.options.Option;
 
 import javax.inject.Inject;
 
-public abstract class RewriteDiscoverTask extends AbstractRewriteTask {
+public class RewriteDiscoverTask extends AbstractRewriteTask {
     private boolean interactive;
 
     @Option(description = "Whether to enter an interactive shell to explore available recipes.", option = "interactive")

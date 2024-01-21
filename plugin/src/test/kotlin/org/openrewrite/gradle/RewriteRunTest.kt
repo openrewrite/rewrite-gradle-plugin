@@ -1243,6 +1243,10 @@ class RewriteRunTest : RewritePluginTest {
             )
     }
 
+    // The configuration cache works on Gradle 6.6+, but rewrite-gradle-plugin uses notCompatibleWithConfigurationCache,
+    // which is only available on Gradle 7.4+.
+    @DisabledIf("lessThanGradle7_4")
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
     @Test
     fun `rewriteRun is compatible with the configuration cache`(
         @TempDir projectDir: File

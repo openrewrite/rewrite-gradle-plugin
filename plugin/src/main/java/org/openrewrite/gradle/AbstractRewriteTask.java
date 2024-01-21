@@ -21,6 +21,7 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.options.Option;
+import org.gradle.util.GradleVersion;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -37,7 +38,9 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     protected RewriteExtension extension;
 
     protected AbstractRewriteTask() {
-        notCompatibleWithConfigurationCache("rewrite needs to parse the whole project");
+        if (GradleVersion.current().compareTo(GradleVersion.version("7.4")) >= 0) {
+            notCompatibleWithConfigurationCache("org.openrewrite.rewrite needs to parse the whole project");
+        }
     }
 
     public <T extends AbstractRewriteTask> T setExtension(RewriteExtension extension) {
@@ -63,7 +66,9 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     }
 
     @Inject
-    public abstract ProjectLayout getProjectLayout();
+    public ProjectLayout getProjectLayout() {
+        throw new AssertionError("unexpected; getProjectLayout() should be overridden by Gradle");
+    }
 
     @Internal
     protected <T extends GradleProjectParser> T getProjectParser() {

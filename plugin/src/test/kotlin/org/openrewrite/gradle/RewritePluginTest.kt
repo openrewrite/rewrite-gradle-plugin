@@ -48,4 +48,9 @@ interface RewritePluginTest {
         val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
         return currentVersion < GradleVersion.version("6.8")
     }
+
+    fun lessThanGradle7_4(): Boolean {
+        val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
+        return currentVersion < GradleVersion.version("7.4")
+    }
 }

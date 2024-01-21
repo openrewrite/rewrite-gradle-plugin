@@ -194,16 +194,16 @@ tasks.named<Test>("test") {
     )
 }
 
-val testGradle4Dot10Dot0 = tasks.register<Test>("testGradle4Dot10Dot0") {
-    systemProperty("org.openrewrite.test.gradleVersion", "4.10.0")
+val testGradle4Dot10 = tasks.register<Test>("testGradle4Dot10") {
+    systemProperty("org.openrewrite.test.gradleVersion", "4.10")
     systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
-    // Gradle 4.10.0 predates support for Java 11
+    // Gradle 4.10 predates support for Java 11
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(8))
     })
 }
 tasks.named("check").configure {
-    dependsOn(testGradle4Dot10Dot0)
+    dependsOn(testGradle4Dot10)
 }
 
 configure<LicenseExtension> {

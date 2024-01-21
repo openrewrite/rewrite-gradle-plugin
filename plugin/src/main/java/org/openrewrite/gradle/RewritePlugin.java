@@ -35,17 +35,13 @@ import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.provider.Provider;
 
 import java.io.File;
-import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
 import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE;
-
-import java.io.File;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * When applied to the root project of a multi-project build, applies to all subprojects.
@@ -148,34 +144,8 @@ public class RewritePlugin implements Plugin<Project> {
 
     private Set<File> getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
         if (resolvedDependencies == null) {
-            String rewriteVersion = extension.getRewriteVersion();
-            DependencyHandler deps = project.getDependencies();
-            Dependency[] dependencies = new Dependency[]{
-                    deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-kotlin:" + extension.getRewriteKotlinVersion()),
-                    deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-java-17:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-maven:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-protobuf:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
-                    deps.create("org.openrewrite:rewrite-polyglot:" + extension.getRewritePolyglotVersion()),
-                    deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
-
-                    // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
-                    deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion()),
-                    deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
-                    deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
-            };
-            dependencies = Stream.concat(
-                    Arrays.stream(dependencies),
+            Dependency[] dependencies = Stream.concat(
+                    knownRewriteDependencies(extension, project.getDependencies()),
                     rewriteConf.getDependencies().stream()
             ).toArray(Dependency[]::new);
             // By using a detached configuration, we separate this dependency resolution from the rest of the project's
@@ -206,5 +176,33 @@ public class RewritePlugin implements Plugin<Project> {
             resolvedDependencies = detachedConf.resolve();
         }
         return resolvedDependencies;
+    }
+
+    private static Stream<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
+        String rewriteVersion = extension.getRewriteVersion();
+        return Stream.of(
+                deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-kotlin:" + extension.getRewriteKotlinVersion()),
+                deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-17:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-maven:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-protobuf:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-polyglot:" + extension.getRewritePolyglotVersion()),
+                deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
+
+                // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
+                deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion()),
+                deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
+                deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
+        );
     }
 }
