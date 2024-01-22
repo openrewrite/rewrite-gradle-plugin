@@ -18,6 +18,23 @@
     </suppress>
     <suppress until="2024-02-15">
         <notes><![CDATA[
+            file name: rewrite-gradle-8.14.0-SNAPSHOT.jar: gradle-core-api-6.1.1.jar
+            ]]></notes>
+        <filePath regex="true">
+            .*META-INF\/rewrite\/classpath\/gradle.*6\.1\.1\.jar
+        </filePath>
+        <cve>CVE-2023-35946</cve>
+        <cve>CVE-2023-35947</cve>
+        <cve>CVE-2021-29428</cve>
+        <cve>CVE-2020-11979</cve>
+        <cve>CVE-2021-32751</cve>
+        <cve>CVE-2021-29427</cve>
+        <cve>CVE-2021-29429</cve>
+        <cve>CVE-2023-44387</cve>
+        <cve>CVE-2023-42445</cve>
+    </suppress>
+    <suppress until="2024-02-15">
+        <notes><![CDATA[
             Already on the latest version
            file name: rewrite-gradle-8.14.0-SNAPSHOT.jar: gradle-enterprise-gradle-plugin-3.16.1.jar
            ]]></notes>
