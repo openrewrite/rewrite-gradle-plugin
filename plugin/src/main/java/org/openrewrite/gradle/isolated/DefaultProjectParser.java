@@ -94,7 +94,6 @@ import static java.util.stream.Collectors.*;
 import static org.openrewrite.PathUtils.separatorsToUnix;
 import static org.openrewrite.Tree.randomId;
 
-@SuppressWarnings("unused")
 public class DefaultProjectParser implements GradleProjectParser {
     private static final String LOG_INDENT_INCREMENT = "    ";
 
@@ -654,7 +653,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, ctx));
             }
 
-            Set<String> sourceDirs = new HashSet<>();
             for (SourceSet sourceSet : sourceSets) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 int sourceSetSize = 0;
@@ -824,8 +822,10 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             SourceFileStream gradleWrapperFiles = parseGradleWrapperFiles(exclusions, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(gradleWrapperFiles, gradleWrapperFiles.size());
+            SourceFileStream gradlePropertiesFiles = parseGradlePropertiesFiles(subproject, alreadyParsed, ctx);
+            sourceFileStream = sourceFileStream.concat(gradlePropertiesFiles, gradlePropertiesFiles.size());
 
-            SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx, projectProvenance, sourceFileStream);
+            SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(nonProjectResources, nonProjectResources.size());
 
             progressBar.setMax(sourceFileStream.size());
@@ -967,7 +967,21 @@ public class DefaultProjectParser implements GradleProjectParser {
         }).concat(sourceFiles, fileCount);
     }
 
-    protected SourceFileStream parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx, List<Marker> projectProvenance, Stream<SourceFile> sourceFiles) {
+    /**
+     * Parse Gradle properties files such that these get the GradleProject marker used in UpgradeDependencyVersion.
+     */
+    private SourceFileStream parseGradlePropertiesFiles(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
+        //Collect any additional yaml/properties/xml files that are NOT already in a source set.
+        OmniParser omniParser = omniParser(alreadyParsed, subproject);
+        List<Path> accepted = omniParser.acceptedPaths(baseDir, subproject.getProjectDir().toPath())
+                .stream() // Only parse **/gradle.properties, while still leveraging the OmniParser for ignores/excludes
+                .filter(it -> it.endsWith("gradle.properties"))
+                .collect(toList());
+        return SourceFileStream.build("", s -> {
+        }).concat(omniParser.parse(accepted, baseDir, ctx), accepted.size());
+    }
+
+    protected SourceFileStream parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
         //Collect any additional yaml/properties/xml files that are NOT already in a source set.
         OmniParser omniParser = omniParser(alreadyParsed, subproject);
         List<Path> accepted = omniParser.acceptedPaths(baseDir, subproject.getProjectDir().toPath());
