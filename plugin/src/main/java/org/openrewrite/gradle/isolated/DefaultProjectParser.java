@@ -64,6 +64,7 @@ import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
 import org.openrewrite.polyglot.*;
+import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.quark.Quark;
 import org.openrewrite.quark.QuarkParser;
 import org.openrewrite.remote.Remote;
@@ -822,8 +823,6 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             SourceFileStream gradleWrapperFiles = parseGradleWrapperFiles(exclusions, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(gradleWrapperFiles, gradleWrapperFiles.size());
-            SourceFileStream gradlePropertiesFiles = parseGradlePropertiesFiles(subproject, alreadyParsed, ctx);
-            sourceFileStream = sourceFileStream.concat(gradlePropertiesFiles, gradlePropertiesFiles.size());
 
             SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(nonProjectResources, nonProjectResources.size());
@@ -872,13 +871,15 @@ public class DefaultProjectParser implements GradleProjectParser {
         Stream<SourceFile> sourceFiles = Stream.empty();
         int gradleFileCount = 0;
 
+        // build.gradle
         GradleParser gradleParser = null;
+        GradleProject gradleProject = null;
         File buildGradleFile = subproject.getBuildscript().getSourceFile();
         if (buildGradleFile != null) {
             Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
             if (!isExcluded(exclusions, buildScriptPath) && buildGradleFile.exists()) {
                 alreadyParsed.add(buildScriptPath);
-                GradleProject gp = GradleProjectBuilder.gradleProject(project);
+                gradleProject = GradleProjectBuilder.gradleProject(project);
                 if (buildScriptPath.toString().endsWith(".gradle")) {
                     gradleParser = gradleParser();
                     sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
@@ -887,11 +888,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
                 }
                 gradleFileCount++;
-                sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gp)));
+                final GradleProject finalGradleProject = gradleProject;
+                sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(finalGradleProject)));
                 alreadyParsed.add(buildGradleFile.toPath());
             }
         }
 
+        // settings.gradle
         if (subproject == project.getRootProject()) {
             File settingsGradleFile = subproject.file("settings.gradle");
             File settingsGradleKtsFile = subproject.file("settings.gradle.kts");
@@ -938,6 +941,22 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
+        // gradle.properties
+        File gradlePropertiesFile = subproject.file("gradle.properties");
+        if (gradlePropertiesFile.exists() && gradleProject != null) {
+            Path gradlePropertiesPath = baseDir.relativize(gradlePropertiesFile.toPath());
+            if (!isExcluded(exclusions, gradlePropertiesPath)) {
+                final GradleProject finalGradleProject = gradleProject;
+                sourceFiles = Stream.concat(
+                        sourceFiles,
+                        new PropertiesParser()
+                                .parse(singleton(gradlePropertiesFile.toPath()), baseDir, ctx)
+                                .map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(finalGradleProject))));
+                gradleFileCount++;
+            }
+            alreadyParsed.add(gradlePropertiesFile.toPath());
+        }
+
         return SourceFileStream.build("", s -> {
         }).concat(sourceFiles, gradleFileCount);
     }
@@ -965,20 +984,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
         return SourceFileStream.build("wrapper", s -> {
         }).concat(sourceFiles, fileCount);
-    }
-
-    /**
-     * Parse Gradle properties files such that these get the GradleProject marker used in UpgradeDependencyVersion.
-     */
-    private SourceFileStream parseGradlePropertiesFiles(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
-        //Collect any additional yaml/properties/xml files that are NOT already in a source set.
-        OmniParser omniParser = omniParser(alreadyParsed, subproject);
-        List<Path> accepted = omniParser.acceptedPaths(baseDir, subproject.getProjectDir().toPath())
-                .stream() // Only parse **/gradle.properties, while still leveraging the OmniParser for ignores/excludes
-                .filter(it -> it.endsWith("gradle.properties"))
-                .collect(toList());
-        return SourceFileStream.build("", s -> {
-        }).concat(omniParser.parse(accepted, baseDir, ctx), accepted.size());
     }
 
     protected SourceFileStream parseNonProjectResources(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
