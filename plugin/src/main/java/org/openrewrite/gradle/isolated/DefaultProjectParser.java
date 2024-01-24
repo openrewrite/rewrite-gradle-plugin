@@ -687,10 +687,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .collect(toList());
 
                 // The compilation classpath doesn't include the transitive dependencies
-                // So we use the runtime classpath to get complete type information
+                // The runtime classpath doesn't include compile only dependencies, e.g.: lombok, servlet-api
+                // So we use both together to get comprehensive type information
                 List<Path> dependencyPathsNonFinal;
                 try {
-                    dependencyPathsNonFinal = sourceSet.getRuntimeClasspath().getFiles().stream()
+                    dependencyPathsNonFinal = Stream.concat(
+                                    sourceSet.getRuntimeClasspath().getFiles().stream(),
+                                    sourceSet.getCompileClasspath().getFiles().stream())
                             .map(File::toPath)
                             .map(Path::toAbsolutePath)
                             .map(Path::normalize)
