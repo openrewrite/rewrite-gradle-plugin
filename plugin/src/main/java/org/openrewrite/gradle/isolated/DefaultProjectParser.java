@@ -686,8 +686,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .filter(it -> it.toString().endsWith(".java") && !alreadyParsed.contains(it))
                         .collect(toList());
 
-                // The compilation classpath is required for things like Lombok which has
-                // annotations with source retention only.
+                // The compilation classpath doesn't include the transitive dependencies
+                // The runtime classpath doesn't include compile only dependencies, e.g.: lombok, servlet-api
+                // So we use both together to get comprehensive type information
                 List<Path> dependencyPathsNonFinal;
                 try {
                     dependencyPathsNonFinal = Stream.concat(
