@@ -126,7 +126,7 @@ class RewriteDryRunTest : RewritePluginTest {
     }
 
     @Test
-    fun `All types can be determined with rewrite dot yaml`(
+    fun `All types can be determined with module_info_java`(
             @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
@@ -158,70 +158,13 @@ class RewriteDryRunTest : RewritePluginTest {
                     }
                 """)
             }
-            rewriteYaml("""
-                type: specs.openrewrite.org/v1beta/recipe
-                name: org.jabref.config.rewrite.cleanup
-                recipeList:
-                  - org.openrewrite.java.search.FindMissingTypes
-                """)
         }
 
-        val buildGradlePath = File(projectDir, "build.gradle")
-        val readString = Files.readString(buildGradlePath.toPath());
-        val newBuildGradle = readString +
-            """
-            rewrite {
-                activeRecipe('org.jabref.config.rewrite.cleanup')
+        Files.writeString(projectDir.resolve("src/main/java/module-info.java").toPath(), """
+            module demo {
+                requires org.slf4j;
             }
-            """;
-        Files.writeString(buildGradlePath.toPath(), newBuildGradle);
-
-        val result = runGradle(projectDir, "rewriteDryRun")
-        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
-        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
-        assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isFalse
-    }
-
-    @Test
-    fun `All types can be determined with direct recipe call`(
-            @TempDir projectDir: File
-    ) {
-        gradleProject(projectDir) {
-            buildGradle("""
-                plugins {
-                    id("java")
-                    id("org.openrewrite.rewrite")
-                }
-                
-                repositories {
-                    mavenCentral()
-                    maven {
-                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
-                    }
-                }
-                
-                dependencies {
-                    implementation 'org.slf4j:slf4j-api:2.0.11'
-                }
-            """)
-            sourceSet("main") {
-                java("""
-                    package org.openrewrite.before;
-                
-                    import org.slf4j.Logger;
-                    
-                    public class HelloWorld {
-                        private static Logger LOGGER;
-                    }
-                """)
-            }
-            rewriteYaml("""
-                type: specs.openrewrite.org/v1beta/recipe
-                name: testRecipe
-                recipeList:
-                  - org.openrewrite.java.search.FindMissingTypes
-                """)
-        }
+        """);
 
         val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.java.search.FindMissingTypes")
         val rewriteDryRunResult = result.task(":rewriteDryRun")!!
