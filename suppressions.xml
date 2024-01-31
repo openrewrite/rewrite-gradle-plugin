@@ -33,13 +33,26 @@
         <cve>CVE-2023-44387</cve>
         <cve>CVE-2023-42445</cve>
     </suppress>
-    <suppress until="2024-02-15">
+    <suppress until="2024-02-29">
         <notes><![CDATA[
             Already on the latest version
-           file name: rewrite-gradle-8.14.0-SNAPSHOT.jar: gradle-enterprise-gradle-plugin-3.16.1.jar
+            file name: rewrite-gradle-8.15.0-SNAPSHOT.jar: gradle-enterprise-gradle-plugin-3.16.2.jar
+            reason: false positive. Vulnerability is for Gradle proper, not this plugin which is latest version
            ]]></notes>
-        <sha1>798124c56fab56f879fc734b5928c3dabd9a32fe</sha1>
-        <cpe>cpe:/a:gradle:gradle_enterprise</cpe>
+        <filePath regex="true">
+            .*META-INF\/rewrite\/classpath\/gradle.*3\.16\.2\.jar
+        </filePath>
+        <cve>CVE-2022-30587</cve>
+        <cve>CVE-2019-11402</cve>
+        <cve>CVE-2019-11403</cve>
+        <cve>CVE-2019-15052</cve>
+        <cve>CVE-2023-49238</cve>
+        <cve>CVE-2021-41589</cve>
+        <cve>CVE-2022-25364</cve>
+        <cve>CVE-2023-35947</cve>
+        <cve>CVE-2021-32751</cve>
+        <cve>CVE-2021-29428</cve>
+        <cve>CVE-2020-11979</cve>
     </suppress>
     <suppress>
         <notes><![CDATA[
