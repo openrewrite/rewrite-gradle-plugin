@@ -135,14 +135,14 @@ class RewriteDryRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenCentral()
                     maven {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 dependencies {
                     implementation 'org.slf4j:slf4j-api:2.0.11'
                 }
