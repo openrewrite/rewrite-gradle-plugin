@@ -26,7 +26,7 @@ jobs:
 
       - name: publish-candidate
         if: contains(github.ref, '-rc.')
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: |
             -Preleasing
@@ -39,7 +39,7 @@ jobs:
 
       - name: publish-release
         if: (!contains(github.ref, '-rc.'))
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: |
             -Preleasing

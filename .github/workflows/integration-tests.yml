@@ -40,7 +40,7 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
       - name: run-validateRewrite
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: |
             --info
