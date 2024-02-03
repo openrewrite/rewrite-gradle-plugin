@@ -17,7 +17,6 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
@@ -25,6 +24,9 @@ import org.openrewrite.Issue
 import java.io.File
 
 class RewriteDryRunTest : RewritePluginTest {
+
+    override fun taskName(): String = "rewriteDryRun"
+
     @Test
     fun `rewriteDryRun runs successfully without modifying source files`(
         @TempDir projectDir: File
@@ -71,8 +73,8 @@ class RewriteDryRunTest : RewritePluginTest {
                 java(helloWorld)
             }
         }
-        val result = runGradle(projectDir, "rewriteDryRun")
-        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         assertThat(File(projectDir, "src/main/java/org/openrewrite/before/HelloWorld.java")
@@ -120,8 +122,8 @@ class RewriteDryRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.java.OrderImports")
-        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
@@ -189,8 +191,8 @@ class RewriteDryRunTest : RewritePluginTest {
                 """)
             }
         }
-        val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
-        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
 
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
@@ -219,8 +221,8 @@ class RewriteDryRunTest : RewritePluginTest {
                 }
             """)
         }
-        val result = runGradle(projectDir, "rewriteDryRun", "--configuration-cache")
-        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        val result = runGradle(projectDir, taskName(), "--configuration-cache")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 }

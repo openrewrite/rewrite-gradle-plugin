@@ -25,6 +25,8 @@ import java.io.File
 
 class RewriteDiscoverTest : RewritePluginTest {
 
+    override fun taskName(): String = "rewriteDiscover"
+
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/33")
     @Test
     fun `rewriteDiscover prints recipes from external dependencies`(
@@ -57,38 +59,10 @@ class RewriteDiscoverTest : RewritePluginTest {
             """)
 
         }
-        val result = runGradle(projectDir, "rewriteDiscover")
-        val rewriteDiscoverResult = result.task(":rewriteDiscover")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteDiscoverResult = result.task(":${taskName()}")!!
         assertThat(rewriteDiscoverResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         assertThat(result.output).contains("Configured with 2 active recipes and 1 active styles.")
-    }
-
-    // The configuration cache works on Gradle 6.6+, but rewrite-gradle-plugin uses notCompatibleWithConfigurationCache,
-    // which is only available on Gradle 7.4+.
-    @DisabledIf("lessThanGradle7_4")
-    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
-    @Test
-    fun `rewriteDiscover is compatible with the configuration cache`(
-        @TempDir projectDir: File
-    ) {
-        gradleProject(projectDir) {
-            buildGradle("""
-                plugins {
-                    id("org.openrewrite.rewrite")
-                }
-
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
-                    }
-                }
-            """)
-        }
-        val result = runGradle(projectDir, "rewriteDiscover", "--configuration-cache")
-        val rewriteDryRunResult = result.task(":rewriteDiscover")!!
-        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 }
