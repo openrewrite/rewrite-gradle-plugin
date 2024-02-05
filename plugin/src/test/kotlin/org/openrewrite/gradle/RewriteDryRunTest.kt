@@ -126,7 +126,7 @@ class RewriteDryRunTest : RewritePluginTest {
 
     @DisabledIf("lessThanGradle6_1")
     @Test
-    fun testMultiplatform(@TempDir projectDir: File) {
+    fun multiplatform(@TempDir projectDir: File) {
         gradleProject(projectDir) { 
             buildGradle("""
                 plugins {
