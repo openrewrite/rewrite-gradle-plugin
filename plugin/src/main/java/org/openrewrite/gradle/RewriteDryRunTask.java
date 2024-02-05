@@ -18,13 +18,11 @@ package org.openrewrite.gradle;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.specs.Specs;
-import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.nio.file.Path;
 
 public class RewriteDryRunTask extends AbstractRewriteTask {
 
