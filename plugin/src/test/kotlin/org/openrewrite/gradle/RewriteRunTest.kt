@@ -28,6 +28,7 @@ import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
 import java.io.File
+import java.nio.file.Path
 
 class RewriteRunTest : RewritePluginTest {
 
@@ -912,54 +913,6 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(aFile.readText().contains("/*~~>*/")).isTrue
     }
 
-    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/128")
-    @Test
-    fun deleteEmptyDirectory(@TempDir projectDir: File) {
-        gradleProject(projectDir) {
-            rewriteYaml("""
-              type: specs.openrewrite.org/v1beta/recipe
-              name: org.openrewrite.test.DeleteFoo
-              displayName: Delete foo/foo.properties
-              description: After deleting the file foo.properties, the newly empty foo directory should also be deleted
-              recipeList:
-                - org.openrewrite.DeleteSourceFiles:
-                    filePattern: foo/foo.properties
-            """)
-            propertiesFile("foo/foo.properties", "foo = bar")
-            buildGradle("""
-                plugins {
-                    id("groovy")
-                    id("org.openrewrite.rewrite")
-                }
-                
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
-                    }
-                }
-
-                rewrite {
-                    activeRecipe("org.openrewrite.test.DeleteFoo")
-                }
-            """)
-        }
-
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
-        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
-
-        val fooDir = projectDir.resolve("foo")
-        val fooProperties = fooDir.resolve("foo.properties")
-        assertThat(!fooProperties.exists())
-            .`as`("Recipe should have deleted foo/foo.properties, but it still exists")
-            .isTrue()
-        assertThat(!fooDir.exists())
-            .`as`("Plugin should have cleaned up empty directory when no files remained within it")
-            .isTrue()
-    }
-
     @Test
     fun `build root and repository root do not need to be the same`(@TempDir repositoryRoot: File) {
         repositoryRoot.apply{
@@ -1187,6 +1140,69 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 """.trimIndent()
             )
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/128")
+    @Test
+    fun deleteFromGitRepository(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                rewrite {
+                    activeRecipe("com.test.DeleteYamlKey")
+                }
+            """.trimIndent())
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: com.test.DeleteYamlKey
+                displayName: Delete yaml
+                description: Delete yaml
+                recipeList:
+                  - org.openrewrite.DeleteSourceFiles:
+                      filePattern: "**/foo.yml"
+            """.trimIndent())
+            sourceSet("main") {
+                yamlFile("foo.yml", """
+                  foo: bar
+                """.trimIndent())
+            }
+        }
+        gitInit(projectDir.toPath(), "test-project")
+        val result = runGradle(projectDir, "rewriteRun")
+        val task = result.task(":rewriteRun")!!
+        assertThat(task.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val yamlFile = projectDir.resolve("src/main/resources/foo.yml")
+        assertThat(yamlFile.exists()).isFalse()
+        assertThat(projectDir.resolve("src/main/resources")).doesNotExist()
+    }
+
+    fun gitInit(repositoryPath: Path, repositoryName: String) {
+        try {
+            org.eclipse.jgit.api.Git.init().setDirectory(repositoryPath.toFile()).call().use { git ->
+                //This is required for the maven and gradle plugin. This requirement needs to be removed
+                git.remoteSetUrl().setRemoteName("origin").setRemoteUri(
+                    org.eclipse.jgit.transport.URIish().setHost("git@github.com").setPort(80)
+                        .setPath("acme/$repositoryName.git")
+                )
+                    .call()
+                git.add().addFilepattern(".").call()
+                git.commit().setMessage("init commit").call()
+            }
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
     }
 
     @Test
