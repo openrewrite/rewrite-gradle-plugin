@@ -211,7 +211,7 @@ tasks.named<Test>("test") {
 }
 
 val testGradle4 = tasks.register<Test>("testGradle4") {
-    systemProperty("org.openrewrite.test.gradleVersion", "4.0")
+    systemProperty("org.openrewrite.test.gradleVersion", "4.10")
     systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
     // Gradle 4.0 predates support for Java 11
     javaLauncher.set(javaToolchains.launcherFor {

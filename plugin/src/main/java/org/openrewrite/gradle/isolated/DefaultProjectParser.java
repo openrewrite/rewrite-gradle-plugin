@@ -28,7 +28,7 @@ import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.GroovyPlugin;
-import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
@@ -275,7 +275,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
         Set<Path> result = new TreeSet<>(omniParser(emptySet(), project).acceptedPaths(baseDir, project.getProjectDir().toPath()));
         //noinspection deprecation
-        JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
+        JavaPluginExtension javaConvention = project.getConvention().findPlugin(JavaPluginExtension.class);
         if (javaConvention != null) {
             for (SourceSet sourceSet : javaConvention.getSourceSets()) {
                 sourceSet.getAllSource().getFiles().stream()
@@ -627,10 +627,10 @@ public class DefaultProjectParser implements GradleProjectParser {
             List<NamedStyles> styles = getStyles();
             logger.lifecycle("Using active styles {}", styles.stream().map(NamedStyles::getName).collect(toList()));
             @SuppressWarnings("deprecation")
-            JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
+            JavaPluginExtension javaExtension = subproject.getExtensions().findByType(JavaPluginExtension.class);
             List<SourceSet> sourceSets;
             List<Marker> projectProvenance;
-            if (javaConvention == null) {
+            if (javaExtension == null) {
                 projectProvenance = sharedProvenance;
                 sourceSets = emptyList();
             } else {
@@ -639,7 +639,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         new JavaProject.Publication(subproject.getGroup().toString(),
                                 subproject.getName(),
                                 subproject.getVersion().toString())));
-                sourceSets = javaConvention.getSourceSets().stream()
+                sourceSets = javaExtension.getSourceSets().stream()
                         .sorted(Comparator.comparingInt(sourceSet -> {
                             if ("main".equals(sourceSet.getName())) {
                                 return 0;
