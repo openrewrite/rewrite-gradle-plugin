@@ -1075,8 +1075,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                 String implementationName = (String) sourceSet.getClass().getMethod("getImplementationConfigurationName").invoke(sourceSet);
                 Configuration implementation = subproject.getConfigurations().getByName(implementationName);
                 Configuration rewriteImplementation = subproject.getConfigurations().maybeCreate("rewrite" + implementationName);
-                rewriteImplementation.extendsFrom(implementation);
-
+                if (!rewriteImplementation.extendsFrom.contains(implementation)) {
+                    rewriteImplementation.extendsFrom(implementation);
+                }
+                
                 Set<File> implementationClasspath;
                 try {
                     implementationClasspath = rewriteImplementation.resolve();
