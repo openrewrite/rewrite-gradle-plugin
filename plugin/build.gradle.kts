@@ -87,6 +87,9 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 val rewriteDependencies = configurations.create("rewriteDependencies")
+configurations.named("compileOnly").configure {
+    extendsFrom(rewriteDependencies)
+}
 
 dependencies {
     "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:$latest"))
@@ -114,26 +117,7 @@ dependencies {
     }
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
-
-
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
-    compileOnly("org.openrewrite:rewrite-core")
-    compileOnly("org.openrewrite:rewrite-gradle")
-    compileOnly("org.openrewrite.gradle.tooling:model:$latest")
-    compileOnly("org.openrewrite:rewrite-groovy")
-    compileOnly("org.openrewrite:rewrite-hcl")
-    compileOnly("org.openrewrite:rewrite-java")
-    compileOnly("org.openrewrite:rewrite-json")
-    compileOnly("org.openrewrite:rewrite-kotlin:$latest")
-    compileOnly("org.openrewrite:rewrite-properties")
-    compileOnly("org.openrewrite:rewrite-protobuf")
-    compileOnly("org.openrewrite:rewrite-xml")
-    compileOnly("org.openrewrite:rewrite-yaml")
-    compileOnly("org.openrewrite:rewrite-polyglot:$latest")
-    @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
-    compileOnly("com.puppycrawl.tools:checkstyle:9.3") {
-        because("Latest version supporting gradle 4.x")
-    }
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
     compileOnly("com.google.guava:guava:latest.release")
 
@@ -211,9 +195,9 @@ tasks.named<Test>("test") {
 }
 
 val testGradle4 = tasks.register<Test>("testGradle4") {
-    systemProperty("org.openrewrite.test.gradleVersion", "4.0")
+    systemProperty("org.openrewrite.test.gradleVersion", "4.10")
     systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
-    // Gradle 4.0 predates support for Java 11
+    // Gradle 4 predates support for Java 11
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(8))
     })

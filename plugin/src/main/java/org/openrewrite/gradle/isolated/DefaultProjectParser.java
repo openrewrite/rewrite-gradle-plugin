@@ -819,7 +819,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
                 sourceFileStream = sourceFileStream.concat(sourceSetSourceFiles.map(addProvenance(sourceSetProvenance)), sourceSetSize);
                 // Some source sets get misconfigured to have the same directories as other source sets
-                // This causes duplicate source files to be parsed, so once a source set has been parsed exclude it from future parsing
+                // Prevent files which appear in multiple source sets from being parsed more than once
                 for (File file : sourceSet.getAllSource().getSourceDirectories().getFiles()) {
                     alreadyParsed.add(file.toPath());
                 }
@@ -1078,7 +1078,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 if (!rewriteImplementation.getExtendsFrom().contains(implementation)) {
                     rewriteImplementation.extendsFrom(implementation);
                 }
-                
+
                 Set<File> implementationClasspath;
                 try {
                     implementationClasspath = rewriteImplementation.resolve();
