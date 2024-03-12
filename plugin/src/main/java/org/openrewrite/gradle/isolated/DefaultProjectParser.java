@@ -172,6 +172,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         return maybeProp;
     }
 
+    @Override
     public List<String> getActiveRecipes() {
         String activeRecipe = getPropertyWithVariantNames("activeRecipe");
         if (activeRecipe == null) {
@@ -180,6 +181,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         return Arrays.asList(activeRecipe.split(","));
     }
 
+    @Override
     public List<String> getActiveStyles() {
         String activeStyle = getPropertyWithVariantNames("activeStyle");
         if (activeStyle == null) {
@@ -188,10 +190,12 @@ public class DefaultProjectParser implements GradleProjectParser {
         return Arrays.asList(activeStyle.split(","));
     }
 
+    @Override
     public List<String> getAvailableStyles() {
         return environment().listStyles().stream().map(NamedStyles::getName).collect(toList());
     }
 
+    @Override
     public void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
         Collection<RecipeDescriptor> availableRecipeDescriptors = this.listRecipeDescriptors();
 
@@ -271,6 +275,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         return buffer;
     }
 
+    @Override
     public Collection<Path> listSources() {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
         Set<Path> result = new TreeSet<>(omniParser(emptySet(), project).acceptedPaths(baseDir, project.getProjectDir().toPath()));
@@ -288,6 +293,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         return result;
     }
 
+    @Override
     public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
         ParsingExecutionContextView ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(onError));
         if (dumpGcActivity) {
@@ -397,6 +403,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
+    @Override
     public void run(Consumer<Throwable> onError) {
         ExecutionContext ctx = new InMemoryExecutionContext(onError);
         run(listResults(ctx), ctx);
@@ -1217,6 +1224,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         return new ResultsContainer(baseDir, recipeRun);
     }
 
+    @Override
     public void shutdownRewrite() {
         GradleProjectBuilder.clearCaches();
     }
