@@ -66,21 +66,14 @@ class AndroidParser(
         ctx: ExecutionContext
     ): Pair<Stream<SourceFile>, Int> {
 
-        val extension = subproject.extensions.findByType(BaseExtension::class.java) ?: return Stream.empty<SourceFile>() to 0
-        val variants = extension.variants ?: return Stream.empty<SourceFile>() to 0
+        val variants = subproject.extensions.findByType(BaseExtension::class.java)?.variants ?: return Stream.empty<SourceFile>() to 0
 
-        extension.productFlavors.forEach {
-            it.name
-        }
-
-        logger.lifecycle("Project: ${subproject.name}")
         val sources = variants.map { variant ->
-            logger.lifecycle("  Variant: ${variant.name}")
+            // It's possible that kotlin files are in a /java folder and vice versa
             val sources = variant.sourceSets.flatMap { it.kotlinDirectories + it.javaDirectories }
             val testSources = variant.testVariants.flatMap { it.sourceSets.flatMap { it.javaDirectories + it.kotlinDirectories } }
             sources + testSources
         }
-//        logger.lifecycle("Sources=$sources")
 
         val javaTypeCache = JavaTypeCache()
 
@@ -91,6 +84,7 @@ class AndroidParser(
         sources.forEach { sourceDirectories ->
             val allSourceFiles = getAllSourceFiles(sourceDirectories, alreadyParsed)
 
+            // TODO
             // process java
 //            val allJavaFiles = getJavaSources(allSourceFiles, alreadyParsed)
 //            val (parsedJavaFiles, javaCount) = parseJavaFiles(allJavaFiles, javaTypeCache, exclusions, ctx)
