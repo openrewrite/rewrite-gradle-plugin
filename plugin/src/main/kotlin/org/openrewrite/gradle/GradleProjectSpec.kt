@@ -17,6 +17,8 @@ package org.openrewrite.gradle
 
 import org.intellij.lang.annotations.Language
 import java.io.File
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 
 /**
  * Utility to help with writing gradle projects to disk to assist with plugin testing
@@ -68,8 +70,11 @@ class GradleProjectSpec(
         return subproject
     }
 
-    fun sourceSet(name: String, init: GradleSourceSetSpec.()->Unit): GradleSourceSetSpec {
-        val sourceSet = GradleSourceSetSpec(name).apply(init)
+    fun sourceSet(name: String,
+                  sourceCharset: Charset = StandardCharsets.UTF_8,
+                  resourceCharset: Charset = StandardCharsets.UTF_8,
+                  init: GradleSourceSetSpec.()->Unit): GradleSourceSetSpec {
+        val sourceSet = GradleSourceSetSpec(name, sourceCharset, resourceCharset).apply(init)
         sourceSets.add(sourceSet)
         return sourceSet
     }
@@ -130,7 +135,9 @@ class GradleProjectSpec(
 }
 
 class GradleSourceSetSpec(
-    private val name: String
+    private val name: String,
+    private val sourceCharset: Charset = StandardCharsets.UTF_8,
+    private val resourceCharset: Charset = StandardCharsets.UTF_8
 ) {
     private val javaSources: MutableList<String> = mutableListOf()
     fun java(@Language("java") source: String) {
@@ -177,7 +184,7 @@ class GradleSourceSetSpec(
             }
             File(dir, path).apply{
                 parentFile.mkdirs()
-                writeText(javaSource)
+                writeText(javaSource, sourceCharset)
             }
         }
         for (kotlinSource in kotlinSources) {
@@ -196,7 +203,7 @@ class GradleSourceSetSpec(
             }
             File(dir, path).apply{
                 parentFile.mkdirs()
-                writeText(kotlinSource)
+                writeText(kotlinSource, sourceCharset)
             }
         }
         for (groovySource in groovyClasses) {
@@ -215,14 +222,14 @@ class GradleSourceSetSpec(
             }
             File(dir, path).apply{
                 parentFile.mkdirs()
-                writeText(groovySource)
+                writeText(groovySource, sourceCharset)
             }
         }
         if (propertiesFiles.isNotEmpty()) {
             for (props in propertiesFiles.entries) {
                 File(dir, "$name/resources/${props.key}").apply{
                     parentFile.mkdirs()
-                    writeText(props.value)
+                    writeText(props.value, resourceCharset)
                 }
             }
         }
@@ -230,7 +237,7 @@ class GradleSourceSetSpec(
             for (yaml in yamlFiles.entries) {
                 File(dir, "$name/resources/${yaml.key}").apply{
                     parentFile.mkdirs()
-                    writeText(yaml.value)
+                    writeText(yaml.value, resourceCharset)
                 }
             }
         }
