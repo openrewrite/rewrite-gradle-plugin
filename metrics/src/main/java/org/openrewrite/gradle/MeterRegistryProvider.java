@@ -113,6 +113,7 @@ public class MeterRegistryProvider implements AutoCloseable {
         return WebsocketClientTransport.create(httpClient, "/");
     }
 
+    @Override
     public void close() throws Exception {
         if (metricsClient != null) {
             try {

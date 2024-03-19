@@ -39,6 +39,7 @@ import java.util.Set;
 @SuppressWarnings("unused")
 public class RewritePlugin implements Plugin<Project> {
 
+    @Override
     public void apply(Project project) {
         boolean isRootProject = project == project.getRootProject();
         if (!isRootProject && project.getRootProject().getPluginManager().hasPlugin("org.openrewrite.rewrite")) {

@@ -72,18 +72,22 @@ public class DelegatingProjectParser implements GradleProjectParser {
         }
     }
 
+    @Override
     public List<String> getActiveRecipes() {
         return unwrapInvocationException(gpp::getActiveRecipes);
     }
 
+    @Override
     public List<String> getActiveStyles() {
         return unwrapInvocationException(gpp::getActiveStyles);
     }
 
+    @Override
     public List<String> getAvailableStyles() {
         return unwrapInvocationException(gpp::getAvailableStyles);
     }
 
+    @Override
     public void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
         unwrapInvocationException(() -> {
             gpp.discoverRecipes(interactive, serviceRegistry);
@@ -91,10 +95,12 @@ public class DelegatingProjectParser implements GradleProjectParser {
         });
     }
 
+    @Override
     public Collection<Path> listSources() {
         return unwrapInvocationException(gpp::listSources);
     }
 
+    @Override
     public void run(Consumer<Throwable> onError) {
         unwrapInvocationException(() -> {
             gpp.run(onError);
@@ -102,6 +108,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
         });
     }
 
+    @Override
     public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
         unwrapInvocationException(() -> {
             gpp.dryRun(reportPath, dumpGcActivity, onError);
@@ -109,6 +116,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
         });
     }
 
+    @Override
     public void shutdownRewrite() {
         unwrapInvocationException(() -> {
             gpp.shutdownRewrite();
