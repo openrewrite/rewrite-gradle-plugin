@@ -396,7 +396,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
                 logger.warn("Report available:");
                 logger.warn("    {}", reportPath.normalize());
-                logger.warn("Estimated time saved: {}", estimateTimeSaved);
+                logger.warn("Estimate time saved: {}", estimateTimeSaved);
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
                 if (project.getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
