@@ -302,8 +302,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 heapMetrics.bindTo(meterRegistry);
                 new JvmMemoryMetrics().bindTo(meterRegistry);
 
-                //noinspection deprecation
-                File rewriteBuildDir = new File(project.getBuildDir(), "/rewrite");
+                File rewriteBuildDir = project.getLayout().getBuildDirectory().dir("rewrite").get().getAsFile();
                 if (rewriteBuildDir.exists() || rewriteBuildDir.mkdirs()) {
                     File rewriteGcLog = new File(rewriteBuildDir, "rewrite-gc.csv");
                     try (FileOutputStream fos = new FileOutputStream(rewriteGcLog, false);
@@ -727,9 +726,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .map(Supplier::get)
                             .flatMap(jp -> jp.parse(javaPaths, baseDir, ctx))
                             .map(cu -> {
-                                //noinspection deprecation
                                 if (isExcluded(exclusions, cu.getSourcePath()) ||
-                                    cu.getSourcePath().startsWith(baseDir.relativize(subproject.getBuildDir().toPath()))) {
+                                    cu.getSourcePath().startsWith(baseDir.relativize(subproject.getLayout().getBuildDirectory().get().getAsFile().toPath()))) {
                                     return null;
                                 }
                                 return cu;
