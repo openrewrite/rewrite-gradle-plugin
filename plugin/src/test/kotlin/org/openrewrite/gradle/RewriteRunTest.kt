@@ -1190,10 +1190,10 @@ class RewriteRunTest : RewritePluginTest {
 
     fun gitInit(repositoryPath: Path, repositoryName: String) {
         try {
-            org.eclipse.jgit.api.Git.init().setDirectory(repositoryPath.toFile()).call().use { git ->
+            org.openrewrite.jgit.api.Git.init().setDirectory(repositoryPath.toFile()).call().use { git ->
                 //This is required for the maven and gradle plugin. This requirement needs to be removed
                 git.remoteSetUrl().setRemoteName("origin").setRemoteUri(
-                    org.eclipse.jgit.transport.URIish().setHost("git@github.com").setPort(80)
+                    org.openrewrite.jgit.transport.URIish().setHost("git@github.com").setPort(80)
                         .setPath("acme/$repositoryName.git")
                 )
                     .call()
