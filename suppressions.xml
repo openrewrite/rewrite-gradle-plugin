@@ -4,9 +4,6 @@
         <notes><![CDATA[
             file name: rewrite-gradle-8.14.0-SNAPSHOT.jar: gradle-core-api-6.1.1.jar
             ]]></notes>
-        <filePath regex="true">
-            .*META-INF\/rewrite\/classpath\/gradle.*6\.1\.1\.jar
-        </filePath>
         <cve>CVE-2020-11979</cve>
         <cve>CVE-2021-29427</cve>
         <cve>CVE-2021-29428</cve>
@@ -23,9 +20,6 @@
             file name: rewrite-gradle-8.15.0-SNAPSHOT.jar: gradle-enterprise-gradle-plugin-3.16.2.jar
             reason: false positive. Vulnerability is for Gradle proper, not this plugin which is latest version
            ]]></notes>
-        <filePath regex="true">
-            .*META-INF\/rewrite\/classpath\/gradle.*3\.16\.2\.jar
-        </filePath>
         <cve>CVE-2019-11065</cve>
         <cve>CVE-2019-11402</cve>
         <cve>CVE-2019-11403</cve>
