@@ -396,7 +396,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
                 logger.warn("Report available:");
                 logger.warn("    {}", reportPath.normalize());
-                logger.warn("Estimate time saved: {}", estimateTimeSaved);
+                logger.warn("Estimate time saved: {}", formatDuration(estimateTimeSaved));
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
                 if (project.getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
@@ -408,6 +408,38 @@ public class DefaultProjectParser implements GradleProjectParser {
         } finally {
             shutdownRewrite();
         }
+    }
+
+    private static String formatDuration(Duration duration) {
+        long days = duration.toDays();
+        long hours = duration.toHours() % 24;
+        long minutes = duration.toMinutes() % 60;
+        long seconds = duration.getSeconds() % 60;
+
+        StringBuilder formattedDuration = new StringBuilder();
+
+        // If duration is more than 1 day
+        if (days > 0) {
+            formattedDuration.append(days).append("d ");
+        }
+
+        // If duration is more than 1 hour
+        if (hours > 0) {
+            formattedDuration.append(hours).append("h ");
+        }
+
+        // If duration is more than 1 minute
+        if (minutes > 0) {
+            formattedDuration.append(minutes).append("m ");
+        }
+
+        // If duration is more than 1 second
+        if (seconds > 0) {
+            formattedDuration.append(seconds).append("s");
+        }
+
+
+        return formattedDuration.toString();
     }
 
     @Override
@@ -462,7 +494,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 logger.lifecycle("Please review and commit the results.");
 
-                logger.lifecycle("Estimate time saved : {}", estimateTimeSaved);
+                logger.lifecycle("Estimate time saved : {}", formatDuration(estimateTimeSaved));
 
                 try {
                     for (Result result : results.generated) {
