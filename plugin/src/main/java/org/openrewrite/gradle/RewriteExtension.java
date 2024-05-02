@@ -319,6 +319,7 @@ public class RewriteExtension {
                     "**/*.sh",
                     "**/*.sql",
                     "**/*.svg",
+                    "**/*.tsx",
                     "**/*.txt"
             ));
         }
