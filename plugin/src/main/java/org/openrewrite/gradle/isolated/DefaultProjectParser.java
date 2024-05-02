@@ -412,35 +412,11 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private static String formatDuration(Duration duration) {
-        long days = duration.toDays();
-        long hours = duration.toHours() % 24;
-        long minutes = duration.toMinutes() % 60;
-        long seconds = duration.getSeconds() % 60;
-
-        StringBuilder formattedDuration = new StringBuilder();
-
-        // If duration is more than 1 day
-        if (days > 0) {
-            formattedDuration.append(days).append("d ");
-        }
-
-        // If duration is more than 1 hour
-        if (hours > 0) {
-            formattedDuration.append(hours).append("h ");
-        }
-
-        // If duration is more than 1 minute
-        if (minutes > 0) {
-            formattedDuration.append(minutes).append("m ");
-        }
-
-        // If duration is more than 1 second
-        if (seconds > 0) {
-            formattedDuration.append(seconds).append("s");
-        }
-
-
-        return formattedDuration.toString();
+        return duration.toString()
+                .substring(2)
+                .replaceAll("(\\d[HMS])(?!$)", "$1 ")
+                .toLowerCase()
+                .trim();
     }
 
     @Override
