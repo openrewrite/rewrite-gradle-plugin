@@ -30,6 +30,7 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.invocation.DefaultGradle;
@@ -98,6 +99,7 @@ import static java.util.Collections.*;
 import static java.util.stream.Collectors.*;
 import static org.openrewrite.PathUtils.separatorsToUnix;
 import static org.openrewrite.Tree.randomId;
+import static org.openrewrite.tree.ParsingExecutionContextView.view;
 
 public class DefaultProjectParser implements GradleProjectParser {
     private static final String LOG_INDENT_INCREMENT = "    ";
@@ -296,15 +298,14 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     @Override
     public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
-        ParsingExecutionContextView ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(onError));
+        ParsingExecutionContextView ctx = view(new InMemoryExecutionContext(onError));
         if (dumpGcActivity) {
             SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
             try (JvmHeapPressureMetrics heapMetrics = new JvmHeapPressureMetrics()) {
                 heapMetrics.bindTo(meterRegistry);
                 new JvmMemoryMetrics().bindTo(meterRegistry);
 
-                //noinspection deprecation
-                File rewriteBuildDir = new File(project.getBuildDir(), "/rewrite");
+                File rewriteBuildDir = project.getLayout().getBuildDirectory().dir("rewrite").get().getAsFile();
                 if (rewriteBuildDir.exists() || rewriteBuildDir.mkdirs()) {
                     File rewriteGcLog = new File(rewriteBuildDir, "rewrite-gc.csv");
                     try (FileOutputStream fos = new FileOutputStream(rewriteGcLog, false);
@@ -717,6 +718,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, ctx));
             }
 
+            Charset sourceCharset = Charset.forName(System.getProperty("file.encoding", "UTF-8"));
+
             for (SourceSet sourceSet : sourceSets) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 int sourceSetSize = 0;
@@ -727,6 +730,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                         System.getProperty("java.vm.vendor"),
                         javaCompileTask.getSourceCompatibility(),
                         javaCompileTask.getTargetCompatibility());
+
+                CompileOptions compileOptions = javaCompileTask.getOptions();
+                final Charset javaSourceCharset = (compileOptions != null && compileOptions.getEncoding() != null)
+                        ? Charset.forName(compileOptions.getEncoding()) : sourceCharset;
 
                 List<Path> unparsedSources = sourceSet.getAllSource()
                         .getSourceDirectories()
@@ -769,6 +776,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                 List<Path> dependencyPaths = dependencyPathsNonFinal;
 
                 if (!javaPaths.isEmpty()) {
+                    view(ctx).setCharset(javaSourceCharset);
+
                     alreadyParsed.addAll(javaPaths);
                     Stream<SourceFile> cus = Stream
                             .of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
@@ -780,9 +789,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .map(Supplier::get)
                             .flatMap(jp -> jp.parse(javaPaths, baseDir, ctx))
                             .map(cu -> {
-                                //noinspection deprecation
                                 if (isExcluded(exclusions, cu.getSourcePath()) ||
-                                    cu.getSourcePath().startsWith(baseDir.relativize(subproject.getBuildDir().toPath()))) {
+                                    cu.getSourcePath().startsWith(baseDir.relativize(subproject.getLayout().getBuildDirectory().get().getAsFile().toPath()))) {
                                     return null;
                                 }
                                 return cu;
