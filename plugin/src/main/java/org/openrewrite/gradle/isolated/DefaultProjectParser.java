@@ -86,6 +86,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -347,26 +348,31 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             if (results.isNotEmpty()) {
+                Duration estimateTimeSaved = Duration.ZERO;
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
                     logger.warn("These recipes would generate new file {}:", result.getAfter().getSourcePath());
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.deleted) {
                     assert result.getBefore() != null;
                     logger.warn("These recipes would delete file {}:", result.getBefore().getSourcePath());
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.moved) {
                     assert result.getBefore() != null;
                     assert result.getAfter() != null;
                     logger.warn("These recipes would move file from {} to {}:", result.getBefore().getSourcePath(), result.getAfter().getSourcePath());
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.refactoredInPlace) {
                     assert result.getBefore() != null;
                     logger.warn("These recipes would make changes to {}:", result.getBefore().getSourcePath());
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
 
                 //noinspection ResultOfMethodCallIgnored
@@ -391,6 +397,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
                 logger.warn("Report available:");
                 logger.warn("    {}", reportPath.normalize());
+                logger.warn("Estimate time saved: {}", formatDuration(estimateTimeSaved));
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
                 if (project.getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
@@ -404,6 +411,14 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
+    private static String formatDuration(Duration duration) {
+        return duration.toString()
+                .substring(2)
+                .replaceAll("(\\d[HMS])(?!$)", "$1 ")
+                .toLowerCase()
+                .trim();
+    }
+
     @Override
     public void run(Consumer<Throwable> onError) {
         ExecutionContext ctx = new InMemoryExecutionContext(onError);
@@ -413,6 +428,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     public void run(ResultsContainer results, ExecutionContext ctx) {
         try {
             if (results.isNotEmpty()) {
+                Duration estimateTimeSaved = Duration.ZERO;
                 RuntimeException firstException = results.getFirstException();
                 if (firstException != null) {
                     logger.error("The recipe produced an error. Please report this to the recipe author.");
@@ -425,6 +441,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                      result.getAfter().getSourcePath() +
                                      " by:");
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.deleted) {
                     assert result.getBefore() != null;
@@ -432,6 +449,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                      result.getBefore().getSourcePath() +
                                      " by:");
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.moved) {
                     assert result.getAfter() != null;
@@ -440,6 +458,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                      result.getBefore().getSourcePath() + " to " +
                                      result.getAfter().getSourcePath() + " by:");
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.refactoredInPlace) {
                     assert result.getBefore() != null;
@@ -447,9 +466,12 @@ public class DefaultProjectParser implements GradleProjectParser {
                                      result.getBefore().getSourcePath() +
                                      " by:");
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
 
                 logger.lifecycle("Please review and commit the results.");
+
+                logger.lifecycle("Estimate time saved: {}", formatDuration(estimateTimeSaved));
 
                 try {
                     for (Result result : results.generated) {
@@ -513,6 +535,13 @@ public class DefaultProjectParser implements GradleProjectParser {
         } finally {
             shutdownRewrite();
         }
+    }
+
+    private static Duration estimateTimeSavedSum(Result result, Duration timeSaving) {
+        if (null != result.getTimeSavings()) {
+            return timeSaving.plus(result.getTimeSavings());
+        }
+        return timeSaving;
     }
 
     private static void writeAfter(Path root, Result result, ExecutionContext ctx) {
