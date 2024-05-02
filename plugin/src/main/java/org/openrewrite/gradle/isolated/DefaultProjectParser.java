@@ -471,7 +471,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 logger.lifecycle("Please review and commit the results.");
 
-                logger.lifecycle("Estimate time saved : {}", formatDuration(estimateTimeSaved));
+                logger.lifecycle("Estimate time saved: {}", formatDuration(estimateTimeSaved));
 
                 try {
                     for (Result result : results.generated) {
