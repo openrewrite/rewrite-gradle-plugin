@@ -300,6 +300,7 @@ public class RewriteExtension {
                     "**/*.css",
                     "**/*.config",
                     "**/Dockerfile*",
+                    "**/*.env",
                     "**/.gitattributes",
                     "**/.gitignore",
                     "**/*.htm*",
