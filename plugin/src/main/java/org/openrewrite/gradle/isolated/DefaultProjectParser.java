@@ -32,6 +32,7 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.invocation.DefaultGradle;
@@ -87,6 +88,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -99,6 +101,7 @@ import static java.util.Collections.*;
 import static java.util.stream.Collectors.*;
 import static org.openrewrite.PathUtils.separatorsToUnix;
 import static org.openrewrite.Tree.randomId;
+import static org.openrewrite.tree.ParsingExecutionContextView.view;
 
 public class DefaultProjectParser implements GradleProjectParser {
     private static final String LOG_INDENT_INCREMENT = "    ";
@@ -296,15 +299,14 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     @Override
     public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
-        ParsingExecutionContextView ctx = ParsingExecutionContextView.view(new InMemoryExecutionContext(onError));
+        ParsingExecutionContextView ctx = view(new InMemoryExecutionContext(onError));
         if (dumpGcActivity) {
             SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
             try (JvmHeapPressureMetrics heapMetrics = new JvmHeapPressureMetrics()) {
                 heapMetrics.bindTo(meterRegistry);
                 new JvmMemoryMetrics().bindTo(meterRegistry);
 
-                //noinspection deprecation
-                File rewriteBuildDir = new File(project.getBuildDir(), "/rewrite");
+                File rewriteBuildDir = project.getLayout().getBuildDirectory().dir("rewrite").get().getAsFile();
                 if (rewriteBuildDir.exists() || rewriteBuildDir.mkdirs()) {
                     File rewriteGcLog = new File(rewriteBuildDir, "rewrite-gc.csv");
                     try (FileOutputStream fos = new FileOutputStream(rewriteGcLog, false);
@@ -347,26 +349,31 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             if (results.isNotEmpty()) {
+                Duration estimateTimeSaved = Duration.ZERO;
                 for (Result result : results.generated) {
                     assert result.getAfter() != null;
                     logger.warn("These recipes would generate new file {}:", result.getAfter().getSourcePath());
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.deleted) {
                     assert result.getBefore() != null;
                     logger.warn("These recipes would delete file {}:", result.getBefore().getSourcePath());
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.moved) {
                     assert result.getBefore() != null;
                     assert result.getAfter() != null;
                     logger.warn("These recipes would move file from {} to {}:", result.getBefore().getSourcePath(), result.getAfter().getSourcePath());
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.refactoredInPlace) {
                     assert result.getBefore() != null;
                     logger.warn("These recipes would make changes to {}:", result.getBefore().getSourcePath());
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
 
                 //noinspection ResultOfMethodCallIgnored
@@ -391,6 +398,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
                 logger.warn("Report available:");
                 logger.warn("    {}", reportPath.normalize());
+                logger.warn("Estimate time saved: {}", formatDuration(estimateTimeSaved));
                 logger.warn("Run 'gradle rewriteRun' to apply the recipes.");
 
                 if (project.getExtensions().getByType(RewriteExtension.class).getFailOnDryRunResults()) {
@@ -404,6 +412,14 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
+    private static String formatDuration(Duration duration) {
+        return duration.toString()
+                .substring(2)
+                .replaceAll("(\\d[HMS])(?!$)", "$1 ")
+                .toLowerCase()
+                .trim();
+    }
+
     @Override
     public void run(Consumer<Throwable> onError) {
         ExecutionContext ctx = new InMemoryExecutionContext(onError);
@@ -413,6 +429,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     public void run(ResultsContainer results, ExecutionContext ctx) {
         try {
             if (results.isNotEmpty()) {
+                Duration estimateTimeSaved = Duration.ZERO;
                 RuntimeException firstException = results.getFirstException();
                 if (firstException != null) {
                     logger.error("The recipe produced an error. Please report this to the recipe author.");
@@ -425,6 +442,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                      result.getAfter().getSourcePath() +
                                      " by:");
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.deleted) {
                     assert result.getBefore() != null;
@@ -432,6 +450,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                      result.getBefore().getSourcePath() +
                                      " by:");
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.moved) {
                     assert result.getAfter() != null;
@@ -440,6 +459,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                      result.getBefore().getSourcePath() + " to " +
                                      result.getAfter().getSourcePath() + " by:");
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
                 for (Result result : results.refactoredInPlace) {
                     assert result.getBefore() != null;
@@ -447,9 +467,12 @@ public class DefaultProjectParser implements GradleProjectParser {
                                      result.getBefore().getSourcePath() +
                                      " by:");
                     logRecipesThatMadeChanges(result);
+                    estimateTimeSaved = estimateTimeSavedSum(result, estimateTimeSaved);
                 }
 
                 logger.lifecycle("Please review and commit the results.");
+
+                logger.lifecycle("Estimate time saved: {}", formatDuration(estimateTimeSaved));
 
                 try {
                     for (Result result : results.generated) {
@@ -513,6 +536,13 @@ public class DefaultProjectParser implements GradleProjectParser {
         } finally {
             shutdownRewrite();
         }
+    }
+
+    private static Duration estimateTimeSavedSum(Result result, Duration timeSaving) {
+        if (null != result.getTimeSavings()) {
+            return timeSaving.plus(result.getTimeSavings());
+        }
+        return timeSaving;
     }
 
     private static void writeAfter(Path root, Result result, ExecutionContext ctx) {
@@ -664,6 +694,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                 sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, ctx));
             }
 
+            Charset sourceCharset = Charset.forName(System.getProperty("file.encoding", "UTF-8"));
+
             for (SourceSet sourceSet : sourceSets) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 int sourceSetSize = 0;
@@ -674,6 +706,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                         System.getProperty("java.vm.vendor"),
                         javaCompileTask.getSourceCompatibility(),
                         javaCompileTask.getTargetCompatibility());
+
+                CompileOptions compileOptions = javaCompileTask.getOptions();
+                final Charset javaSourceCharset = (compileOptions != null && compileOptions.getEncoding() != null)
+                        ? Charset.forName(compileOptions.getEncoding()) : sourceCharset;
 
                 List<Path> unparsedSources = sourceSet.getAllSource()
                         .getSourceDirectories()
@@ -716,6 +752,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                 List<Path> dependencyPaths = dependencyPathsNonFinal;
 
                 if (!javaPaths.isEmpty()) {
+                    view(ctx).setCharset(javaSourceCharset);
+
                     alreadyParsed.addAll(javaPaths);
                     Stream<SourceFile> cus = Stream
                             .of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
@@ -727,9 +765,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .map(Supplier::get)
                             .flatMap(jp -> jp.parse(javaPaths, baseDir, ctx))
                             .map(cu -> {
-                                //noinspection deprecation
                                 if (isExcluded(exclusions, cu.getSourcePath()) ||
-                                    cu.getSourcePath().startsWith(baseDir.relativize(subproject.getBuildDir().toPath()))) {
+                                    cu.getSourcePath().startsWith(baseDir.relativize(subproject.getLayout().getBuildDirectory().get().getAsFile().toPath()))) {
                                     return null;
                                 }
                                 return cu;

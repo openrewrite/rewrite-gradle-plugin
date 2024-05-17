@@ -300,6 +300,7 @@ public class RewriteExtension {
                     "**/*.css",
                     "**/*.config",
                     "**/Dockerfile*",
+                    "**/*.env",
                     "**/.gitattributes",
                     "**/.gitignore",
                     "**/*.htm*",
@@ -319,6 +320,7 @@ public class RewriteExtension {
                     "**/*.sh",
                     "**/*.sql",
                     "**/*.svg",
+                    "**/*.tsx",
                     "**/*.txt"
             ));
         }
