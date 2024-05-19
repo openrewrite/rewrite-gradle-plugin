@@ -32,7 +32,7 @@ public class RewriteDryRunTask extends AbstractRewriteTask {
     // On Gradle 4.0 annotating something returning a Path with @OutputFile triggers a bug that deadlocks Gradle
     @OutputFile
     public File getReportPath() {
-        return getProject().getBuildDir().toPath().resolve("reports").resolve("rewrite").resolve("rewrite.patch").toFile();
+        return getProject().getLayout().getBuildDirectory().get().getAsFile().toPath().resolve("reports").resolve("rewrite").resolve("rewrite.patch").toFile();
     }
 
     @Inject
