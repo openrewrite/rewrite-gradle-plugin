@@ -29,7 +29,9 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
@@ -282,10 +284,9 @@ public class DefaultProjectParser implements GradleProjectParser {
     public Collection<Path> listSources() {
         // Use a sorted collection so that gradle input detection isn't thrown off by ordering
         Set<Path> result = new TreeSet<>(omniParser(emptySet(), project).acceptedPaths(baseDir, project.getProjectDir().toPath()));
-        //noinspection deprecation
-        JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
-        if (javaConvention != null) {
-            for (SourceSet sourceSet : javaConvention.getSourceSets()) {
+        SourceSetContainer sourceSets = findSourceSetContainer(project);
+        if (sourceSets != null) {
+            for (SourceSet sourceSet : sourceSets) {
                 sourceSet.getAllSource().getFiles().stream()
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
@@ -663,11 +664,10 @@ public class DefaultProjectParser implements GradleProjectParser {
             logger.lifecycle("Scanning sources in project {}", subproject.getPath());
             List<NamedStyles> styles = getStyles();
             logger.lifecycle("Using active styles {}", styles.stream().map(NamedStyles::getName).collect(toList()));
-            @SuppressWarnings("deprecation")
-            JavaPluginConvention javaConvention = subproject.getConvention().findPlugin(JavaPluginConvention.class);
+            SourceSetContainer sourceSetContainer = findSourceSetContainer(subproject);
             List<SourceSet> sourceSets;
             List<Marker> projectProvenance;
-            if (javaConvention == null) {
+            if (sourceSetContainer == null) {
                 projectProvenance = sharedProvenance;
                 sourceSets = emptyList();
             } else {
@@ -676,7 +676,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         new JavaProject.Publication(subproject.getGroup().toString(),
                                 subproject.getName(),
                                 subproject.getVersion().toString())));
-                sourceSets = javaConvention.getSourceSets().stream()
+                sourceSets = sourceSetContainer.stream()
                         .sorted(Comparator.comparingInt(sourceSet -> {
                             if ("main".equals(sourceSet.getName())) {
                                 return 0;
@@ -1323,5 +1323,24 @@ public class DefaultProjectParser implements GradleProjectParser {
         for (RecipeDescriptor rChild : rd.getRecipeList()) {
             logRecipe(rChild, prefix + "    ");
         }
+    }
+
+    @Nullable
+    private SourceSetContainer findSourceSetContainer(Project project) {
+        SourceSetContainer sourceSets = null;
+        if (project.getGradle().getGradleVersion().compareTo("7.1") >= 0) {
+            JavaPluginExtension javaPluginExtension = project.getExtensions().findByType(JavaPluginExtension.class);
+            if (javaPluginExtension != null) {
+                sourceSets = javaPluginExtension.getSourceSets();
+            }
+        } else {
+            //Using the older javaConvention because we need to support older versions of gradle.
+            @SuppressWarnings("deprecation")
+            JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
+            if (javaConvention != null) {
+                sourceSets = javaConvention.getSourceSets();
+            }
+        }
+        return sourceSets;
     }
 }
