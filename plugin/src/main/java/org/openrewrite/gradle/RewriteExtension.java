@@ -294,6 +294,7 @@ public class RewriteExtension {
         if (plainTextMasks.isEmpty()) {
             plainTextMasks.addAll(Arrays.asList(
                     "**/*.adoc",
+                    "**/*.aj",
                     "**/*.bash",
                     "**/*.bat",
                     "**/CODEOWNERS",
