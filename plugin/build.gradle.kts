@@ -204,7 +204,7 @@ val testGradle4 = tasks.register<Test>("testGradle4") {
     })
 }
 tasks.named("check").configure {
-    dependsOn(testGradle4Dot10)
+    dependsOn(testGradle4)
 }
 
 configure<LicenseExtension> {
