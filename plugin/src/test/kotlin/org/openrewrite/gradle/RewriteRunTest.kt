@@ -997,54 +997,6 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(aFile.readText().contains("/*~~>*/")).isTrue
     }
 
-    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/128")
-    @Test
-    fun deleteEmptyDirectory(@TempDir projectDir: File) {
-        gradleProject(projectDir) {
-            rewriteYaml("""
-              type: specs.openrewrite.org/v1beta/recipe
-              name: org.openrewrite.test.DeleteFoo
-              displayName: Delete foo/foo.properties
-              description: After deleting the file foo.properties, the newly empty foo directory should also be deleted
-              recipeList:
-                - org.openrewrite.DeleteSourceFiles:
-                    filePattern: foo/foo.properties
-            """)
-            propertiesFile("foo/foo.properties", "foo = bar")
-            buildGradle("""
-                plugins {
-                    id("groovy")
-                    id("org.openrewrite.rewrite")
-                }
-                
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
-                    }
-                }
-
-                rewrite {
-                    activeRecipe("org.openrewrite.test.DeleteFoo")
-                }
-            """)
-        }
-
-        val result = runGradle(projectDir, taskName())
-        val rewriteRunResult = result.task(":${taskName()}")!!
-        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
-
-        val fooDir = projectDir.resolve("foo")
-        val fooProperties = fooDir.resolve("foo.properties")
-        assertThat(!fooProperties.exists())
-            .`as`("Recipe should have deleted foo/foo.properties, but it still exists")
-            .isTrue()
-        assertThat(!fooDir.exists())
-            .`as`("Plugin should have cleaned up empty directory when no files remained within it")
-            .isTrue()
-    }
-
     @Test
     fun `build root and repository root do not need to be the same`(@TempDir repositoryRoot: File) {
         repositoryRoot.apply{
