@@ -3,6 +3,7 @@ plugins {
     id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
     id("org.owasp.dependencycheck") version "latest.release" apply false
     id("nebula.maven-resolved-dependencies") version "18.4.0" apply false
+    id("nebula.maven-apache-license") version "18.4.0" apply false
 }
 
 configure<nebula.plugin.release.git.base.ReleasePluginExtension> {
@@ -21,6 +22,17 @@ allprojects {
         failBuildOnCVSS = 9.0F
         suppressionFile = "suppressions.xml"
         nvd.apiKey = System.getenv("NVD_API_KEY")
+    }
+
+    dependencies{
+        modules {
+            module("com.google.guava:listenablefuture") {
+                replacedBy("com.google.guava:guava", "listenablefuture is part of guava")
+            }
+            module("com.google.collections:google-collections") {
+                replacedBy("com.google.guava:guava", "google-collections is part of guava")
+            }
+        }
     }
 }
 

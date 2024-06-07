@@ -28,6 +28,8 @@ import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 
 class RewriteRunTest : RewritePluginTest {
 
@@ -154,6 +156,87 @@ class RewriteRunTest : RewritePluginTest {
                 }
             """.trimIndent()
             assertThat(sourceFileAfter.readText()).isEqualTo(expected)
+    }
+
+    @DisabledIf("lessThanGradle6_8")
+    @Test
+    fun `rewriteRun will alter the ISO-8859-1 encoded source file according to the provided active recipe`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.gradle.SayHello
+                recipeList:
+                  - org.openrewrite.java.ChangeMethodName:
+                      methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
+                      newMethodName: sayHello
+                  - org.openrewrite.java.ChangePackage:
+                      oldPackageName: org.openrewrite.before
+                      newPackageName: org.openrewrite.after
+            """)
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
+                }
+                
+                tasks.compileJava {
+                    options.encoding = "ISO-8859-1"
+                }
+            """)
+            sourceSet("main", sourceCharset = StandardCharsets.ISO_8859_1) {
+                java(""" 
+                    package org.openrewrite.before;
+                    
+                    /**
+                     * Special characters defined in ISO-8859-1: Üäöéèàñ 
+                     */
+                    public class HelloWorld { public static void sayGoodbye() {System.out.println("Hello world");
+                        }public static void main(String[] args) {   sayGoodbye(); }
+                    }
+                """)
+            }
+        }
+        assertThat(File(projectDir, "build.gradle").exists()).isTrue
+        val buildResult = runGradle(projectDir, "rewriteRun")
+        val taskResult = buildResult.task(":rewriteRun")!!
+
+
+        assertThat(taskResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val sourceFileAfter = File(projectDir, "src/main/java/org/openrewrite/after/HelloWorld.java")
+        assertThat(sourceFileAfter.exists()).isTrue
+        val expected =
+            //language=java
+            """
+                package org.openrewrite.after;
+                
+                /**
+                 * Special characters defined in ISO-8859-1: Üäöéèàñ 
+                 */
+                public class HelloWorld {
+                    public static void sayHello() {
+                        System.out.println("Hello world");
+                    }
+
+                    public static void main(String[] args) {
+                        sayHello();
+                    }
+                }
+            """.trimIndent()
+        assertThat(sourceFileAfter.readText(StandardCharsets.ISO_8859_1)).isEqualTo(expected)
     }
 
     @Test
@@ -1189,6 +1272,69 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 """.trimIndent()
             )
+    }
+
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/128")
+    @Test
+    fun deleteFromGitRepository(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                rewrite {
+                    activeRecipe("com.test.DeleteYamlKey")
+                }
+            """.trimIndent())
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: com.test.DeleteYamlKey
+                displayName: Delete yaml
+                description: Delete yaml
+                recipeList:
+                  - org.openrewrite.DeleteSourceFiles:
+                      filePattern: "**/foo.yml"
+            """.trimIndent())
+            sourceSet("main") {
+                yamlFile("foo.yml", """
+                  foo: bar
+                """.trimIndent())
+            }
+        }
+        gitInit(projectDir.toPath(), "test-project")
+        val result = runGradle(projectDir, "rewriteRun")
+        val task = result.task(":rewriteRun")!!
+        assertThat(task.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val yamlFile = projectDir.resolve("src/main/resources/foo.yml")
+        assertThat(yamlFile.exists()).isFalse()
+        assertThat(projectDir.resolve("src/main/resources")).doesNotExist()
+    }
+
+    fun gitInit(repositoryPath: Path, repositoryName: String) {
+        try {
+            org.openrewrite.jgit.api.Git.init().setDirectory(repositoryPath.toFile()).call().use { git ->
+                //This is required for the maven and gradle plugin. This requirement needs to be removed
+                git.remoteSetUrl().setRemoteName("origin").setRemoteUri(
+                    org.openrewrite.jgit.transport.URIish().setHost("git@github.com").setPort(80)
+                        .setPath("acme/$repositoryName.git")
+                )
+                    .call()
+                git.add().addFilepattern(".").call()
+                git.commit().setMessage("init commit").call()
+            }
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
     }
 
     @Test

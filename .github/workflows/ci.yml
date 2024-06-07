@@ -21,8 +21,6 @@ concurrency:
 env:
   GRADLE_SWITCHES: --console=plain --info --stacktrace --warning-mode=all --no-daemon
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
-  GRADLE_ENTERPRISE_CACHE_USERNAME: ${{ secrets.GRADLE_ENTERPRISE_CACHE_USERNAME }}
-  GRADLE_ENTERPRISE_CACHE_PASSWORD: ${{ secrets.GRADLE_ENTERPRISE_CACHE_PASSWORD }}
 
 jobs:
   build:
@@ -36,12 +34,12 @@ jobs:
           distribution: temurin
           java-version: 11
       - name: build
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: ${{ env.GRADLE_SWITCHES }} build
       - name: publish-snapshots
         if: github.event_name != 'pull_request'
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: ${{ env.GRADLE_SWITCHES }} snapshot :plugin:publishPluginMavenPublicationToSonatypeRepository -x test -x publishPlugins
         env:

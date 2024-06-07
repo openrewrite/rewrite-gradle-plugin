@@ -30,9 +30,11 @@ import org.gradle.api.attributes.java.TargetJvmEnvironment;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.SourceSetContainer;
 
 import java.io.File;
 import java.util.Comparator;
@@ -55,6 +57,7 @@ public class RewritePlugin implements Plugin<Project> {
 
     private Set<File> resolvedDependencies;
 
+    @Override
     public void apply(Project project) {
         boolean isRootProject = project == project.getRootProject();
         if (!isRootProject && project.getRootProject().getPluginManager().hasPlugin("org.openrewrite.rewrite")) {
@@ -109,10 +112,16 @@ public class RewritePlugin implements Plugin<Project> {
             }
 
             //Collect Java metadata for each project (used for Java Provenance)
-            //Using the older javaConvention because we need to support older versions of gradle.
-            @SuppressWarnings("deprecation")
-            JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
-            javaConvention.getSourceSets().all(sourceSet -> {
+            SourceSetContainer sourceSets;
+            if (project.getGradle().getGradleVersion().compareTo("7.1") >= 0) {
+                sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
+            } else {
+                //Using the older javaConvention because we need to support older versions of gradle.
+                @SuppressWarnings("deprecation")
+                JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
+                sourceSets = javaConvention.getSourceSets();
+            }
+            sourceSets.all(sourceSet -> {
                 // This is intended to ensure that any Groovy/Kotlin/etc. and dependent project sources are available
                 Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());
                 rewriteRun.dependsOn(compileTask);
@@ -122,7 +131,7 @@ public class RewritePlugin implements Plugin<Project> {
             // Detect SourceSets which overlap other sourceSets and disable the compilation task of the overlapping
             // source set. Some plugins will create source sets not intended to be compiled for their own purposes.
             Set<String> sourceDirs = new HashSet<>();
-            project.afterEvaluate(unused -> javaConvention.getSourceSets().stream()
+            project.afterEvaluate(unused -> sourceSets.stream()
                     .sorted(Comparator.comparingInt(sourceSet -> {
                         if ("main".equals(sourceSet.getName())) {
                             return 0;

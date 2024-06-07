@@ -9,8 +9,6 @@ on:
 
 env:
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
-  GRADLE_ENTERPRISE_CACHE_USERNAME: ${{ secrets.GRADLE_ENTERPRISE_CACHE_USERNAME }}
-  GRADLE_ENTERPRISE_CACHE_PASSWORD: ${{ secrets.GRADLE_ENTERPRISE_CACHE_PASSWORD }}
 
 jobs:
   release:
@@ -26,7 +24,7 @@ jobs:
 
       - name: publish-candidate
         if: contains(github.ref, '-rc.')
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: |
             -Preleasing
@@ -39,7 +37,7 @@ jobs:
 
       - name: publish-release
         if: (!contains(github.ref, '-rc.'))
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/actions/setup-gradle@v3
         with:
           arguments: |
             -Preleasing

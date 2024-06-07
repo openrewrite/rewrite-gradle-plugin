@@ -10,6 +10,7 @@ plugins {
     kotlin("jvm") version("1.9.0")
     id("com.gradle.plugin-publish") version "1.1.0"
     id("com.github.hierynomus.license") version "0.16.1"
+    id("nebula.maven-apache-license")
 }
 
 gradlePlugin {
@@ -57,9 +58,9 @@ configurations.all {
     resolutionStrategy {
         cacheChangingModulesFor(0, TimeUnit.SECONDS)
         cacheDynamicVersionsFor(0, TimeUnit.SECONDS)
-        if(name.startsWith("test")) {
+        if (name.startsWith("test")) {
             eachDependency {
-                if(requested.name == "groovy-xml") {
+                if (requested.name == "groovy-xml") {
                     useVersion("3.0.9")
                 }
             }
@@ -87,6 +88,9 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 val rewriteDependencies = configurations.create("rewriteDependencies")
+configurations.named("compileOnly").configure {
+    extendsFrom(rewriteDependencies)
+}
 
 dependencies {
     "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:$latest"))
@@ -109,34 +113,31 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
     @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
-    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3")
+    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3") {
+        because("Latest version supporting gradle 4.x")
+    }
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
-
+    "rewriteDependencies"("com.google.guava:guava:latest.release")
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
-    compileOnly("org.openrewrite:rewrite-core")
-    compileOnly("org.openrewrite:rewrite-gradle")
-    compileOnly("org.openrewrite.gradle.tooling:model:$latest")
-    compileOnly("org.openrewrite:rewrite-groovy")
-    compileOnly("org.openrewrite:rewrite-hcl")
-    compileOnly("org.openrewrite:rewrite-java")
-    compileOnly("org.openrewrite:rewrite-json")
-    compileOnly("org.openrewrite:rewrite-kotlin:$latest")
-    compileOnly("org.openrewrite:rewrite-properties")
-    compileOnly("org.openrewrite:rewrite-protobuf")
-    compileOnly("org.openrewrite:rewrite-xml")
-    compileOnly("org.openrewrite:rewrite-yaml")
-    compileOnly("org.openrewrite:rewrite-polyglot:$latest")
-    @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
-    compileOnly("com.puppycrawl.tools:checkstyle:9.3")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
+    compileOnly("com.google.guava:guava:latest.release")
 
     testImplementation(platform("org.junit:junit-bom:latest.release"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
-
+    testImplementation("org.openrewrite.tools:jgit:latest.release")
     testImplementation("org.openrewrite:rewrite-test")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.assertj:assertj-core:latest.release")
+
+    modules {
+        module("com.google.guava:listenablefuture") {
+            replacedBy("com.google.guava:guava", "listenablefuture is part of guava")
+        }
+        module("com.google.collections:google-collections") {
+            replacedBy("com.google.guava:guava", "google-collections is part of guava")
+        }
+    }
 }
 
 project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))
@@ -166,14 +167,14 @@ val gVP = tasks.register("generateVersionsProperties") {
     outputs.file(outputFile)
 
     doLast {
-        if(outputFile.exists()) {
+        if (outputFile.exists()) {
             outputFile.delete()
         } else {
             outputFile.parentFile.mkdirs()
         }
         val resolvedModules = rewriteDependencies.resolvedConfiguration.firstLevelModuleDependencies
         val props = Properties()
-        for(module in resolvedModules) {
+        for (module in resolvedModules) {
             props["${module.moduleGroup}:${module.moduleName}"] = module.moduleVersion
         }
         outputFile.outputStream().use {
@@ -190,14 +191,14 @@ tasks.named<Copy>("processResources") {
 
 tasks.named<Test>("test") {
     systemProperty(
-        "org.openrewrite.test.gradleVersion", project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
+            "org.openrewrite.test.gradleVersion", project.findProperty("testedGradleVersion") ?: gradle.gradleVersion
     )
 }
 
-val testGradle4Dot10 = tasks.register<Test>("testGradle4Dot10") {
+val testGradle4 = tasks.register<Test>("testGradle4") {
     systemProperty("org.openrewrite.test.gradleVersion", "4.10")
     systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
-    // Gradle 4.10 predates support for Java 11
+    // Gradle 4 predates support for Java 11
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(8))
     })

@@ -294,12 +294,14 @@ public class RewriteExtension {
         if (plainTextMasks.isEmpty()) {
             plainTextMasks.addAll(Arrays.asList(
                     "**/*.adoc",
+                    "**/*.aj",
                     "**/*.bash",
                     "**/*.bat",
                     "**/CODEOWNERS",
                     "**/*.css",
                     "**/*.config",
                     "**/Dockerfile*",
+                    "**/*.env",
                     "**/.gitattributes",
                     "**/.gitignore",
                     "**/*.htm*",
@@ -319,6 +321,7 @@ public class RewriteExtension {
                     "**/*.sh",
                     "**/*.sql",
                     "**/*.svg",
+                    "**/*.tsx",
                     "**/*.txt"
             ));
         }
