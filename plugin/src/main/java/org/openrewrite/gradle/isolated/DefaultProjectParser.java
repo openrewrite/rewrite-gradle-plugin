@@ -148,8 +148,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         return maybeBaseDir;
     }
 
-    @Nullable
-    private GitProvenance gitProvenance(Path baseDir, @Nullable BuildEnvironment buildEnvironment) {
+    private @Nullable GitProvenance gitProvenance(Path baseDir, @Nullable BuildEnvironment buildEnvironment) {
         try {
             return GitProvenance.fromProjectDirectory(baseDir, buildEnvironment);
         } catch (Exception e) {
@@ -159,11 +158,9 @@ public class DefaultProjectParser implements GradleProjectParser {
         return null;
     }
 
-
     // By accident, we were inconsistent with the names of these properties between this and the maven plugin
     // Check all variants of the name, preferring more-fully-qualified names
-    @Nullable
-    private String getPropertyWithVariantNames(String property) {
+    private @Nullable String getPropertyWithVariantNames(String property) {
         String maybeProp = System.getProperty("rewrite." + property + "s");
         if (maybeProp == null) {
             maybeProp = System.getProperty("rewrite." + property);
@@ -1325,8 +1322,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
-    @Nullable
-    private SourceSetContainer findSourceSetContainer(Project project) {
+    private @Nullable SourceSetContainer findSourceSetContainer(Project project) {
         SourceSetContainer sourceSets = null;
         if (project.getGradle().getGradleVersion().compareTo("7.1") >= 0) {
             JavaPluginExtension javaPluginExtension = project.getExtensions().findByType(JavaPluginExtension.class);

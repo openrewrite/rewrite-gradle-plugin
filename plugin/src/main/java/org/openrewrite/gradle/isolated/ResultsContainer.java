@@ -78,8 +78,7 @@ public class ResultsContainer {
         }
     }
 
-    @Nullable
-    public RuntimeException getFirstException() {
+    public @Nullable RuntimeException getFirstException() {
         for (Result result : generated) {
             for (RuntimeException error : getRecipeErrors(result)) {
                 return error;
