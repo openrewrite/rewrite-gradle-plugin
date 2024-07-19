@@ -35,6 +35,16 @@ public class RewriteExtension {
     private final List<String> activeStyles = new ArrayList<>();
     private boolean configFileSetDeliberately;
 
+    public boolean isExportDatatables() {
+        return exportDatatables;
+    }
+
+    public void setExportDatatables(boolean exportDatatables) {
+        this.exportDatatables = exportDatatables;
+    }
+
+    private boolean exportDatatables;
+
     protected final Project project;
     private File configFile;
 

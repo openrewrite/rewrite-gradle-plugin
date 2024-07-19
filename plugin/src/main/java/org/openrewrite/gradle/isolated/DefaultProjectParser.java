@@ -89,6 +89,8 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -1255,6 +1257,14 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
+
+        if (extension.isExportDatatables()) {
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss-SSS"));
+            Path datatableDirectoryPath = Paths.get(baseDir.toString(), "build", "rewrite", "datatables", timestamp);
+            logger.info(String.format("Printing Available Datatables to: %s", datatableDirectoryPath));
+            recipeRun.exportDatatablesToCsv(datatableDirectoryPath, ctx);
+        }
+
         return new ResultsContainer(baseDir, recipeRun);
     }
 
