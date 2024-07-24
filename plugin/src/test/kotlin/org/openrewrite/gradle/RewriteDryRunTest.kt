@@ -39,6 +39,7 @@ class RewriteDryRunTest : RewritePluginTest {
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
+                description: Test.
                 recipeList:
                   - org.openrewrite.java.ChangeMethodName:
                       methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
