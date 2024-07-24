@@ -589,7 +589,7 @@ class RewriteRunTest : RewritePluginTest {
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.RemoveJacksonCore
                 displayName: Remove jackson-core
-                description: Remove jackson-core
+                description: Remove jackson-core.
                 recipeList:
                   - org.openrewrite.gradle.RemoveDependency:
                       groupId: com.fasterxml.jackson.core
@@ -669,7 +669,7 @@ class RewriteRunTest : RewritePluginTest {
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.UpgradeJacksonCore
                 displayName: Remove jackson-core
-                description: Remove jackson-core
+                description: Remove jackson-core.
                 recipeList:
                   - org.openrewrite.gradle.UpgradeDependencyVersion:
                       groupId: com.fasterxml.jackson.core
@@ -877,7 +877,7 @@ class RewriteRunTest : RewritePluginTest {
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.FindA
                 displayName: Rename build.gradle to build.gradle.kts
-                description: Rename build.gradle to build.gradle.kts
+                description: Rename build.gradle to build.gradle.kts.
                 recipeList:
                   - org.openrewrite.java.search.FindTypes:
                       fullyQualifiedTypeName: com.foo.A
@@ -1096,7 +1096,7 @@ class RewriteRunTest : RewritePluginTest {
                         type: specs.openrewrite.org/v1beta/recipe
                         name: com.example.TextToSam
                         displayName: Changes contents of sam.txt
-                        description: Change contents of sam.txt to "sam"
+                        description: Change contents of sam.txt to "sam".
                         preconditions:
                           - org.openrewrite.FindSourceFiles:
                               filePattern: "**/sam.txt"
@@ -1152,7 +1152,7 @@ class RewriteRunTest : RewritePluginTest {
               type: specs.openrewrite.org/v1beta/recipe
               name: org.openrewrite.Overlaps
               displayName: Find overlaps
-              description: Find lombok SneakyThrows annotation and duplicate source files
+              description: Find lombok SneakyThrows annotation and duplicate source files.
               recipeList:
                 - org.openrewrite.java.search.FindTypes:
                     fullyQualifiedTypeName: lombok.SneakyThrows
@@ -1250,7 +1250,7 @@ class RewriteRunTest : RewritePluginTest {
                 type: specs.openrewrite.org/v1beta/recipe
                 name: com.test.DeleteYamlKey
                 displayName: Delete yaml
-                description: Delete yaml
+                description: Delete yaml.
                 recipeList:
                   - org.openrewrite.DeleteSourceFiles:
                       filePattern: "**/foo.yml"
@@ -1320,6 +1320,7 @@ class RewriteRunTest : RewritePluginTest {
             rewriteYaml("""
             type: specs.openrewrite.org/v1beta/recipe
             name: org.openrewrite.gradle.FindDistributionUrl
+            description: Test.
             recipeList:
               - org.openrewrite.properties.search.FindProperties:
                   propertyKey: distributionUrl
