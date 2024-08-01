@@ -150,9 +150,12 @@ public class DefaultProjectParser implements GradleProjectParser {
         return maybeBaseDir;
     }
 
+    private static final Map<Path, GitProvenance> REPO_ROOT_TO_PROVENANCE = new HashMap<>();
     private @Nullable GitProvenance gitProvenance(Path baseDir, @Nullable BuildEnvironment buildEnvironment) {
         try {
-            return GitProvenance.fromProjectDirectory(baseDir, buildEnvironment);
+            // Computing git provenance can be expensive for repositories with many commits, ensure we do it only once per build
+            // To avoid old state being used on accident in new builds on the same daemon, cache is cleared in the shutdown hook
+            return REPO_ROOT_TO_PROVENANCE.computeIfAbsent(baseDir, dir -> GitProvenance.fromProjectDirectory(dir, buildEnvironment));
         } catch (Exception e) {
             // Logging at a low level as this is unlikely to happen except in non-git projects, where it is expected
             logger.debug("Unable to determine git provenance", e);
@@ -1270,6 +1273,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     @Override
     public void shutdownRewrite() {
+        REPO_ROOT_TO_PROVENANCE.clear();
         GradleProjectBuilder.clearCaches();
     }
 
