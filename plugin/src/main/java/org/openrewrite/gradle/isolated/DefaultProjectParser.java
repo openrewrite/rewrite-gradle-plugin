@@ -1,5 +1,5 @@
 /*
- * Copyright ${year} the original author or authors.
+ * Copyright 2024 the original author or authors.
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,6 +89,8 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -148,10 +150,12 @@ public class DefaultProjectParser implements GradleProjectParser {
         return maybeBaseDir;
     }
 
-    @Nullable
-    private GitProvenance gitProvenance(Path baseDir, @Nullable BuildEnvironment buildEnvironment) {
+    private static final Map<Path, GitProvenance> REPO_ROOT_TO_PROVENANCE = new HashMap<>();
+    private @Nullable GitProvenance gitProvenance(Path baseDir, @Nullable BuildEnvironment buildEnvironment) {
         try {
-            return GitProvenance.fromProjectDirectory(baseDir, buildEnvironment);
+            // Computing git provenance can be expensive for repositories with many commits, ensure we do it only once per build
+            // To avoid old state being used on accident in new builds on the same daemon, cache is cleared in the shutdown hook
+            return REPO_ROOT_TO_PROVENANCE.computeIfAbsent(baseDir, dir -> GitProvenance.fromProjectDirectory(dir, buildEnvironment));
         } catch (Exception e) {
             // Logging at a low level as this is unlikely to happen except in non-git projects, where it is expected
             logger.debug("Unable to determine git provenance", e);
@@ -159,11 +163,9 @@ public class DefaultProjectParser implements GradleProjectParser {
         return null;
     }
 
-
     // By accident, we were inconsistent with the names of these properties between this and the maven plugin
     // Check all variants of the name, preferring more-fully-qualified names
-    @Nullable
-    private String getPropertyWithVariantNames(String property) {
+    private @Nullable String getPropertyWithVariantNames(String property) {
         String maybeProp = System.getProperty("rewrite." + property + "s");
         if (maybeProp == null) {
             maybeProp = System.getProperty("rewrite." + property);
@@ -1220,7 +1222,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     protected ResultsContainer listResults(ExecutionContext ctx) {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
-        if (recipe.getRecipeList().isEmpty()) {
+        if (recipe.getName().equals("org.openrewrite.Recipe$Noop")) {
             logger.warn("No recipes were activated. Activate a recipe with rewrite.activeRecipe(\"com.fully.qualified.RecipeClassName\") in your build file, or on the command line with -DactiveRecipe=com.fully.qualified.RecipeClassName");
             return new ResultsContainer(baseDir, null);
         }
@@ -1258,11 +1260,20 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
+
+        if (extension.isExportDatatables()) {
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss-SSS"));
+            Path datatableDirectoryPath = Paths.get(baseDir.toString(), "build", "rewrite", "datatables", timestamp);
+            logger.info(String.format("Printing available datatables to: %s", datatableDirectoryPath));
+            recipeRun.exportDatatablesToCsv(datatableDirectoryPath, ctx);
+        }
+
         return new ResultsContainer(baseDir, recipeRun);
     }
 
     @Override
     public void shutdownRewrite() {
+        REPO_ROOT_TO_PROVENANCE.clear();
         GradleProjectBuilder.clearCaches();
     }
 
@@ -1325,8 +1336,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
-    @Nullable
-    private SourceSetContainer findSourceSetContainer(Project project) {
+    private @Nullable SourceSetContainer findSourceSetContainer(Project project) {
         SourceSetContainer sourceSets = null;
         if (project.getGradle().getGradleVersion().compareTo("7.1") >= 0) {
             JavaPluginExtension javaPluginExtension = project.getExtensions().findByType(JavaPluginExtension.class);
