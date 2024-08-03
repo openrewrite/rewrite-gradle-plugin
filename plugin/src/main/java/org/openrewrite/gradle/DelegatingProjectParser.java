@@ -88,9 +88,9 @@ public class DelegatingProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
+    public void discoverRecipes(ServiceRegistry serviceRegistry) {
         unwrapInvocationException(() -> {
-            gpp.discoverRecipes(interactive, serviceRegistry);
+            gpp.discoverRecipes(serviceRegistry);
             return null;
         });
     }
