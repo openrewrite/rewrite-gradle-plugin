@@ -197,6 +197,7 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-kotlin:" + extension.getRewriteKotlinVersion()),
                 deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-21:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-java-17:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
