@@ -1,5 +1,5 @@
 /*
- * Copyright ${year} the original author or authors.
+ * Copyright 2024 the original author or authors.
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,9 +20,13 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
+import org.openrewrite.Issue
 import java.io.File
 
 class RewriteDryRunTest : RewritePluginTest {
+
+    override fun taskName(): String = "rewriteDryRun"
+
     @Test
     fun `rewriteDryRun runs successfully without modifying source files`(
         @TempDir projectDir: File
@@ -39,6 +43,7 @@ class RewriteDryRunTest : RewritePluginTest {
             rewriteYaml("""
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
+                description: Test.
                 recipeList:
                   - org.openrewrite.java.ChangeMethodName:
                       methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
@@ -69,8 +74,8 @@ class RewriteDryRunTest : RewritePluginTest {
                 java(helloWorld)
             }
         }
-        val result = runGradle(projectDir, "rewriteDryRun")
-        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         assertThat(File(projectDir, "src/main/java/org/openrewrite/before/HelloWorld.java")
@@ -118,8 +123,8 @@ class RewriteDryRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.java.OrderImports")
-        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
@@ -187,10 +192,38 @@ class RewriteDryRunTest : RewritePluginTest {
                 """)
             }
         }
-        val result = runGradle(projectDir, "rewriteDryRun", "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
-        val rewriteDryRunResult = result.task(":rewriteDryRun")!!
+        val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
 
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
+    }
+
+    // The configuration cache works on Gradle 6.6+, but rewrite-gradle-plugin uses notCompatibleWithConfigurationCache,
+    // which is only available on Gradle 7.4+.
+    @DisabledIf("lessThanGradle7_4")
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
+    @Test
+    fun `rewriteDryRun is compatible with the configuration cache`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("org.openrewrite.rewrite")
+                }
+
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+            """)
+        }
+        val result = runGradle(projectDir, taskName(), "--configuration-cache")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 }

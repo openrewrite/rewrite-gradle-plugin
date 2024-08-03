@@ -1,5 +1,5 @@
 /*
- * Copyright ${year} the original author or authors.
+ * Copyright 2024 the original author or authors.
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.initialization.Settings;
-import org.gradle.api.internal.tasks.userinput.UserInputHandler;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.GroovyPlugin;
@@ -41,14 +40,12 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet;
 import org.openrewrite.*;
 import org.openrewrite.binary.Binary;
 import org.openrewrite.config.Environment;
-import org.openrewrite.config.OptionDescriptor;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
 import org.openrewrite.gradle.GradleParser;
 import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.gradle.SanitizedMarkerPrinter;
-import org.openrewrite.gradle.isolated.ui.RecipeDescriptorTreePrompter;
 import org.openrewrite.gradle.marker.GradleProject;
 import org.openrewrite.gradle.marker.GradleProjectBuilder;
 import org.openrewrite.gradle.marker.GradleSettings;
@@ -89,6 +86,8 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -148,10 +147,12 @@ public class DefaultProjectParser implements GradleProjectParser {
         return maybeBaseDir;
     }
 
-    @Nullable
-    private GitProvenance gitProvenance(Path baseDir, @Nullable BuildEnvironment buildEnvironment) {
+    private static final Map<Path, GitProvenance> REPO_ROOT_TO_PROVENANCE = new HashMap<>();
+    private @Nullable GitProvenance gitProvenance(Path baseDir, @Nullable BuildEnvironment buildEnvironment) {
         try {
-            return GitProvenance.fromProjectDirectory(baseDir, buildEnvironment);
+            // Computing git provenance can be expensive for repositories with many commits, ensure we do it only once per build
+            // To avoid old state being used on accident in new builds on the same daemon, cache is cleared in the shutdown hook
+            return REPO_ROOT_TO_PROVENANCE.computeIfAbsent(baseDir, dir -> GitProvenance.fromProjectDirectory(dir, buildEnvironment));
         } catch (Exception e) {
             // Logging at a low level as this is unlikely to happen except in non-git projects, where it is expected
             logger.debug("Unable to determine git provenance", e);
@@ -159,11 +160,9 @@ public class DefaultProjectParser implements GradleProjectParser {
         return null;
     }
 
-
     // By accident, we were inconsistent with the names of these properties between this and the maven plugin
     // Check all variants of the name, preferring more-fully-qualified names
-    @Nullable
-    private String getPropertyWithVariantNames(String property) {
+    private @Nullable String getPropertyWithVariantNames(String property) {
         String maybeProp = System.getProperty("rewrite." + property + "s");
         if (maybeProp == null) {
             maybeProp = System.getProperty("rewrite." + property);
@@ -201,70 +200,43 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
+    public void discoverRecipes(ServiceRegistry serviceRegistry) {
         Collection<RecipeDescriptor> availableRecipeDescriptors = this.listRecipeDescriptors();
 
-        if (interactive) {
-            logger.quiet("Entering interactive mode, Ctrl-C to exit...");
-            UserInputHandler prompter = serviceRegistry.get(UserInputHandler.class);
-            RecipeDescriptorTreePrompter treePrompter = new RecipeDescriptorTreePrompter(prompter);
-            RecipeDescriptor rd = treePrompter.execute(availableRecipeDescriptors);
-            writeRecipeDescriptor(rd);
-        } else {
-            List<String> activeRecipes = getActiveRecipes();
-            List<String> availableStyles = getAvailableStyles();
-            List<String> activeStyles = getActiveStyles();
+        List<String> activeRecipes = getActiveRecipes();
+        List<String> availableStyles = getAvailableStyles();
+        List<String> activeStyles = getActiveStyles();
 
-            logger.quiet("Available Recipes:");
-            for (RecipeDescriptor recipe : availableRecipeDescriptors) {
-                logger.quiet(indent(1, recipe.getName()));
-            }
-
-            logger.quiet(indent(0, ""));
-            logger.quiet("Available Styles:");
-            for (String style : availableStyles) {
-                logger.quiet(indent(1, style));
-            }
-
-            logger.quiet(indent(0, ""));
-            logger.quiet("Active Styles:");
-            for (String style : activeStyles) {
-                logger.quiet(indent(1, style));
-            }
-
-            logger.quiet(indent(0, ""));
-            logger.quiet("Active Recipes:");
-            for (String activeRecipe : activeRecipes) {
-                logger.quiet(indent(1, activeRecipe));
-            }
-
-            logger.quiet(indent(0, ""));
-            logger.quiet("Found " + availableRecipeDescriptors.size() + " available recipes and " + availableStyles.size() + " available styles.");
-            logger.quiet("Configured with " + activeRecipes.size() + " active recipes and " + activeStyles.size() + " active styles.");
+        logger.quiet("Available Recipes:");
+        for (RecipeDescriptor recipe : availableRecipeDescriptors) {
+            logger.quiet(indent(1, recipe.getName()));
         }
+
+        logger.quiet(indent(0, ""));
+        logger.quiet("Available Styles:");
+        for (String style : availableStyles) {
+            logger.quiet(indent(1, style));
+        }
+
+        logger.quiet(indent(0, ""));
+        logger.quiet("Active Styles:");
+        for (String style : activeStyles) {
+            logger.quiet(indent(1, style));
+        }
+
+        logger.quiet(indent(0, ""));
+        logger.quiet("Active Recipes:");
+        for (String activeRecipe : activeRecipes) {
+            logger.quiet(indent(1, activeRecipe));
+        }
+
+        logger.quiet(indent(0, ""));
+        logger.quiet("Found " + availableRecipeDescriptors.size() + " available recipes and " + availableStyles.size() + " available styles.");
+        logger.quiet("Configured with " + activeRecipes.size() + " active recipes and " + activeStyles.size() + " active styles.");
     }
 
     public Collection<RecipeDescriptor> listRecipeDescriptors() {
         return environment().listRecipeDescriptors();
-    }
-
-    @SuppressWarnings("ConstantConditions")
-    private void writeRecipeDescriptor(RecipeDescriptor rd) {
-        logger.quiet(indent(0, rd.getDisplayName()));
-        logger.quiet(indent(1, rd.getName()));
-        if (rd.getDescription() != null && !rd.getDescription().isEmpty()) {
-            logger.quiet(indent(1, rd.getDescription()));
-        }
-        if (!rd.getOptions().isEmpty()) {
-            logger.quiet(indent(0, "options: "));
-            for (OptionDescriptor od : rd.getOptions()) {
-                logger.quiet(indent(1, od.getName() + ": " + od.getType() + (od.isRequired() ? "!" : "")));
-                if (od.getDescription() != null && !od.getDescription().isEmpty()) {
-                    logger.quiet(indent(2, od.getDescription()));
-                }
-            }
-        }
-        logger.quiet("");
     }
 
     private static String indent(int indent, CharSequence content) {
@@ -1220,7 +1192,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     protected ResultsContainer listResults(ExecutionContext ctx) {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
-        if (recipe.getRecipeList().isEmpty()) {
+        if (recipe.getName().equals("org.openrewrite.Recipe$Noop")) {
             logger.warn("No recipes were activated. Activate a recipe with rewrite.activeRecipe(\"com.fully.qualified.RecipeClassName\") in your build file, or on the command line with -DactiveRecipe=com.fully.qualified.RecipeClassName");
             return new ResultsContainer(baseDir, null);
         }
@@ -1258,11 +1230,20 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
+
+        if (extension.isExportDatatables()) {
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss-SSS"));
+            Path datatableDirectoryPath = Paths.get(baseDir.toString(), "build", "rewrite", "datatables", timestamp);
+            logger.info(String.format("Printing available datatables to: %s", datatableDirectoryPath));
+            recipeRun.exportDatatablesToCsv(datatableDirectoryPath, ctx);
+        }
+
         return new ResultsContainer(baseDir, recipeRun);
     }
 
     @Override
     public void shutdownRewrite() {
+        REPO_ROOT_TO_PROVENANCE.clear();
         GradleProjectBuilder.clearCaches();
     }
 
@@ -1325,8 +1306,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
-    @Nullable
-    private SourceSetContainer findSourceSetContainer(Project project) {
+    private @Nullable SourceSetContainer findSourceSetContainer(Project project) {
         SourceSetContainer sourceSets = null;
         if (project.getGradle().getGradleVersion().compareTo("7.1") >= 0) {
             JavaPluginExtension javaPluginExtension = project.getExtensions().findByType(JavaPluginExtension.class);

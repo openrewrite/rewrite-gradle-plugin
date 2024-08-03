@@ -1,5 +1,5 @@
 /*
- * Copyright ${year} the original author or authors.
+ * Copyright 2024 the original author or authors.
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
 class RewriteRunTest : RewritePluginTest {
+
+    override fun taskName(): String = "rewriteRun"
 
     @Test
     fun `rewrite is isolated from conflicting versions of jackson on the classpath`(
@@ -81,8 +83,8 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val buildResult = runGradle(projectDir, "rewriteRun")
-        val taskResult = buildResult.task(":rewriteRun")!!
+        val buildResult = runGradle(projectDir, taskName())
+        val taskResult = buildResult.task(":${taskName()}")!!
         assertThat(taskResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 
@@ -131,8 +133,8 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
         assertThat(File(projectDir, "build.gradle").exists()).isTrue
-            val buildResult = runGradle(projectDir, "rewriteRun")
-            val taskResult = buildResult.task(":rewriteRun")!!
+            val buildResult = runGradle(projectDir, taskName())
+            val taskResult = buildResult.task(":${taskName()}")!!
 
 
             assertThat(taskResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
@@ -317,8 +319,8 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         //language=java
         val aTestClassExpected = """
@@ -394,8 +396,8 @@ class RewriteRunTest : RewritePluginTest {
         }
         commitFilesToGitRepo(projectDir)
 
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         val propertiesFile = File(projectDir, "a/src/main/resources/test.properties")
@@ -456,8 +458,8 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
 
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         val aFile = File(projectDir, "src/main/java/com/foo/A.java")
@@ -514,8 +516,8 @@ class RewriteRunTest : RewritePluginTest {
                 propertiesFile("in-sourceset.properties", "sam=true\n")
             }
         }
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         val propertiesTextExpected = "samuel=true\n"
@@ -557,8 +559,8 @@ class RewriteRunTest : RewritePluginTest {
             """)
         }
 
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         val gradlew = File(projectDir, "gradlew")
@@ -589,7 +591,7 @@ class RewriteRunTest : RewritePluginTest {
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.RemoveJacksonCore
                 displayName: Remove jackson-core
-                description: Remove jackson-core
+                description: Remove jackson-core.
                 recipeList:
                   - org.openrewrite.gradle.RemoveDependency:
                       groupId: com.fasterxml.jackson.core
@@ -624,8 +626,8 @@ class RewriteRunTest : RewritePluginTest {
             """)
         }
 
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         assertThat(projectDir.resolve("build.gradle").readText())
@@ -669,7 +671,7 @@ class RewriteRunTest : RewritePluginTest {
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.UpgradeJacksonCore
                 displayName: Remove jackson-core
-                description: Remove jackson-core
+                description: Remove jackson-core.
                 recipeList:
                   - org.openrewrite.gradle.UpgradeDependencyVersion:
                       groupId: com.fasterxml.jackson.core
@@ -703,8 +705,8 @@ class RewriteRunTest : RewritePluginTest {
             """)
         }
 
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         assertThat(projectDir.resolve("build.gradle").readText())
@@ -770,8 +772,8 @@ class RewriteRunTest : RewritePluginTest {
                 """)
             }
         }
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         val aFile = projectDir.resolve("src/main/java/com/foo/A.java")
@@ -839,8 +841,8 @@ class RewriteRunTest : RewritePluginTest {
                 """)
             }
         }
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         val aFile = projectDir.resolve("src/main/java/com/foo/A.java")
@@ -877,7 +879,7 @@ class RewriteRunTest : RewritePluginTest {
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.FindA
                 displayName: Rename build.gradle to build.gradle.kts
-                description: Rename build.gradle to build.gradle.kts
+                description: Rename build.gradle to build.gradle.kts.
                 recipeList:
                   - org.openrewrite.java.search.FindTypes:
                       fullyQualifiedTypeName: com.foo.A
@@ -926,8 +928,8 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         val bFile = projectDir.resolve("src/main/groovy/com/foo/B.groovy")
@@ -987,8 +989,8 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(projectDir, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
         val aFile = projectDir.resolve("src/main/kotlin/com/foo/A.kt")
@@ -1052,8 +1054,8 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(buildRoot, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(buildRoot, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         val javaFile = buildRoot.resolve("src/main/java/org/openrewrite/before/HelloWorld.java")
         assertThat(javaFile.readText())
@@ -1096,7 +1098,7 @@ class RewriteRunTest : RewritePluginTest {
                         type: specs.openrewrite.org/v1beta/recipe
                         name: com.example.TextToSam
                         displayName: Changes contents of sam.txt
-                        description: Change contents of sam.txt to "sam"
+                        description: Change contents of sam.txt to "sam".
                         preconditions:
                           - org.openrewrite.FindSourceFiles:
                               filePattern: "**/sam.txt"
@@ -1132,7 +1134,7 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(projectDir, "rewriteRun")
+        val result = runGradle(projectDir, taskName())
         val rewriteRunResult = result.task(":product:rewriteRun")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
@@ -1152,7 +1154,7 @@ class RewriteRunTest : RewritePluginTest {
               type: specs.openrewrite.org/v1beta/recipe
               name: org.openrewrite.Overlaps
               displayName: Find overlaps
-              description: Find lombok SneakyThrows annotation and duplicate source files
+              description: Find lombok SneakyThrows annotation and duplicate source files.
               recipeList:
                 - org.openrewrite.java.search.FindTypes:
                     fullyQualifiedTypeName: lombok.SneakyThrows
@@ -1203,8 +1205,8 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(buildRoot, "rewriteRun")
-        val rewriteRunResult = result.task(":rewriteRun")!!
+        val result = runGradle(buildRoot, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         val javaFile = buildRoot.resolve("src/test/java/com/foo/ATest.java")
         assertThat(javaFile.readText())
@@ -1250,7 +1252,7 @@ class RewriteRunTest : RewritePluginTest {
                 type: specs.openrewrite.org/v1beta/recipe
                 name: com.test.DeleteYamlKey
                 displayName: Delete yaml
-                description: Delete yaml
+                description: Delete yaml.
                 recipeList:
                   - org.openrewrite.DeleteSourceFiles:
                       filePattern: "**/foo.yml"
@@ -1320,13 +1322,14 @@ class RewriteRunTest : RewritePluginTest {
             rewriteYaml("""
             type: specs.openrewrite.org/v1beta/recipe
             name: org.openrewrite.gradle.FindDistributionUrl
+            description: Test.
             recipeList:
               - org.openrewrite.properties.search.FindProperties:
                   propertyKey: distributionUrl
             """.trimIndent())
         }
-        val result = runGradle(projectDir, "rewriteRun")
-        val task = result.task(":rewriteRun")!!
+        val result = runGradle(projectDir, taskName())
+        val task = result.task(":${taskName()}")!!
         assertThat(task.outcome).isEqualTo(TaskOutcome.SUCCESS)
         val propertiesFile = projectDir.resolve("gradle/wrapper/gradle-wrapper.properties")
         assertThat(propertiesFile.readText())
@@ -1338,5 +1341,32 @@ class RewriteRunTest : RewritePluginTest {
                 zipStorePath=wrapper/dists
                 """.trimIndent()
             )
+    }
+
+    // The configuration cache works on Gradle 6.6+, but rewrite-gradle-plugin uses notCompatibleWithConfigurationCache,
+    // which is only available on Gradle 7.4+.
+    @DisabledIf("lessThanGradle7_4")
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
+    @Test
+    fun `rewriteRun is compatible with the configuration cache`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("org.openrewrite.rewrite")
+                }
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+            """)
+        }
+        val result = runGradle(projectDir, taskName(), "--configuration-cache")
+        val rewriteRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 }
