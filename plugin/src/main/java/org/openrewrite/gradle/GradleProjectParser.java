@@ -31,7 +31,15 @@ public interface GradleProjectParser {
 
     Collection<Path> listSources();
 
-    void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry);
+    void discoverRecipes(ServiceRegistry serviceRegistry);
+
+    /**
+     * @deprecated Use {@link #discoverRecipes(ServiceRegistry)} instead.
+     */
+    @Deprecated
+    default void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
+        discoverRecipes(serviceRegistry);
+    }
 
     void run(Consumer<Throwable> onError);
 

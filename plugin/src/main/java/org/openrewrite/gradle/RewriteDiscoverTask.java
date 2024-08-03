@@ -15,24 +15,11 @@
  */
 package org.openrewrite.gradle;
 
-import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.api.tasks.options.Option;
 
 import javax.inject.Inject;
 
 public class RewriteDiscoverTask extends AbstractRewriteTask {
-    private boolean interactive;
-
-    @Option(description = "Whether to enter an interactive shell to explore available recipes.", option = "interactive")
-    public void setInteractive(boolean interactive) {
-        this.interactive = interactive;
-    }
-
-    @Input
-    public boolean isInteractive() {
-        return this.interactive;
-    }
 
     @Inject
     public RewriteDiscoverTask() {
@@ -42,6 +29,6 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
 
     @TaskAction
     public void run() {
-        getProjectParser().discoverRecipes(interactive, getServices());
+        getProjectParser().discoverRecipes(getServices());
     }
 }
