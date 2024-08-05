@@ -826,7 +826,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         sourceSetSourceFiles = Stream.concat(
                                 sourceSetSourceFiles,
                                 omniParser.parse(accepted, baseDir, new InMemoryExecutionContext())
-                        );
+                        ).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
                         alreadyParsed.addAll(accepted);
                         sourceSetSize += accepted.size();
                     }
