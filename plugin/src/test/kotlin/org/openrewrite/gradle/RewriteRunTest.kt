@@ -1369,4 +1369,74 @@ class RewriteRunTest : RewritePluginTest {
         val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
+
+    @DisabledIf("lessThanGradle7_4")
+    @Test
+    fun `JavaVersion marker is added to files in java resources directories`(
+        @TempDir projectDir: File,
+    ) {
+        gradleProject(projectDir) {
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.AddJavaApplicationProperty
+                displayName: Add a property if has java version
+                description: Add a property if has java version.
+                preconditions:
+                  - org.openrewrite.java.search.HasJavaVersion:
+                      version: 17.X
+                recipeList:
+                  - org.openrewrite.properties.AddProperty:
+                      property: has.java.version
+                      value: true
+            """)
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                sourceCompatibility = JavaVersion.VERSION_17
+                
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.test.AddJavaApplicationProperty")
+                }
+            """)
+            propertiesFile("outside-of-sourceset.properties", "")
+            sourceSet("main") {
+                java("""
+                    package org.openrewrite.before;
+                
+                    import java.util.ArrayList;
+                    import java.util.List;
+                    
+                    public class HelloWorld {
+                        public static void main(String[] args) {
+                            System.out.print("Hello");
+                                System.out.println(" world");
+                        }
+                    }
+                """)
+                propertiesFile("application.properties", "")
+            }
+            sourceSet("test") {
+                propertiesFile("application.properties", "")
+            }
+        }
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val propertiesTextExpected = "has.java.version=true"
+        assertThat(File(projectDir, "outside-of-sourceset.properties").readText()).isEqualTo("")
+        assertThat(File(projectDir, "src/main/resources/application.properties").readText()).isEqualTo(propertiesTextExpected)
+        assertThat(File(projectDir, "src/test/resources/application.properties").readText()).isEqualTo(propertiesTextExpected)
+    }
 }
