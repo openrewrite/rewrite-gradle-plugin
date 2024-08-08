@@ -833,7 +833,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     }
                 }
 
-                JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths, javaTypeCache, false);
+                JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths);
                 sourceFileStream = sourceFileStream.concat(sourceSetSourceFiles.map(addProvenance(sourceSetProvenance)), sourceSetSize);
                 // Some source sets get misconfigured to have the same directories as other source sets
                 // Prevent files which appear in multiple source sets from being parsed more than once
@@ -1137,7 +1137,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         }
                         return cu;
                     }).filter(Objects::nonNull);
-                    JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths, javaTypeCache, false);
+                    JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths);
 
                     sourceFileStream = sourceFileStream.concat(cus.map(addProvenance(sourceSetProvenance)), kotlinPaths.size());
                     logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getPath(), kotlinDirectorySet.getName());
