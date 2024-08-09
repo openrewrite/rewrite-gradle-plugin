@@ -73,7 +73,6 @@ import org.openrewrite.quark.QuarkParser;
 import org.openrewrite.remote.Remote;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.text.PlainTextParser;
-import org.openrewrite.tree.ParseError;
 import org.openrewrite.tree.ParsingEventListener;
 import org.openrewrite.tree.ParsingExecutionContextView;
 import org.openrewrite.xml.tree.Xml;
@@ -1152,12 +1151,13 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private SourceFile logParseErrors(SourceFile source) {
-        if (source instanceof ParseError) {
+        source.getMarkers().findFirst(ParseExceptionResult.class).ifPresent(e ->  {
             if (firstWarningLogged.compareAndSet(false, true)) {
                 logger.warn("There were problems parsing some source files, run with --info to see full stack traces");
             }
             logger.warn("There were problems parsing " + source.getSourcePath());
-        }
+            logger.debug(e.getMessage());
+        });
         return source;
     }
 
