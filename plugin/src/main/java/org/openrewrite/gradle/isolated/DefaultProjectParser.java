@@ -750,10 +750,12 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
 
                 if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.jvm")) {
+                    String excludedBuildSrcPath = subproject.getProjectDir().getPath() + "/build/generated-sources";
                     String excludedProtosPath = subproject.getProjectDir().getPath() + "/protos/build/generated";
                     List<Path> kotlinPaths = unparsedSources.stream()
-                            .filter(it -> !it.toString().startsWith(excludedProtosPath))
                             .filter(it -> it.toString().endsWith(".kt"))
+                            .filter(it -> !it.toString().startsWith(excludedBuildSrcPath))
+                            .filter(it -> !it.toString().startsWith(excludedProtosPath))
                             .collect(toList());
 
                     if (!kotlinPaths.isEmpty()) {
