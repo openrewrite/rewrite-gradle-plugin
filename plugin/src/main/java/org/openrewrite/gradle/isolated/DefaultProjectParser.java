@@ -147,6 +147,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private static final Map<Path, GitProvenance> REPO_ROOT_TO_PROVENANCE = new HashMap<>();
+
     private @Nullable GitProvenance gitProvenance(Path baseDir, @Nullable BuildEnvironment buildEnvironment) {
         try {
             // Computing git provenance can be expensive for repositories with many commits, ensure we do it only once per build
@@ -660,13 +661,14 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
-                subproject.getExtensions().findByName("kotlin") != null && subproject.getExtensions().getByName("kotlin").getClass()
-                        .getCanonicalName().startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
+                    subproject.getExtensions().findByName("kotlin") != null && subproject.getExtensions().getByName("kotlin").getClass()
+                            .getCanonicalName().startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
                 sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(subproject, exclusions, alreadyParsed, ctx));
             }
 
             Charset sourceCharset = Charset.forName(System.getProperty("file.encoding", "UTF-8"));
 
+            Path buildDirPath = baseDir.relativize(subproject.getLayout().getBuildDirectory().get().getAsFile().toPath());
             for (SourceSet sourceSet : sourceSets) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 int sourceSetSize = 0;
@@ -737,7 +739,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .flatMap(jp -> jp.parse(javaPaths, baseDir, ctx))
                             .map(cu -> {
                                 if (isExcluded(exclusions, cu.getSourcePath()) ||
-                                    cu.getSourcePath().startsWith(baseDir.relativize(subproject.getLayout().getBuildDirectory().get().getAsFile().toPath()))) {
+                                        cu.getSourcePath().startsWith(buildDirPath)) {
                                     return null;
                                 }
                                 return cu;
@@ -750,11 +752,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
 
                 if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.jvm")) {
-                    String excludedBuildSrcPath = subproject.getProjectDir().getPath() + "/build/generated-sources";
                     String excludedProtosPath = subproject.getProjectDir().getPath() + "/protos/build/generated";
                     List<Path> kotlinPaths = unparsedSources.stream()
                             .filter(it -> it.toString().endsWith(".kt"))
-                            .filter(it -> !it.toString().startsWith(excludedBuildSrcPath))
                             .filter(it -> !it.toString().startsWith(excludedProtosPath))
                             .collect(toList());
 
@@ -770,7 +770,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .map(Supplier::get)
                                 .flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx))
                                 .map(cu -> {
-                                    if (isExcluded(exclusions, cu.getSourcePath())) {
+                                    if (isExcluded(exclusions, cu.getSourcePath()) ||
+                                            cu.getSourcePath().startsWith(buildDirPath)) {
                                         return null;
                                     }
                                     return cu;
@@ -807,7 +808,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .map(Supplier::get)
                                 .flatMap(gp -> gp.parse(groovyPaths, baseDir, ctx))
                                 .map(cu -> {
-                                    if (isExcluded(exclusions, cu.getSourcePath())) {
+                                    if (isExcluded(exclusions, cu.getSourcePath()) ||
+                                            cu.getSourcePath().startsWith(buildDirPath)) {
                                         return null;
                                     }
                                     return cu;
@@ -1075,6 +1077,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             return sourceFileStream;
         }
 
+        Path buildDirPath = baseDir.relativize(subproject.getLayout().getBuildDirectory().get().getAsFile().toPath());
         for (String sourceSetName : sourceSetNames) {
             try {
                 Object sourceSet = sourceSets.getClass().getMethod("getByName", String.class)
@@ -1133,7 +1136,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Stream<SourceFile> cus = kp.parse(kotlinPaths, baseDir, ctx);
                     alreadyParsed.addAll(kotlinPaths);
                     cus = cus.map(cu -> {
-                        if (isExcluded(exclusions, cu.getSourcePath())) {
+                        if (isExcluded(exclusions, cu.getSourcePath()) ||
+                                cu.getSourcePath().startsWith(buildDirPath)) {
                             return null;
                         }
                         return cu;
@@ -1153,7 +1157,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private SourceFile logParseErrors(SourceFile source) {
-        source.getMarkers().findFirst(ParseExceptionResult.class).ifPresent(e ->  {
+        source.getMarkers().findFirst(ParseExceptionResult.class).ifPresent(e -> {
             if (firstWarningLogged.compareAndSet(false, true)) {
                 logger.warn("There were problems parsing some source files, run with --info to see full stack traces");
             }
