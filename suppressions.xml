@@ -57,4 +57,14 @@
         <packageUrl regex="true">^pkg:maven/org\.eclipse\.jgit/org\.eclipse\.jgit@.*$</packageUrl>
         <vulnerabilityName>CVE-2023-4759</vulnerabilityName>
     </suppress>
+    <suppress until="2024-08-23Z">
+        <notes><![CDATA[
+            Already on the latest version of develocity-gradle-plugin
+            file name: rewrite-gradle-8.32.0.jar: develocity-gradle-plugin-3.17.6.jar: junit-platform-engine-1.10.3.jar
+            reason: awaiting reanalysis
+            ]]></notes>
+        <cve>CVE-2023-45161</cve>
+        <cve>CVE-2023-45163</cve>
+        <cve>CVE-2023-5964</cve>
+    </suppress>
 </suppressions>

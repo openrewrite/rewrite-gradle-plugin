@@ -1,5 +1,5 @@
 /*
- * Copyright ${year} the original author or authors.
+ * Copyright 2024 the original author or authors.
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,9 +88,9 @@ public class DelegatingProjectParser implements GradleProjectParser {
     }
 
     @Override
-    public void discoverRecipes(boolean interactive, ServiceRegistry serviceRegistry) {
+    public void discoverRecipes(ServiceRegistry serviceRegistry) {
         unwrapInvocationException(() -> {
-            gpp.discoverRecipes(interactive, serviceRegistry);
+            gpp.discoverRecipes(serviceRegistry);
             return null;
         });
     }

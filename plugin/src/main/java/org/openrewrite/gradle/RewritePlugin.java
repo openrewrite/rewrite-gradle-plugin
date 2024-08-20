@@ -19,17 +19,27 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.attributes.*;
+import org.gradle.api.attributes.java.TargetJvmEnvironment;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
 
 import java.io.File;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Stream;
+
+import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
+import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE;
 
 /**
  * When applied to the root project of a multi-project build, applies to all subprojects.
@@ -40,6 +50,8 @@ import java.util.Set;
  */
 @SuppressWarnings("unused")
 public class RewritePlugin implements Plugin<Project> {
+
+    private Set<File> resolvedDependencies;
 
     @Override
     public void apply(Project project) {
@@ -56,25 +68,21 @@ public class RewritePlugin implements Plugin<Project> {
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
 
-        // We use this method of task creation because it works on old versions of Gradle
-        // Don't replace with TaskContainer.register() (introduced in 4.9), or another overload of create() (introduced in 4.7)
-        ResolveRewriteDependenciesTask resolveRewriteDependenciesTask = project.getTasks().create("rewriteResolveDependencies", ResolveRewriteDependenciesTask.class)
-                .setExtension(extension)
-                .setConfiguration(rewriteConf);
+        Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(project, extension, rewriteConf));
 
         RewriteRunTask rewriteRun = project.getTasks().create("rewriteRun", RewriteRunTask.class)
                 .setExtension(extension)
-                .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+                .setResolvedDependencies(resolvedDependenciesProvider);
         rewriteRun.dependsOn(rewriteConf);
 
         RewriteDryRunTask rewriteDryRun = project.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
                 .setExtension(extension)
-                .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+                .setResolvedDependencies(resolvedDependenciesProvider);
         rewriteDryRun.dependsOn(rewriteConf);
 
         RewriteDiscoverTask rewriteDiscover = project.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
                 .setExtension(extension)
-                .setResolveDependenciesTask(resolveRewriteDependenciesTask);
+                .setResolvedDependencies(resolvedDependenciesProvider);
         rewriteDiscover.dependsOn(rewriteConf);
 
         if (isRootProject) {
@@ -137,5 +145,70 @@ public class RewritePlugin implements Plugin<Project> {
                         }
                     }));
         });
+    }
+
+    private Set<File> getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
+        if (resolvedDependencies == null) {
+            Dependency[] dependencies = Stream.concat(
+                    knownRewriteDependencies(extension, project.getDependencies()),
+                    rewriteConf.getDependencies().stream()
+            ).toArray(Dependency[]::new);
+            // By using a detached configuration, we separate this dependency resolution from the rest of the project's
+            // configuration. This also means that Gradle has no criteria with which to select between variants of
+            // dependencies which expose differing capabilities. So those must be manually configured
+            Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
+
+            try {
+                ObjectFactory objectFactory = project.getObjects();
+                detachedConf.attributes(attributes -> {
+                    // Adapted from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
+                    attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                    attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+                    attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+                    attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+                    try {
+                        attributes.attribute(TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
+                    } catch (NoClassDefFoundError e) {
+                        // Old versions of Gradle don't have the class TargetJvmEnvironment and that's OK, we can always
+                        // try this attribute instead
+                        attributes.attribute(Attribute.of("org.gradle.jvm.environment", String.class), "standard-jvm");
+                    }
+                });
+            } catch (NoClassDefFoundError e) {
+                // Old versions of Gradle don't have all of these attributes and that's OK
+            }
+
+            resolvedDependencies = detachedConf.resolve();
+        }
+        return resolvedDependencies;
+    }
+
+    private static Stream<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
+        String rewriteVersion = extension.getRewriteVersion();
+        return Stream.of(
+                deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-json:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-kotlin:" + extension.getRewriteKotlinVersion()),
+                deps.create("org.openrewrite:rewrite-java:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-21:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-17:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-11:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-java-8:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-maven:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-protobuf:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-polyglot:" + extension.getRewritePolyglotVersion()),
+                deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
+
+                // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
+                deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion()),
+                deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
+                deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
+        );
     }
 }

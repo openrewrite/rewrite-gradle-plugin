@@ -43,6 +43,7 @@ public class RewriteExtension {
     private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
     private boolean enableExperimentalGradleBuildScriptParsing = true;
+    private boolean exportDatatables;
     private final List<String> exclusions = new ArrayList<>();
     private final List<String> plainTextMasks = new ArrayList<>();
 
@@ -278,6 +279,14 @@ public class RewriteExtension {
         this.enableExperimentalGradleBuildScriptParsing = enableExperimentalGradleBuildScriptParsing;
     }
 
+    public boolean isExportDatatables() {
+        return exportDatatables;
+    }
+
+    public void setExportDatatables(boolean exportDatatables) {
+        this.exportDatatables = exportDatatables;
+    }
+
     public List<String> getExclusions() {
         return exclusions;
     }
@@ -294,6 +303,7 @@ public class RewriteExtension {
         if (plainTextMasks.isEmpty()) {
             plainTextMasks.addAll(Arrays.asList(
                     "**/*.adoc",
+                    "**/*.aj",
                     "**/*.bash",
                     "**/*.bat",
                     "**/CODEOWNERS",

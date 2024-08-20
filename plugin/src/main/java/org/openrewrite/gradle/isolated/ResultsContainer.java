@@ -1,5 +1,5 @@
 /*
- * Copyright ${year} the original author or authors.
+ * Copyright 2024 the original author or authors.
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
  */
 package org.openrewrite.gradle.isolated;
 
+import org.jspecify.annotations.Nullable;
 import org.openrewrite.*;
-import org.openrewrite.internal.lang.Nullable;
 import org.openrewrite.marker.Marker;
 import org.openrewrite.marker.Markers;
 import org.openrewrite.marker.Markup;
@@ -78,8 +78,7 @@ public class ResultsContainer {
         }
     }
 
-    @Nullable
-    public RuntimeException getFirstException() {
+    public @Nullable RuntimeException getFirstException() {
         for (Result result : generated) {
             for (RuntimeException error : getRecipeErrors(result)) {
                 return error;
