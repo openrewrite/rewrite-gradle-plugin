@@ -31,6 +31,7 @@ import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.TaskProvider;
 
 import java.io.File;
 import java.util.Comparator;
@@ -70,20 +71,23 @@ public class RewritePlugin implements Plugin<Project> {
 
         Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(project, extension, rewriteConf));
 
-        RewriteRunTask rewriteRun = project.getTasks().create("rewriteRun", RewriteRunTask.class)
-                .setExtension(extension)
-                .setResolvedDependencies(resolvedDependenciesProvider);
-        rewriteRun.dependsOn(rewriteConf);
+        TaskProvider<RewriteRunTask> rewriteRun = project.getTasks().register("rewriteRun", RewriteRunTask.class, task -> {
+            task.setExtension(extension);
+            task.setResolvedDependencies(resolvedDependenciesProvider);
+            task.dependsOn(rewriteConf);
+        });
 
-        RewriteDryRunTask rewriteDryRun = project.getTasks().create("rewriteDryRun", RewriteDryRunTask.class)
-                .setExtension(extension)
-                .setResolvedDependencies(resolvedDependenciesProvider);
-        rewriteDryRun.dependsOn(rewriteConf);
+        TaskProvider<RewriteDryRunTask> rewriteDryRun = project.getTasks().register("rewriteDryRun", RewriteDryRunTask.class, task -> {
+            task.setExtension(extension);
+            task.setResolvedDependencies(resolvedDependenciesProvider);
+            task.dependsOn(rewriteConf);
+        });
 
-        RewriteDiscoverTask rewriteDiscover = project.getTasks().create("rewriteDiscover", RewriteDiscoverTask.class)
-                .setExtension(extension)
-                .setResolvedDependencies(resolvedDependenciesProvider);
-        rewriteDiscover.dependsOn(rewriteConf);
+        TaskProvider<RewriteDiscoverTask> rewriteDiscover = project.getTasks().register("rewriteDiscover", RewriteDiscoverTask.class, task -> {
+            task.setExtension(extension);
+            task.setResolvedDependencies(resolvedDependenciesProvider);
+            task.dependsOn(rewriteConf);
+        });
 
         if (isRootProject) {
             project.allprojects(subproject -> configureProject(subproject, extension, rewriteDryRun, rewriteRun));
@@ -92,7 +96,7 @@ public class RewritePlugin implements Plugin<Project> {
         }
     }
 
-    private static void configureProject(Project project, RewriteExtension extension, RewriteDryRunTask rewriteDryRun, RewriteRunTask rewriteRun) {
+    private static void configureProject(Project project, RewriteExtension extension, TaskProvider<RewriteDryRunTask> rewriteDryRun, TaskProvider<RewriteRunTask> rewriteRun) {
         // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
         // Do not replace all() with any form of collection iteration which does not share this important property
         project.getPlugins().all(plugin -> {
@@ -119,9 +123,9 @@ public class RewritePlugin implements Plugin<Project> {
             }
             sourceSets.all(sourceSet -> {
                 // This is intended to ensure that any Groovy/Kotlin/etc. and dependent project sources are available
-                Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());
-                rewriteRun.dependsOn(compileTask);
-                rewriteDryRun.dependsOn(compileTask);
+                TaskProvider<Task> compileTask = project.getTasks().named(sourceSet.getCompileJavaTaskName());
+                rewriteRun.configure(task -> task.dependsOn(compileTask));
+                rewriteDryRun.configure(task -> task.dependsOn(compileTask));
             });
 
             // Detect SourceSets which overlap other sourceSets and disable the compilation task of the overlapping
@@ -139,8 +143,8 @@ public class RewritePlugin implements Plugin<Project> {
                     })).forEach(sourceSet -> {
                         for (File file : sourceSet.getAllJava().getSourceDirectories().getFiles()) {
                             if (!sourceDirs.add(file.getAbsolutePath())) {
-                                Task compileTask = project.getTasks().getByPath(sourceSet.getCompileJavaTaskName());
-                                compileTask.setEnabled(false);
+                                TaskProvider<Task> compileTask = project.getTasks().named(sourceSet.getCompileJavaTaskName());
+                                compileTask.configure(task -> task.setEnabled(false));
                             }
                         }
                     }));
