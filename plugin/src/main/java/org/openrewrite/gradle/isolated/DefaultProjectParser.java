@@ -746,18 +746,18 @@ public class DefaultProjectParser implements GradleProjectParser {
                     .getByName(sourceSet.getCompileJavaTaskName());
             JavaVersion javaVersion = getJavaVersion(subproject, javaCompileTask);
 
-            CompileOptions compileOptions = javaCompileTask.getOptions();
-            final Charset javaSourceCharset = (compileOptions != null && compileOptions.getEncoding() != null) ? Charset.forName(
-                    compileOptions.getEncoding()) : sourceCharset;
+            final Charset javaSourceCharset = getSourceFileEncoding(project, javaCompileTask, sourceCharset);
 
             List<Path> unparsedSources = sourceSet.getAllSource()
                     .getSourceDirectories()
-                    .filter(it -> it.exists() && !alreadyParsed.contains(it.toPath()))
+                    .filter(dir -> dir.exists())
+                    .filter(dir -> !alreadyParsed.contains(dir.toPath()))
                     .getFiles()
                     .stream()
-                    .flatMap(sourceDir -> {
+                    .map(File::toPath)
+                    .flatMap(dirPath -> {
                         try {
-                            return Files.walk(sourceDir.toPath());
+                            return Files.walk(dirPath);
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
@@ -767,8 +767,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                     .map(Path::normalize)
                     .distinct()
                     .collect(Collectors.toList());
+
             List<Path> javaPaths = unparsedSources.stream()
-                    .filter(it -> it.toString().endsWith(".java") && !alreadyParsed.contains(it))
+                    .filter(path -> !alreadyParsed.contains(path))
+                    .filter(path -> path.toString().endsWith(".java"))
                     .collect(toList());
 
             // The compilation classpath doesn't include the transitive dependencies
@@ -795,21 +797,18 @@ public class DefaultProjectParser implements GradleProjectParser {
             List<Path> dependencyPaths = dependencyPathsNonFinal;
 
             if (!javaPaths.isEmpty()) {
-                view(ctx).setCharset(javaSourceCharset);
-
                 alreadyParsed.addAll(javaPaths);
-                Stream<SourceFile> cus = Stream.of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
-                        .classpath(dependencyPaths)
-                        .styles(styles)
-                        .typeCache(javaTypeCache)
-                        .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                        .build()).map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
-                    if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                        return null;
-                    }
-                    return cu;
-                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
-                sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                Stream<SourceFile> parsedJavaFiles = parseJavaFiles(
+                        javaPaths,
+                        ctx,
+                        extension,
+                        buildDir,
+                        exclusions,
+                        javaSourceCharset,
+                        javaVersion,
+                        dependencyPaths,
+                        javaTypeCache);
+                sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, parsedJavaFiles);
                 sourceSetSize += javaPaths.size();
                 logger.info(
                         "Scanned {} Java sources in {}/{}",
@@ -827,18 +826,17 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 if (!kotlinPaths.isEmpty()) {
                     alreadyParsed.addAll(kotlinPaths);
-                    Stream<SourceFile> cus = Stream.of((Supplier<KotlinParser>) () -> KotlinParser.builder()
-                            .classpath(dependencyPaths)
-                            .styles(styles)
-                            .typeCache(javaTypeCache)
-                            .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                            .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
-                        if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                            return null;
-                        }
-                        return cu;
-                    }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
-                    sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                    Stream<SourceFile> parsedKotlinFiles = parseKotlinFiles(
+                            kotlinPaths,
+                            ctx,
+                            extension,
+                            buildDir,
+                            exclusions,
+                            javaSourceCharset,
+                            javaVersion,
+                            dependencyPaths,
+                            javaTypeCache);
+                    sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, parsedKotlinFiles);
                     sourceSetSize += kotlinPaths.size();
                     logger.info(
                             "Scanned {} Kotlin sources in {}/{}",
@@ -921,7 +919,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         for (BaseVariant variant : findAndroidProjectVariants(subproject)) {
             JavaVersion javaVersion = getJavaVersion(project, null);
             final Charset javaSourceCharset = getSourceFileEncoding(project, null, sourceCharset);
-            // FIXME: source sets need to be order like is done with gradle
+            // FIXME: source sets need to be ordered like is done with gradle
             for (SourceProvider sourceProvider : variant.getSourceSets()) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 int sourceSetSize = 0;
@@ -970,22 +968,20 @@ public class DefaultProjectParser implements GradleProjectParser {
                 List<Path> dependencyPaths = dependencyPathsNonFinal;
 
                 if (!javaPaths.isEmpty()) {
-                    view(ctx).setCharset(javaSourceCharset);
-
                     alreadyParsed.addAll(javaPaths);
-                    Stream<SourceFile> cus = Stream.of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
-                            .classpath(dependencyPaths)
-                            .styles(styles)
-                            .typeCache(javaTypeCache)
-                            .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                            .build()).map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
-                        if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                            return null;
-                        }
-                        return cu;
-                    }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
-                    sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                    Stream<SourceFile> parsedJavaFiles = parseJavaFiles(
+                            javaPaths,
+                            ctx,
+                            extension,
+                            buildDir,
+                            exclusions,
+                            javaSourceCharset,
+                            javaVersion,
+                            dependencyPaths,
+                            javaTypeCache);
+                    sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, parsedJavaFiles);
                     sourceSetSize += javaPaths.size();
+
                     logger.info(
                             "Scanned {} Java sources in {}/{}",
                             javaPaths.size(),
@@ -1013,20 +1009,20 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 if (!kotlinPaths.isEmpty()) {
                     alreadyParsed.addAll(kotlinPaths);
-                    Stream<SourceFile> cus = Stream.of((Supplier<KotlinParser>) () -> KotlinParser.builder()
-                            .classpath(dependencyPaths)
-                            .styles(styles)
-                            .typeCache(javaTypeCache)
-                            .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                            .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
-                        if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                            return null;
-                        }
-                        return cu;
-                    }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
-                    sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
+                    Stream<SourceFile> parsedKotlinFiles = parseKotlinFiles(
+                            kotlinPaths,
+                            ctx,
+                            extension,
+                            buildDir,
+                            exclusions,
+                            javaSourceCharset,
+                            javaVersion,
+                            dependencyPaths,
+                            javaTypeCache);
+                    sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, parsedKotlinFiles);
                     sourceSetSize += kotlinPaths.size();
-                    logger.info("Scanned {} Kotlin sources in {}/{}",
+                    logger.info(
+                            "Scanned {} Kotlin sources in {}/{}",
                             kotlinPaths.size(),
                             subproject.getPath(),
                             sourceProvider.getName());
@@ -1052,6 +1048,54 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
         return sourceFileStream;
+    }
+
+    private Stream<SourceFile> parseJavaFiles(List<Path> javaPaths,
+                                              ExecutionContext ctx,
+                                              RewriteExtension extension,
+                                              Path buildDir,
+                                              Collection<PathMatcher> exclusions,
+                                              Charset javaSourceCharset,
+                                              JavaVersion javaVersion,
+                                              List<Path> dependencyPaths,
+                                              JavaTypeCache javaTypeCache) {
+        view(ctx).setCharset(javaSourceCharset);
+
+        return Stream.of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
+                .classpath(dependencyPaths)
+                .styles(styles)
+                .typeCache(javaTypeCache)
+                .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                .build()).map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
+            if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
+                return null;
+            }
+            return cu;
+        }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+    }
+
+    private Stream<SourceFile> parseKotlinFiles(List<Path> kotlinPaths,
+                                                ExecutionContext ctx,
+                                                RewriteExtension extension,
+                                                Path buildDir,
+                                                Collection<PathMatcher> exclusions,
+                                                Charset javaSourceCharset,
+                                                JavaVersion javaVersion,
+                                                List<Path> dependencyPaths,
+                                                JavaTypeCache javaTypeCache) {
+        view(ctx).setCharset(javaSourceCharset);
+
+        return Stream.of((Supplier<KotlinParser>) () -> KotlinParser.builder()
+                .classpath(dependencyPaths)
+                .styles(styles)
+                .typeCache(javaTypeCache)
+                .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
+            if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
+                return null;
+            }
+            return cu;
+        }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 
     private GradleParser gradleParser() {
@@ -1390,7 +1434,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             if (firstWarningLogged.compareAndSet(false, true)) {
                 logger.warn("There were problems parsing some source files, run with --info to see full stack traces");
             }
-            logger.warn("There were problems parsing " + source.getSourcePath());
+            logger.warn("There were problems parsing {}", source.getSourcePath());
             logger.debug(e.getMessage());
         });
         return source;
@@ -1597,10 +1641,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             BaseExtension baseExtension = (BaseExtension) extension;
 
             com.android.build.api.dsl.CompileOptions compileOptions = baseExtension.getCompileOptions();
-            if (compileOptions != null) {
-                sourceCompatibility = compileOptions.getSourceCompatibility().toString();
-                targetCompatibility = compileOptions.getTargetCompatibility().toString();
-            }
+            sourceCompatibility = compileOptions.getSourceCompatibility().toString();
+            targetCompatibility = compileOptions.getTargetCompatibility().toString();
         }
 
         if (sourceCompatibility == null && javaCompileTask != null) {

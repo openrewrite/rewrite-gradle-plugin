@@ -20,18 +20,20 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.openrewrite.Issue
 import java.io.File
 import java.nio.file.Path
 
 class RewriteDryRunTest : RewritePluginTest {
+    @TempDir
+    lateinit var projectDir: File
 
     override fun taskName(): String = "rewriteDryRun"
 
     @Test
-    fun `rewriteDryRun runs successfully without modifying source files`(
-        @TempDir projectDir: File
-    ) {
+    fun `rewriteDryRun runs successfully without modifying source files`() {
         //language=java
         val helloWorld = """
             package org.openrewrite.before;
@@ -85,9 +87,7 @@ class RewriteDryRunTest : RewritePluginTest {
     }
 
     @Test
-    fun `A recipe with optional configuration can be activated directly`(
-        @TempDir projectDir: File
-    ) {
+    fun `A recipe with optional configuration can be activated directly`() {
         gradleProject(projectDir) { 
             buildGradle("""
                 plugins {
@@ -132,7 +132,7 @@ class RewriteDryRunTest : RewritePluginTest {
 
     @DisabledIf("lessThanGradle6_1")
     @Test
-    fun multiplatform(@TempDir projectDir: File) {
+    fun multiplatform() {
         gradleProject(projectDir) { 
             buildGradle("""
                 plugins {
@@ -205,9 +205,7 @@ class RewriteDryRunTest : RewritePluginTest {
     @DisabledIf("lessThanGradle7_4")
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
     @Test
-    fun `rewriteDryRun is compatible with the configuration cache`(
-        @TempDir projectDir: File
-    ) {
+    fun `rewriteDryRun is compatible with the configuration cache`() {
         gradleProject(projectDir) {
             buildGradle("""
                 plugins {
@@ -228,12 +226,13 @@ class RewriteDryRunTest : RewritePluginTest {
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 
-    @Test
-    fun androidDefaultSourceSets(@TempDir projectDir: Path) {
-        androidProject(projectDir) {
+    @ParameterizedTest
+    @ValueSource(strings=["8.5.0", "7.0.4", "4.2.2"])
+    fun androidDefaultSourceSets(pluginVersion: String) {
+        androidProject(projectDir.toPath()) {
             buildGradle("""
                 plugins {
-                    id("com.android.application") version "8.5.0"
+                    id("com.android.application") version "${pluginVersion}"
                     id("org.openrewrite.rewrite")
                 }
 
@@ -267,10 +266,10 @@ class RewriteDryRunTest : RewritePluginTest {
                 """)
             }
         }
-        val result = runGradle(projectDir.toFile(), taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
+        val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
         val rewriteDryRunResult = result.task(":${taskName()}")!!
 
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
-        assertThat(projectDir.resolve("build/reports/rewrite/rewrite.patch")).exists()
+        assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch")).exists()
     }
 }
