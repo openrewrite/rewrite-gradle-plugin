@@ -94,9 +94,9 @@ configurations.named("compileOnly").configure {
     extendsFrom(rewriteDependencies)
 }
 
-val testDependencies = configurations.create("testDependencies")
+val optionalPlugins = configurations.create("optionalPlugins")
 configurations.named("compileOnly").configure {
-    extendsFrom(testDependencies)
+    extendsFrom(optionalPlugins)
 }
 
 dependencies {
@@ -137,6 +137,8 @@ dependencies {
     testImplementation("org.openrewrite:rewrite-test")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.assertj:assertj-core:latest.release")
+    testRuntimeOnly("com.android.tools.build:gradle:7.0.4")
+
 
     modules {
         module("com.google.guava:listenablefuture") {
@@ -150,7 +152,7 @@ dependencies {
 
 // This is necessary to add android build tools to the test runtime classpath
 tasks.withType<PluginUnderTestMetadata>().configureEach {
-    pluginClasspath.from(configurations["testDependencies"])
+    pluginClasspath.from(configurations["optionalPlugins"])
 }
 
 project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))

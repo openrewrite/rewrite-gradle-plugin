@@ -921,7 +921,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         for (BaseVariant variant : findAndroidProjectVariants(subproject)) {
             JavaVersion javaVersion = getJavaVersion(project, null);
             final Charset javaSourceCharset = getSourceFileEncoding(project, null, sourceCharset);
-
+            // FIXME: source sets need to be order like is done with gradle
             for (SourceProvider sourceProvider : variant.getSourceSets()) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
                 int sourceSetSize = 0;
