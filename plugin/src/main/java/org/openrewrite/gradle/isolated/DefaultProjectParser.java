@@ -1178,10 +1178,10 @@ public class DefaultProjectParser implements GradleProjectParser {
             GradleSettings finalGs = gs;
             if (settingsGradleFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleFile.toPath());
-                if (gradleParser == null) {
-                    gradleParser = gradleParser();
-                }
                 if (!isExcluded(exclusions, settingsPath)) {
+                    if (gradleParser == null) {
+                        gradleParser = gradleParser();
+                    }
                     sourceFiles = Stream.concat(
                             sourceFiles,
                             gradleParser.parse(singleton(settingsGradleFile.toPath()), baseDir, ctx).map(sourceFile -> {
