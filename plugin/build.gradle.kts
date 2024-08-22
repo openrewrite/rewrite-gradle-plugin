@@ -7,7 +7,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
 plugins {
-    kotlin("jvm") version("1.9.0")
+    id("org.jetbrains.kotlin.jvm") version "1.9.0"
     id("com.gradle.plugin-publish") version "1.1.0"
     id("com.github.hierynomus.license") version "0.16.1"
     id("nebula.maven-apache-license")
@@ -46,6 +46,8 @@ repositories {
             excludeVersionByRegex(".+", ".+", ".+-rc-?[0-9]*")
         }
     }
+    gradlePluginPortal()
+    google()
 }
 
 val latest = if (project.hasProperty("releasing")) {
@@ -92,6 +94,11 @@ configurations.named("compileOnly").configure {
     extendsFrom(rewriteDependencies)
 }
 
+val testDependencies = configurations.create("testDependencies")
+configurations.named("compileOnly").configure {
+    extendsFrom(testDependencies)
+}
+
 dependencies {
     "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:$latest"))
     "rewriteDependencies"("org.openrewrite:rewrite-core")
@@ -119,6 +126,7 @@ dependencies {
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
+    "optionalPlugins"("com.android.tools.build:gradle:7.0.4")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
     compileOnly("com.google.guava:guava:latest.release")
 
@@ -138,6 +146,11 @@ dependencies {
             replacedBy("com.google.guava:guava", "google-collections is part of guava")
         }
     }
+}
+
+// This is necessary to add android build tools to the test runtime classpath
+tasks.withType<PluginUnderTestMetadata>().configureEach {
+    pluginClasspath.from(configurations["testDependencies"])
 }
 
 project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))

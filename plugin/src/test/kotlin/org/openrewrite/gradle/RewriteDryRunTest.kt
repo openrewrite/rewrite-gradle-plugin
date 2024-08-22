@@ -22,6 +22,7 @@ import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
 import java.io.File
+import java.nio.file.Path
 
 class RewriteDryRunTest : RewritePluginTest {
 
@@ -225,5 +226,51 @@ class RewriteDryRunTest : RewritePluginTest {
         val result = runGradle(projectDir, taskName(), "--configuration-cache")
         val rewriteDryRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    }
+
+    @Test
+    fun androidDefaultSourceSets(@TempDir projectDir: Path) {
+        androidProject(projectDir) {
+            buildGradle("""
+                plugins {
+                    id("com.android.application") version "8.5.0"
+                    id("org.openrewrite.rewrite")
+                }
+
+                repositories {
+                    google()
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+
+                group = "org.example"
+                version = "1.0-SNAPSHOT"
+
+                android {
+                    namespace = "example"
+                    compileSdkVersion 30
+                }
+            """)
+            sourceSet("main") {
+                java("""
+                    import java.util.List;
+                    import java.util.Collections;
+
+                    class HelloWorld {
+                        HelloWorld() {
+                            super();
+                        }
+                    }
+                """)
+            }
+        }
+        val result = runGradle(projectDir.toFile(), taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
+
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        assertThat(projectDir.resolve("build/reports/rewrite/rewrite.patch")).exists()
     }
 }
