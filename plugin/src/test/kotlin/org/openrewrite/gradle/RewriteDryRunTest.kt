@@ -114,18 +114,14 @@ class RewriteDryRunTest : RewritePluginTest {
                 java(
                     """
                     package org.openrewrite.before;
-                
-                    import java.util.ArrayList;
                     
                     import java.util.List;
+                    import java.util.ArrayList;
                     
                     public class HelloWorld {
-                        public static void sayHello() {
-                            System.out.println("Hello world");
-                        }
-                    
+
                         public static void main(String[] args) {
-                            sayHello();
+                            System.out.println("Hello world");
                         }
                     }
                 """
@@ -246,21 +242,12 @@ class RewriteDryRunTest : RewritePluginTest {
     @ParameterizedTest
     @ValueSource(strings = ["8.6.0", "7.0.4", "4.2.2"])
     fun androidDefaultSourceSets(pluginVersion: String) {
-        androidProject(projectDir.toPath()) {
+        gradleProject(projectDir) {
             buildGradle(
                 """
                 plugins {
                     id("com.android.application") version "${pluginVersion}"
                     id("org.openrewrite.rewrite")
-                }
-
-                repositories {
-                    google()
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
-                    }
                 }
 
                 group = "org.example"

@@ -19,6 +19,7 @@ import org.intellij.lang.annotations.Language
 import java.io.File
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 
 /**
  * Utility to help with writing gradle projects to disk to assist with plugin testing
@@ -80,20 +81,40 @@ class GradleProjectSpec(
     }
 
     fun build(): GradleProjectSpec {
-        dir.mkdirs()
-
-        val settings = File(dir, "settings.gradle")
+        Files.createDirectories(dir.toPath())
+        val settings = dir.toPath().resolve("settings.gradle")
+        val lines = ArrayList<String>()
         if(settingsGradle == null) {
-            val settingsText = "rootProject.name = \"${dir.name}\"\n"
-            if (subprojects.isEmpty()) {
-                settings.writeText("rootProject.name = \"${dir.name}\"\n")
-            } else {
-                val subprojectsDeclarations = subprojects.joinToString("\n") { subproject  ->  "include('${subproject.dir.name}')" }
-                settings.writeText(settingsText + subprojectsDeclarations)
+            lines.add("""
+                 pluginManagement {
+                    repositories {
+                        gradlePluginPortal()
+                        google()
+                        mavenLocal()
+                        mavenCentral()
+                    }
+                }
+
+                dependencyResolutionManagement {
+                    repositories {
+                        gradlePluginPortal()
+                        google()
+                        mavenLocal()
+                        mavenCentral()
+                        maven {
+                            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                        }
+                    }
+                }
+            """.trimIndent())
+            lines.add("rootProject.name = \"${dir.name}\"\n")
+            if (!subprojects.isEmpty()) {
+                subprojects.forEach {subproject -> lines.add("include('${subproject.dir.name}')\n")};
             }
         } else {
-            settings.writeText(settingsGradle!!)
+            lines.add(settingsGradle!!)
         }
+        Files.write(settings, lines)
 
         if (groovyBuildScript != null) {
             File(dir, "build.gradle").writeText(groovyBuildScript!!)

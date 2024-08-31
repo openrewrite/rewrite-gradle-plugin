@@ -18,7 +18,9 @@ package org.openrewrite.gradle.isolated;
 import com.android.build.api.dsl.CompileOptions;
 import com.android.build.gradle.BaseExtension;
 import com.android.build.gradle.LibraryExtension;
+import com.android.build.gradle.api.BaseVariant;
 import com.android.build.gradle.internal.dsl.BaseAppModuleExtension;
+import org.gradle.api.DomainObjectSet;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -218,17 +220,24 @@ class AndroidProjectParser {
         Object extension = project.getExtensions().findByName("android");
         if (extension instanceof BaseAppModuleExtension) {
             BaseAppModuleExtension appExtension = (BaseAppModuleExtension) extension;
-            appExtension.getApplicationVariants()
-                    .forEach(variant -> variants.add(AndroidProjectVariant.fromBaseVariant(variant)));
+            addProjectVariant(variants, appExtension.getApplicationVariants());
+            addProjectVariant(variants, appExtension.getTestVariants());
+            addProjectVariant(variants, appExtension.getUnitTestVariants());
         } else if (extension instanceof LibraryExtension) {
             LibraryExtension libraryExtension = (LibraryExtension) extension;
-            libraryExtension.getLibraryVariants()
-                    .forEach(variant -> variants.add(AndroidProjectVariant.fromBaseVariant(variant)));
+            addProjectVariant(variants, libraryExtension.getLibraryVariants());
+            addProjectVariant(variants, libraryExtension.getTestVariants());
+            addProjectVariant(variants, libraryExtension.getUnitTestVariants());
         } else if (extension != null) {
             throw new UnsupportedOperationException("Unhandled android extension type: " + extension.getClass());
         }
 
         return variants;
+    }
+
+    private void addProjectVariant(List<AndroidProjectVariant> projectVariants,
+                                   DomainObjectSet<? extends BaseVariant> variantSet) {
+        variantSet.stream().map(AndroidProjectVariant::fromBaseVariant).forEach(projectVariants::add);
     }
 
     private JavaVersion getJavaVersion(Project project) {

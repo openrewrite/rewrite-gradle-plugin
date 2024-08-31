@@ -86,7 +86,6 @@ class AndroidProjectVariant {
         Map<String, Set<Path>> kotlinSourceSets = new HashMap<>();
         Map<String, Set<Path>> resourceSourceSets = new HashMap<>();
 
-        // FIXME: source sets need to be ordered like is done with gradle
         for (SourceProvider sourceProvider : baseVariant.getSourceSets()) {
             addSourceSets(javaSourceSets, sourceProvider.getName(), sourceProvider.getJavaDirectories());
             if (hasMethod(baseVariant, "getKotlinDirectories")) {
@@ -95,7 +94,6 @@ class AndroidProjectVariant {
             }
             addSourceSets(resourceSourceSets, sourceProvider.getName(), sourceProvider.getResourcesDirectories());
         }
-
 
         Set<Path> compileClasspath = new HashSet<>();
         try {
