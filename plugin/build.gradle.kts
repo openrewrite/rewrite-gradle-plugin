@@ -94,11 +94,6 @@ configurations.named("compileOnly").configure {
     extendsFrom(rewriteDependencies)
 }
 
-val optionalPlugins = configurations.create("optionalPlugins")
-configurations.named("compileOnly").configure {
-    extendsFrom(optionalPlugins)
-}
-
 dependencies {
     "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:$latest"))
     "rewriteDependencies"("org.openrewrite:rewrite-core")
@@ -137,7 +132,6 @@ dependencies {
     testImplementation("org.openrewrite:rewrite-test")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.assertj:assertj-core:latest.release")
-
 
     modules {
         module("com.google.guava:listenablefuture") {
