@@ -29,20 +29,29 @@ import java.util.List;
  */
 public class RewriteClassLoader extends URLClassLoader {
 
-    private static final List<String> loadFromParent = Arrays.asList(
-        "org.openrewrite.gradle.GradleProjectParser",
-        "org.openrewrite.gradle.DefaultRewriteExtension",
-        "org.openrewrite.gradle.RewriteExtension",
-        "org.slf4j",
-        "org.gradle",
-        "groovy",
-        "org.codehaus.groovy",
-        "com.android"
-    );
+    private static final List<String> PARENT_LOADED_PACKAGES = Arrays.asList(
+            "org.openrewrite.gradle.GradleProjectParser",
+            "org.openrewrite.gradle.DefaultRewriteExtension",
+            "org.openrewrite.gradle.RewriteExtension",
+            "org.slf4j",
+            "org.gradle",
+            "groovy",
+            "org.codehaus.groovy");
+    private static final List<String> PLUGIN_LOADED_PACKAGES = Arrays.asList("com.android");
+    private final ClassLoader pluginClassLoader;
 
     public RewriteClassLoader(Collection<URL> artifacts) {
+        this(artifacts, RewriteClassLoader.class.getClassLoader());
+    }
+
+    public RewriteClassLoader(Collection<URL> artifacts, ClassLoader pluginClassLoader) {
         super(artifacts.toArray(new URL[0]), RewriteClassLoader.class.getClassLoader());
+        this.pluginClassLoader = pluginClassLoader;
         setDefaultAssertionStatus(true);
+    }
+
+    public ClassLoader getPluginClassLoader() {
+        return pluginClassLoader;
     }
 
     /**
@@ -54,10 +63,12 @@ public class RewriteClassLoader extends URLClassLoader {
         Class<?> foundClass = findLoadedClass(name);
         if (foundClass == null) {
             try {
-                if (!shouldBeParentLoaded(name)) {
-                    foundClass = findClass(name);
-                } else {
+                if (shouldBeParentLoaded(name)) {
                     foundClass = super.loadClass(name, resolve);
+                } else if (shouldBePluginLoaded(name)) {
+                    foundClass = Class.forName(name, resolve, pluginClassLoader);
+                } else {
+                    foundClass = findClass(name);
                 }
             } catch (ClassNotFoundException e) {
                 foundClass = super.loadClass(name, resolve);
@@ -70,8 +81,16 @@ public class RewriteClassLoader extends URLClassLoader {
     }
 
     protected boolean shouldBeParentLoaded(String name) {
-        for (String s : loadFromParent) {
-            if (name.startsWith(s)) {
+        return shouldBeLoaded(name, PARENT_LOADED_PACKAGES);
+    }
+
+    protected boolean shouldBePluginLoaded(String name) {
+        return shouldBeLoaded(name, PLUGIN_LOADED_PACKAGES);
+    }
+
+    private boolean shouldBeLoaded(String name, List<String> packagesToLoad) {
+        for (String pkg : packagesToLoad) {
+            if (name.startsWith(pkg)) {
                 return true;
             }
         }

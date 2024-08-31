@@ -126,7 +126,7 @@ dependencies {
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
-    "optionalPlugins"("com.android.tools.build:gradle:7.0.4")
+    compileOnly("com.android.tools.build:gradle:7.0.4")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
     compileOnly("com.google.guava:guava:latest.release")
 
@@ -137,7 +137,6 @@ dependencies {
     testImplementation("org.openrewrite:rewrite-test")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.assertj:assertj-core:latest.release")
-    testRuntimeOnly("com.android.tools.build:gradle:7.0.4")
 
 
     modules {
@@ -148,11 +147,6 @@ dependencies {
             replacedBy("com.google.guava:guava", "google-collections is part of guava")
         }
     }
-}
-
-// This is necessary to add android build tools to the test runtime classpath
-tasks.withType<PluginUnderTestMetadata>().configureEach {
-    pluginClasspath.from(configurations["optionalPlugins"])
 }
 
 project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))

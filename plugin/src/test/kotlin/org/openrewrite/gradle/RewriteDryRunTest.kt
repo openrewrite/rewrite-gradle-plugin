@@ -42,8 +42,9 @@ class RewriteDryRunTest : RewritePluginTest {
                 }public static void main(String[] args) {   sayGoodbye(); }
             }
         """.trimIndent()
-        gradleProject(projectDir) { 
-            rewriteYaml("""
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
                 description: Test.
@@ -54,8 +55,10 @@ class RewriteDryRunTest : RewritePluginTest {
                   - org.openrewrite.java.ChangePackage:
                       oldPackageName: org.openrewrite.before
                       newPackageName: org.openrewrite.after
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -72,8 +75,9 @@ class RewriteDryRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
                 }
-            """)
-            sourceSet("main") { 
+            """
+            )
+            sourceSet("main") {
                 java(helloWorld)
             }
         }
@@ -81,15 +85,17 @@ class RewriteDryRunTest : RewritePluginTest {
         val rewriteDryRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-        assertThat(File(projectDir, "src/main/java/org/openrewrite/before/HelloWorld.java")
-            .readText()).isEqualTo(helloWorld)
+        assertThat(
+            File(projectDir, "src/main/java/org/openrewrite/before/HelloWorld.java").readText()
+        ).isEqualTo(helloWorld)
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
 
     @Test
     fun `A recipe with optional configuration can be activated directly`() {
-        gradleProject(projectDir) { 
-            buildGradle("""
+        gradleProject(projectDir) {
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -102,9 +108,11 @@ class RewriteDryRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-            """)
-            sourceSet("main") { 
-                java("""
+            """
+            )
+            sourceSet("main") {
+                java(
+                    """
                     package org.openrewrite.before;
                 
                     import java.util.ArrayList;
@@ -120,7 +128,8 @@ class RewriteDryRunTest : RewritePluginTest {
                             sayHello();
                         }
                     }
-                """)
+                """
+                )
             }
         }
 
@@ -133,8 +142,9 @@ class RewriteDryRunTest : RewritePluginTest {
     @DisabledIf("lessThanGradle6_1")
     @Test
     fun multiplatform() {
-        gradleProject(projectDir) { 
-            buildGradle("""
+        gradleProject(projectDir) {
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -172,8 +182,10 @@ class RewriteDryRunTest : RewritePluginTest {
                         }
                     }
                 }
-            """)
-            settingsGradle("""
+            """
+            )
+            settingsGradle(
+                """
                 pluginManagement {
                     repositories {
                         mavenLocal()
@@ -182,15 +194,18 @@ class RewriteDryRunTest : RewritePluginTest {
                     }
                 }
                 rootProject.name = "example"
-            """)
-            sourceSet("commonMain") { 
-                kotlin("""
+            """
+            )
+            sourceSet("commonMain") {
+                kotlin(
+                    """
                     class HelloWorld {
                         fun sayHello() {
                             println("Hello world")
                         }
                     }
-                """)
+                """
+                )
             }
         }
         val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
@@ -207,7 +222,8 @@ class RewriteDryRunTest : RewritePluginTest {
     @Test
     fun `rewriteDryRun is compatible with the configuration cache`() {
         gradleProject(projectDir) {
-            buildGradle("""
+            buildGradle(
+                """
                 plugins {
                     id("org.openrewrite.rewrite")
                 }
@@ -219,7 +235,8 @@ class RewriteDryRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-            """)
+            """
+            )
         }
         val result = runGradle(projectDir, taskName(), "--configuration-cache")
         val rewriteDryRunResult = result.task(":${taskName()}")!!
@@ -227,10 +244,11 @@ class RewriteDryRunTest : RewritePluginTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings=["8.5.0", "7.0.4", "4.2.2"])
+    @ValueSource(strings = ["8.6.0", "7.0.4", "4.2.2"])
     fun androidDefaultSourceSets(pluginVersion: String) {
         androidProject(projectDir.toPath()) {
-            buildGradle("""
+            buildGradle(
+                """
                 plugins {
                     id("com.android.application") version "${pluginVersion}"
                     id("org.openrewrite.rewrite")
@@ -252,9 +270,11 @@ class RewriteDryRunTest : RewritePluginTest {
                     namespace = "example"
                     compileSdkVersion 30
                 }
-            """)
+            """
+            )
             sourceSet("main") {
-                java("""
+                java(
+                    """
                     import java.util.List;
                     import java.util.Collections;
 
@@ -263,7 +283,8 @@ class RewriteDryRunTest : RewritePluginTest {
                             super();
                         }
                     }
-                """)
+                """
+                )
             }
         }
         val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
