@@ -89,9 +89,11 @@ class GradleProjectSpec(
                  pluginManagement {
                     repositories {
                         gradlePluginPortal()
-                        google()
                         mavenLocal()
                         mavenCentral()
+                        google()
+                        // jcenter is currently only required for AGP 3.*
+                        jcenter()
                     }
                 }
 
@@ -104,6 +106,8 @@ class GradleProjectSpec(
                         maven {
                             url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                         }
+                        // jcenter is currently only required for AGP 3.*
+                        jcenter()
                     }
                 }
             """.trimIndent())

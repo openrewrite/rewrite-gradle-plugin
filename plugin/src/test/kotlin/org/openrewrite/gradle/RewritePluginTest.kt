@@ -33,19 +33,24 @@ interface RewritePluginTest {
 
     fun taskName(): String
 
-    fun runGradle(testDir: File, vararg args: String): BuildResult =
-        GradleRunner.create()
+    fun runGradle(testDir: File, vararg args: String): BuildResult {
+        return runGradle(gradleVersion, testDir, *args)
+    }
+
+    fun runGradle(gradleVer: String?, testDir: File, vararg args: String): BuildResult {
+        return GradleRunner.create()
             .withDebug(ManagementFactory.getRuntimeMXBean().inputArguments.toString().indexOf("-agentlib:jdwp") > 0)
             .withProjectDir(testDir)
-            .apply{
-                if (gradleVersion != null) {
-                    withGradleVersion(gradleVersion)
+            .apply {
+                if (gradleVer != null) {
+                    withGradleVersion(gradleVer)
                 }
             }
             .withArguments(*args, "--stacktrace")
             .withPluginClasspath()
             .forwardOutput()
             .build()
+    }
 
     fun lessThanGradle6_1(): Boolean {
         val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
@@ -88,5 +93,9 @@ interface RewritePluginTest {
         val result = runGradle(projectDir, taskName(), "--configuration-cache")
         val taskResult = result.task(":${taskName()}")!!
         assertThat(taskResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    }
+
+    fun androidHomeIsSet(): Boolean {
+        return System.getenv("ANDROID_HOME") != null;
     }
 }

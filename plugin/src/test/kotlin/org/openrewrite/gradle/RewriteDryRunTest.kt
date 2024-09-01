@@ -19,12 +19,12 @@ import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
+import org.junit.jupiter.api.condition.EnabledIf
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.openrewrite.Issue
 import java.io.File
-import java.nio.file.Path
 
 class RewriteDryRunTest : RewritePluginTest {
     @TempDir
@@ -241,12 +241,12 @@ class RewriteDryRunTest : RewritePluginTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["8.6.0", "7.0.4", "4.2.2"])
-    fun androidDefaultSourceSets(pluginVersion: String) {
+    fun `rewriteDryRun is compatible with AGP version 4 and over`(pluginVersion: String) {
         gradleProject(projectDir) {
             buildGradle(
                 """
                 plugins {
-                    id("com.android.application") version "${pluginVersion}"
+                    id("com.android.application") version "$pluginVersion"
                     id("org.openrewrite.rewrite")
                 }
 
@@ -275,6 +275,54 @@ class RewriteDryRunTest : RewritePluginTest {
             }
         }
         val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
+
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch")).exists()
+    }
+
+    @EnabledIf("androidHomeIsSet")
+    @Test
+    fun `rewriteDryRun is compatible with AGP version 3`() {
+        gradleProject(projectDir) {
+            buildGradle(
+                """
+                 buildscript {
+                    dependencies {
+                        classpath 'com.android.tools.build:gradle:3.4.0'
+                    }
+                }
+
+                plugins {
+                    id("org.openrewrite.rewrite")
+                }
+
+                apply plugin: 'com.android.application'
+
+                group = "org.example"
+                version = "1.0-SNAPSHOT"
+
+                android {
+                   compileSdkVersion 28
+                }
+            """
+            )
+            sourceSet("main") {
+                java(
+                    """
+                    import java.util.List;
+                    import java.util.Collections;
+
+                    class HelloWorld {
+                        HelloWorld() {
+                            super();
+                        }
+                    }
+                """
+                )
+            }
+        }
+        val result = runGradle("7.3", projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
         val rewriteDryRunResult = result.task(":${taskName()}")!!
 
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
