@@ -57,7 +57,8 @@ public class RewriteClassLoader extends URLClassLoader {
     /**
      * Load the named class. We want classes that extend <code>org.openrewrite.Recipe</code> to be loaded
      * by this ClassLoader <strong>only</strong>. But we want classes required to run recipes to continue
-     * to be loaded by their parent ClassLoader to avoid <code>ClassCastException</code>s.
+     * to be loaded by their parent ClassLoader to avoid <code>ClassCastException</code>s. In the case
+     * of Android Gradle plugin classes, we use the ClassLoader of the plugin.
      */
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         Class<?> foundClass = findLoadedClass(name);
