@@ -92,6 +92,7 @@ class AndroidProjectVariant {
                 // Android gradle plugin versions prior to 7 do not have BaseVariant#getKotlinDirectories
                 addSourceSets(kotlinSourceSets, sourceProvider.getName(), sourceProvider.getKotlinDirectories());
             }
+            addSourceSets(resourceSourceSets, sourceProvider.getName(), sourceProvider.getResDirectories());
             addSourceSets(resourceSourceSets, sourceProvider.getName(), sourceProvider.getResourcesDirectories());
         }
 
@@ -101,9 +102,11 @@ class AndroidProjectVariant {
                     .getFiles()
                     .forEach(file -> compileClasspath.add(file.toPath()));
         } catch (RuntimeException e) {
+            // Calling BaseVariant#getCompileClasspath will throw an exception when run with
+            // an AGP version less than 8.0 and a gradle version less than 8, when trying to
+            // create a task using org.gradle.api.tasks.incremental.IncrementalTaskInputs which
+            // was removed in gradle 8.
             logger.warn("Unable to determine compile class path: {}", e.getMessage());
-            // FIXME: this throws an exception on AGP versions 7.* and lower
-            //   > Cannot use @TaskAction annotation on method IncrementalTask.taskAction$gradle_core() because interface org.gradle.api.tasks.incremental.IncrementalTaskInputs is not a valid parameter to an action method.
         }
 
         // FIXME: Need to figure out how to extract runtime classpaths

@@ -110,8 +110,11 @@ public class DefaultProjectParser implements GradleProjectParser {
     protected final Project project;
     private final List<Marker> sharedProvenance;
 
+    @Nullable
     private List<NamedStyles> styles;
+    @Nullable
     private Environment environment;
+    @Nullable
     private AndroidProjectParser androidProjectParser;
 
     public DefaultProjectParser(Project project, RewriteExtension extension) {
@@ -750,9 +753,9 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaTypeCache javaTypeCache = new JavaTypeCache();
             JavaCompile javaCompileTask = (JavaCompile) subproject.getTasks()
                     .getByName(sourceSet.getCompileJavaTaskName());
-            JavaVersion javaVersion = getJavaVersion(subproject, javaCompileTask);
+            JavaVersion javaVersion = getJavaVersion(javaCompileTask);
 
-            final Charset javaSourceCharset = getSourceFileEncoding(project, javaCompileTask, sourceCharset);
+            final Charset javaSourceCharset = getSourceFileEncoding(javaCompileTask, sourceCharset);
 
             List<Path> unparsedSources = sourceSet.getAllSource()
                     .getSourceDirectories()
@@ -782,32 +785,28 @@ public class DefaultProjectParser implements GradleProjectParser {
             // The compilation classpath doesn't include the transitive dependencies
             // The runtime classpath doesn't include compile only dependencies, e.g.: lombok, servlet-api
             // So we use both together to get comprehensive type information
-            List<Path> dependencyPathsNonFinal;
+            Set<Path> dependencyPaths = new HashSet<>();
             try {
-                dependencyPathsNonFinal = Stream.concat(
+                Stream.concat(
                                 sourceSet.getRuntimeClasspath().getFiles().stream(),
                                 sourceSet.getCompileClasspath().getFiles().stream())
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
-                        .distinct()
-                        .collect(toList());
+                        .forEach(dependencyPaths::add);
             } catch (Exception e) {
                 logger.warn(
                         "Unable to resolve classpath for sourceSet {}:{}",
                         subproject.getPath(),
                         sourceSet.getName(),
                         e);
-                dependencyPathsNonFinal = emptyList();
             }
-            List<Path> dependencyPaths = dependencyPathsNonFinal;
 
             if (!javaPaths.isEmpty()) {
                 alreadyParsed.addAll(javaPaths);
                 Stream<SourceFile> parsedJavaFiles = parseJavaFiles(
                         javaPaths,
                         ctx,
-                        extension,
                         buildDir,
                         exclusions,
                         javaSourceCharset,
@@ -835,7 +834,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Stream<SourceFile> parsedKotlinFiles = parseKotlinFiles(
                             kotlinPaths,
                             ctx,
-                            extension,
                             buildDir,
                             exclusions,
                             javaSourceCharset,
@@ -919,8 +917,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                                            Set<Path> alreadyParsed,
                                                            Collection<PathMatcher> exclusions,
                                                            ExecutionContext ctx) {
-        AndroidProjectParser androidProjectParser = getAndroidProjectParser();
-        return androidProjectParser.parseProjectSourceSets(
+        return getAndroidProjectParser().parseProjectSourceSets(
                 subproject,
                 buildDir,
                 sourceCharset,
@@ -932,12 +929,11 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     private Stream<SourceFile> parseJavaFiles(List<Path> javaPaths,
                                               ExecutionContext ctx,
-                                              RewriteExtension extension,
                                               Path buildDir,
                                               Collection<PathMatcher> exclusions,
                                               Charset javaSourceCharset,
                                               JavaVersion javaVersion,
-                                              List<Path> dependencyPaths,
+                                              Set<Path> dependencyPaths,
                                               JavaTypeCache javaTypeCache) {
         view(ctx).setCharset(javaSourceCharset);
 
@@ -956,12 +952,11 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     private Stream<SourceFile> parseKotlinFiles(List<Path> kotlinPaths,
                                                 ExecutionContext ctx,
-                                                RewriteExtension extension,
                                                 Path buildDir,
                                                 Collection<PathMatcher> exclusions,
                                                 Charset javaSourceCharset,
                                                 JavaVersion javaVersion,
-                                                List<Path> dependencyPaths,
+                                                Set<Path> dependencyPaths,
                                                 JavaTypeCache javaTypeCache) {
         view(ctx).setCharset(javaSourceCharset);
 
@@ -1320,7 +1315,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         return source;
     }
 
-    private boolean isExcluded(Collection<PathMatcher> exclusions, Path path) {
+    static boolean isExcluded(Collection<PathMatcher> exclusions, Path path) {
         for (PathMatcher excluded : exclusions) {
             if (excluded.matches(path)) {
                 return true;
@@ -1436,7 +1431,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         };
     }
 
-    private <T extends SourceFile> UnaryOperator<T> addProvenance(Marker sourceSet) {
+    static <T extends SourceFile> UnaryOperator<T> addProvenance(Marker sourceSet) {
         return s -> {
             Markers m = s.getMarkers();
             m = m.addIfAbsent(sourceSet);
@@ -1499,7 +1494,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         })).collect(toList());
     }
 
-    private JavaVersion getJavaVersion(Project project, @Nullable JavaCompile javaCompileTask) {
+    private JavaVersion getJavaVersion(@Nullable JavaCompile javaCompileTask) {
         String sourceCompatibility = null;
         String targetCompatibility = null;
         if (javaCompileTask != null) {
@@ -1515,8 +1510,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     }
 
-    private Charset getSourceFileEncoding(Project project,
-                                          @Nullable JavaCompile javaCompileTask,
+    private Charset getSourceFileEncoding(@Nullable JavaCompile javaCompileTask,
                                           Charset defaultCharset) {
         String sourceEncoding = null;
         if (sourceEncoding == null && javaCompileTask != null) {
