@@ -286,7 +286,6 @@ class RewriteDryRunTest : RewritePluginTest {
     }
 
     @EnabledIf("androidHomeIsSet")
-    @DisabledIf("lessThanGradle7_4")
     @Test
     fun `rewriteDryRun is compatible with AGP version 3`() {
         gradleProject(projectDir) {

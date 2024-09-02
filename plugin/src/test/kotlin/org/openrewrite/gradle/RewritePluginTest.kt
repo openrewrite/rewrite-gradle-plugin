@@ -92,6 +92,6 @@ interface RewritePluginTest {
     }
 
     fun androidHomeIsSet(): Boolean {
-        return System.getenv("ANDROID_HOME") != null;
+        return System.getenv("ANDROID_HOME") != null && lessThanGradle7_4()
     }
 }
