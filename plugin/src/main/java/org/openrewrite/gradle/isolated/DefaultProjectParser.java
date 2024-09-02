@@ -645,10 +645,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     projectName -> progressBar.intermediateResult(":" + projectName));
 
             Collection<PathMatcher> exclusions = extension.getExclusions().stream()
-                    .map(pattern -> subproject.getProjectDir()
-                            .toPath()
-                            .getFileSystem()
-                            .getPathMatcher("glob:" + pattern))
+                    .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
                     .collect(toList());
             if (isExcluded(exclusions, baseDir.relativize(subproject.getProjectDir().toPath()))) {
                 logger.lifecycle("Skipping project {} because it is excluded", subproject.getPath());
@@ -682,9 +679,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                     .toPath());
 
             SourceFileStream projectSourceFileStream;
-            if (isAndroidProject(project)) {
+            if (isAndroidProject(subproject)) {
                 projectSourceFileStream = parseAndroidProjectSourceSets(
-                        project,
+                        subproject,
                         buildDirPath,
                         sourceCharset,
                         alreadyParsed,
@@ -692,7 +689,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         ctx);
             } else {
                 projectSourceFileStream = parseGradleProjectSourceSets(
-                        project,
+                        subproject,
                         buildDirPath,
                         sourceCharset,
                         alreadyParsed,

@@ -84,7 +84,7 @@ class GradleProjectSpec(
         Files.createDirectories(dir.toPath())
         val settings = dir.toPath().resolve("settings.gradle")
         val lines = ArrayList<String>()
-        if(settingsGradle == null) {
+        if (settingsGradle == null) {
             lines.add("""
                  pluginManagement {
                     repositories {
@@ -111,9 +111,9 @@ class GradleProjectSpec(
                     }
                 }
             """.trimIndent())
-            lines.add("rootProject.name = \"${dir.name}\"\n")
+            lines.add("rootProject.name = \"${dir.name}\"")
             if (!subprojects.isEmpty()) {
-                subprojects.forEach {subproject -> lines.add("include('${subproject.dir.name}')\n")};
+                subprojects.forEach {subproject -> lines.add("include('${subproject.dir.name}')")};
             }
         } else {
             lines.add(settingsGradle!!)
