@@ -34,6 +34,7 @@ import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.polyglot.OmniParser;
+import org.openrewrite.polyglot.ProgressBar;
 import org.openrewrite.polyglot.SourceFileStream;
 import org.openrewrite.style.NamedStyles;
 import org.openrewrite.tree.ParsingExecutionContextView;
@@ -62,15 +63,16 @@ class AndroidProjectParser {
     }
 
     SourceFileStream parseProjectSourceSets(Project project,
+                                            ProgressBar progressBar,
                                             Path buildDir,
                                             Charset sourceCharset,
                                             Set<Path> alreadyParsed,
                                             Collection<PathMatcher> exclusions,
                                             ExecutionContext ctx,
                                             OmniParser omniParser) {
-        // FIXME: Does this affect progress bars?
-        SourceFileStream sourceFileStream = SourceFileStream.build("", s -> {
-        });
+        SourceFileStream sourceFileStream = SourceFileStream.build(
+                project.getPath(),
+                projectName -> progressBar.intermediateResult(":" + projectName));
 
         for (AndroidProjectVariant variant : findAndroidProjectVariants(project)) {
             JavaVersion javaVersion = getJavaVersion(project);
@@ -159,8 +161,6 @@ class AndroidProjectParser {
                             project.getPath(),
                             sourceSetName);
                 }
-
-                // TODO: Groovy??
 
                 for (Path resourcesDir : variant.getResourcesDirectories(sourceSetName)) {
                     if (Files.exists(resourcesDir) && !alreadyParsed.contains(resourcesDir)) {

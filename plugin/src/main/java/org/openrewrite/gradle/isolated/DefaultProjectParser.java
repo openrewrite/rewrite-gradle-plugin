@@ -682,6 +682,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             if (isAndroidProject(subproject)) {
                 projectSourceFileStream = parseAndroidProjectSourceSets(
                         subproject,
+                        progressBar,
                         buildDirPath,
                         sourceCharset,
                         alreadyParsed,
@@ -690,6 +691,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             } else {
                 projectSourceFileStream = parseGradleProjectSourceSets(
                         subproject,
+                        progressBar,
                         buildDirPath,
                         sourceCharset,
                         alreadyParsed,
@@ -728,14 +730,16 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private SourceFileStream parseGradleProjectSourceSets(Project subproject,
+                                                          ProgressBar progressBar,
                                                           Path buildDir,
                                                           Charset sourceCharset,
                                                           Set<Path> alreadyParsed,
                                                           Collection<PathMatcher> exclusions,
                                                           ExecutionContext ctx) {
-        // FIXME: Does this affect progress bars?
-        SourceFileStream sourceFileStream = SourceFileStream.build("", s -> {
-        });
+        SourceFileStream sourceFileStream = SourceFileStream.build(
+                subproject.getPath(),
+                projectName -> progressBar.intermediateResult(":" + projectName));
+
         for (SourceSet sourceSet : findGradleSourceSets(subproject)) {
             Stream<SourceFile> sourceSetSourceFiles = Stream.of();
             int sourceSetSize = 0;
@@ -902,6 +906,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private SourceFileStream parseAndroidProjectSourceSets(Project subproject,
+                                                           ProgressBar progressBar,
                                                            Path buildDir,
                                                            Charset sourceCharset,
                                                            Set<Path> alreadyParsed,
@@ -909,6 +914,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                                            ExecutionContext ctx) {
         return getAndroidProjectParser().parseProjectSourceSets(
                 subproject,
+                progressBar,
                 buildDir,
                 sourceCharset,
                 alreadyParsed,
