@@ -34,16 +34,12 @@ interface RewritePluginTest {
     fun taskName(): String
 
     fun runGradle(testDir: File, vararg args: String): BuildResult {
-        return runGradle(gradleVersion, testDir, *args)
-    }
-
-    fun runGradle(gradleVer: String?, testDir: File, vararg args: String): BuildResult {
         return GradleRunner.create()
             .withDebug(ManagementFactory.getRuntimeMXBean().inputArguments.toString().indexOf("-agentlib:jdwp") > 0)
             .withProjectDir(testDir)
             .apply {
-                if (gradleVer != null) {
-                    withGradleVersion(gradleVer)
+                if (gradleVersion != null) {
+                    withGradleVersion(gradleVersion)
                 }
             }
             .withArguments(*args, "--stacktrace")

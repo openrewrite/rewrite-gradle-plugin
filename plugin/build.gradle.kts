@@ -118,7 +118,7 @@ dependencies {
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3") {
         because("Latest version supporting gradle 4.x")
     }
-    "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
+    "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
     compileOnly("com.android.tools.build:gradle:7.0.4")

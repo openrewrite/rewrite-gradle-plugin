@@ -242,6 +242,10 @@ class RewriteDryRunTest : RewritePluginTest {
     @ParameterizedTest
     @ValueSource(strings = ["8.6.0", "7.0.4", "4.2.2"])
     fun `rewriteDryRun is compatible with AGP version 4 and over`(pluginVersion: String) {
+        if (lessThanGradle6_1()) {
+            // @DisabledIf doesn't seem to work with @ParameterizedTest
+            return;
+        }
         gradleProject(projectDir) {
             buildGradle(
                 """
@@ -322,7 +326,7 @@ class RewriteDryRunTest : RewritePluginTest {
                 )
             }
         }
-        val result = runGradle("7.3", projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
+        val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
         val rewriteDryRunResult = result.task(":${taskName()}")!!
 
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
