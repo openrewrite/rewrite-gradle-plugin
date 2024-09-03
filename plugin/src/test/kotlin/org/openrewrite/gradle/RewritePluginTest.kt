@@ -91,7 +91,10 @@ interface RewritePluginTest {
         assertThat(taskResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 
-    fun androidHomeIsSet(): Boolean {
-        return System.getenv("ANDROID_HOME") != null && lessThanGradle7_4()
+    fun isAgp3CompatibleGradleVersion(): Boolean {
+        val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
+        return System.getenv("ANDROID_HOME") != null &&
+                currentVersion >= GradleVersion.version("5.0") &&
+                currentVersion < GradleVersion.version("8.0")
     }
 }

@@ -285,7 +285,7 @@ class RewriteDryRunTest : RewritePluginTest {
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch")).exists()
     }
 
-    @EnabledIf("androidHomeIsSet")
+    @EnabledIf("isAgp3CompatibleGradleVersion")
     @Test
     fun `rewriteDryRun is compatible with AGP version 3`() {
         gradleProject(projectDir) {
