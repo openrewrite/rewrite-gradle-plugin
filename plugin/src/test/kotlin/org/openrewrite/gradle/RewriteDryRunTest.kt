@@ -261,7 +261,11 @@ class RewriteDryRunTest : RewritePluginTest {
                     namespace = "example"
                     compileSdkVersion 30
                 }
-            """
+                
+                dependencies {
+                    implementation("com.google.guava:guava:33.3.0-android")
+                }
+                """
             )
             sourceSet("main") {
                 java(
@@ -274,7 +278,7 @@ class RewriteDryRunTest : RewritePluginTest {
                             super();
                         }
                     }
-                """
+                    """
                 )
             }
         }
@@ -282,7 +286,25 @@ class RewriteDryRunTest : RewritePluginTest {
         val rewriteDryRunResult = result.task(":${taskName()}")!!
 
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
-        assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch")).exists()
+        val patchFile = File(projectDir, "build/reports/rewrite/rewrite.patch")
+        assertThat(patchFile).exists()
+        assertThat(patchFile.readText())
+            .isEqualTo(
+                """
+                diff --git a/src/main/java/HelloWorld.java b/src/main/java/HelloWorld.java
+                index d8a9002..7e3e2a0 100755
+                --- a/src/main/java/HelloWorld.java
+                +++ b/src/main/java/HelloWorld.java
+                @@ -1,5 +1,5 @@ org.openrewrite.java.OrderImports
+                -import java.util.List;
+                 import java.util.Collections;
+                +import java.util.List;
+                 
+                 class HelloWorld {
+                     HelloWorld() {
+                """.trimIndent()
+            )
+
     }
 
     @EnabledIf("isAgp3CompatibleGradleVersion")

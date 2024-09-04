@@ -22,6 +22,7 @@ import org.gradle.api.logging.Logging;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -96,21 +97,31 @@ class AndroidProjectVariant {
             addSourceSets(resourceSourceSets, sourceProvider.getName(), sourceProvider.getResourcesDirectories());
         }
 
-        Set<Path> compileClasspath = new HashSet<>();
+        Set<Path> compileClasspath = new LinkedHashSet<>();
         try {
             baseVariant.getCompileClasspath(null)
                     .getFiles()
-                    .forEach(file -> compileClasspath.add(file.toPath()));
+                    .stream()
+                    .map(File::toPath)
+                    .forEach(compileClasspath::add);
         } catch (RuntimeException e) {
             // Calling BaseVariant#getCompileClasspath will throw an exception when run with
             // an AGP version less than 8.0 and a gradle version less than 8, when trying to
             // create a task using org.gradle.api.tasks.incremental.IncrementalTaskInputs which
             // was removed in gradle 8.
-            logger.warn("Unable to determine compile class path: {}", e.getMessage());
+            logger.warn("Unable to determine compile class path", e);
         }
 
-        // FIXME: Need to figure out how to extract runtime classpaths
-        Set<Path> runtimeClasspath = new HashSet<>();
+        Set<Path> runtimeClasspath = new LinkedHashSet<>();
+
+        try {
+            baseVariant.getRuntimeConfiguration().getFiles()
+                    .stream()
+                    .map(File::toPath)
+                    .forEach(runtimeClasspath::add);
+        } catch (Exception e) {
+            logger.warn("Unable to determine runtime class path", e);
+        }
 
         return new AndroidProjectVariant(
                 baseVariant.getName(),
