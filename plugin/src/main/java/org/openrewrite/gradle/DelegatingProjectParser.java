@@ -34,9 +34,11 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class DelegatingProjectParser implements GradleProjectParser {
-    protected final GradleProjectParser gpp;
+    @Nullable
     protected static List<URL> rewriteClasspath;
+    @Nullable
     protected static RewriteClassLoader rewriteClassLoader;
+    protected final GradleProjectParser gpp;
 
     public DelegatingProjectParser(Project project, RewriteExtension extension, Set<Path> classpath) {
         try {
