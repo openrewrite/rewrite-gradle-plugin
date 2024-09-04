@@ -19,18 +19,21 @@ import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
+import org.junit.jupiter.api.condition.EnabledIf
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.openrewrite.Issue
 import java.io.File
 
 class RewriteDryRunTest : RewritePluginTest {
+    @TempDir
+    lateinit var projectDir: File
 
     override fun taskName(): String = "rewriteDryRun"
 
     @Test
-    fun `rewriteDryRun runs successfully without modifying source files`(
-        @TempDir projectDir: File
-    ) {
+    fun `rewriteDryRun runs successfully without modifying source files`() {
         //language=java
         val helloWorld = """
             package org.openrewrite.before;
@@ -39,8 +42,9 @@ class RewriteDryRunTest : RewritePluginTest {
                 }public static void main(String[] args) {   sayGoodbye(); }
             }
         """.trimIndent()
-        gradleProject(projectDir) { 
-            rewriteYaml("""
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
                 description: Test.
@@ -51,8 +55,10 @@ class RewriteDryRunTest : RewritePluginTest {
                   - org.openrewrite.java.ChangePackage:
                       oldPackageName: org.openrewrite.before
                       newPackageName: org.openrewrite.after
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -69,8 +75,9 @@ class RewriteDryRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
                 }
-            """)
-            sourceSet("main") { 
+            """
+            )
+            sourceSet("main") {
                 java(helloWorld)
             }
         }
@@ -78,17 +85,17 @@ class RewriteDryRunTest : RewritePluginTest {
         val rewriteDryRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-        assertThat(File(projectDir, "src/main/java/org/openrewrite/before/HelloWorld.java")
-            .readText()).isEqualTo(helloWorld)
+        assertThat(
+            File(projectDir, "src/main/java/org/openrewrite/before/HelloWorld.java").readText()
+        ).isEqualTo(helloWorld)
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
 
     @Test
-    fun `A recipe with optional configuration can be activated directly`(
-        @TempDir projectDir: File
-    ) {
-        gradleProject(projectDir) { 
-            buildGradle("""
+    fun `A recipe with optional configuration can be activated directly`() {
+        gradleProject(projectDir) {
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -101,25 +108,24 @@ class RewriteDryRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-            """)
-            sourceSet("main") { 
-                java("""
+            """
+            )
+            sourceSet("main") {
+                java(
+                    """
                     package org.openrewrite.before;
-                
-                    import java.util.ArrayList;
                     
                     import java.util.List;
+                    import java.util.ArrayList;
                     
                     public class HelloWorld {
-                        public static void sayHello() {
+
+                        public static void main(String[] args) {
                             System.out.println("Hello world");
                         }
-                    
-                        public static void main(String[] args) {
-                            sayHello();
-                        }
                     }
-                """)
+                """
+                )
             }
         }
 
@@ -131,9 +137,10 @@ class RewriteDryRunTest : RewritePluginTest {
 
     @DisabledIf("lessThanGradle6_1")
     @Test
-    fun multiplatform(@TempDir projectDir: File) {
-        gradleProject(projectDir) { 
-            buildGradle("""
+    fun multiplatform() {
+        gradleProject(projectDir) {
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -171,8 +178,10 @@ class RewriteDryRunTest : RewritePluginTest {
                         }
                     }
                 }
-            """)
-            settingsGradle("""
+            """
+            )
+            settingsGradle(
+                """
                 pluginManagement {
                     repositories {
                         mavenLocal()
@@ -181,15 +190,18 @@ class RewriteDryRunTest : RewritePluginTest {
                     }
                 }
                 rootProject.name = "example"
-            """)
-            sourceSet("commonMain") { 
-                kotlin("""
+            """
+            )
+            sourceSet("commonMain") {
+                kotlin(
+                    """
                     class HelloWorld {
                         fun sayHello() {
                             println("Hello world")
                         }
                     }
-                """)
+                """
+                )
             }
         }
         val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.kotlin.FindKotlinSources")
@@ -204,11 +216,10 @@ class RewriteDryRunTest : RewritePluginTest {
     @DisabledIf("lessThanGradle7_4")
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
     @Test
-    fun `rewriteDryRun is compatible with the configuration cache`(
-        @TempDir projectDir: File
-    ) {
+    fun `rewriteDryRun is compatible with the configuration cache`() {
         gradleProject(projectDir) {
-            buildGradle("""
+            buildGradle(
+                """
                 plugins {
                     id("org.openrewrite.rewrite")
                 }
@@ -220,10 +231,127 @@ class RewriteDryRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-            """)
+            """
+            )
         }
         val result = runGradle(projectDir, taskName(), "--configuration-cache")
         val rewriteDryRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["8.6.0", "7.0.4", "4.2.2"])
+    fun `rewriteDryRun is compatible with AGP version 4 and over`(pluginVersion: String) {
+        if (lessThanGradle6_1()) {
+            // @DisabledIf doesn't seem to work with @ParameterizedTest
+            return;
+        }
+        gradleProject(projectDir) {
+            buildGradle(
+                """
+                plugins {
+                    id("com.android.application") version "$pluginVersion"
+                    id("org.openrewrite.rewrite")
+                }
+
+                group = "org.example"
+                version = "1.0-SNAPSHOT"
+
+                android {
+                    namespace = "example"
+                    compileSdkVersion 30
+                }
+                
+                dependencies {
+                    implementation("com.google.guava:guava:33.3.0-android")
+                }
+                """
+            )
+            sourceSet("main") {
+                java(
+                    """
+                    import java.util.List;
+                    import java.util.Collections;
+
+                    class HelloWorld {
+                        HelloWorld() {
+                            super();
+                        }
+                    }
+                    """
+                )
+            }
+        }
+        val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
+
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val patchFile = File(projectDir, "build/reports/rewrite/rewrite.patch")
+        assertThat(patchFile).exists()
+        assertThat(patchFile.readText().trim())
+            .isEqualTo(
+                """
+                diff --git a/src/main/java/HelloWorld.java b/src/main/java/HelloWorld.java
+                index d8a9002..7e3e2a0 100644
+                --- a/src/main/java/HelloWorld.java
+                +++ b/src/main/java/HelloWorld.java
+                @@ -1,5 +1,5 @@ org.openrewrite.java.OrderImports
+                -import java.util.List;
+                 import java.util.Collections;
+                +import java.util.List;
+                 
+                 class HelloWorld {
+                     HelloWorld() {
+                """.trimIndent()
+            )
+
+    }
+
+    @EnabledIf("isAgp3CompatibleGradleVersion")
+    @Test
+    fun `rewriteDryRun is compatible with AGP version 3`() {
+        gradleProject(projectDir) {
+            buildGradle(
+                """
+                 buildscript {
+                    dependencies {
+                        classpath 'com.android.tools.build:gradle:3.4.0'
+                    }
+                }
+
+                plugins {
+                    id("org.openrewrite.rewrite")
+                }
+
+                apply plugin: 'com.android.application'
+
+                group = "org.example"
+                version = "1.0-SNAPSHOT"
+
+                android {
+                   compileSdkVersion 28
+                }
+            """
+            )
+            sourceSet("main") {
+                java(
+                    """
+                    import java.util.List;
+                    import java.util.Collections;
+
+                    class HelloWorld {
+                        HelloWorld() {
+                            super();
+                        }
+                    }
+                """
+                )
+            }
+        }
+        val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
+
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch")).exists()
     }
 }

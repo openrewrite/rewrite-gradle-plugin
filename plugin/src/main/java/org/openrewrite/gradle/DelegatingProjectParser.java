@@ -17,6 +17,7 @@ package org.openrewrite.gradle;
 
 import org.gradle.api.Project;
 import org.gradle.internal.service.ServiceRegistry;
+import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
@@ -24,6 +25,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -32,9 +34,11 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class DelegatingProjectParser implements GradleProjectParser {
-    protected final GradleProjectParser gpp;
+    @Nullable
     protected static List<URL> rewriteClasspath;
+    @Nullable
     protected static RewriteClassLoader rewriteClassLoader;
+    protected final GradleProjectParser gpp;
 
     public DelegatingProjectParser(Project project, RewriteExtension extension, Set<Path> classpath) {
         try {
@@ -54,11 +58,16 @@ public class DelegatingProjectParser implements GradleProjectParser {
                     .getResource("/org/openrewrite/gradle/isolated/DefaultProjectParser.class")
                     .toString());
             classpathUrls.add(currentJar);
-            if (rewriteClassLoader == null || !classpathUrls.equals(rewriteClasspath)) {
+
+            ClassLoader pluginClassLoader = getPluginClassLoader(project);
+
+            if (rewriteClassLoader == null ||
+                    !classpathUrls.equals(rewriteClasspath) ||
+                    rewriteClassLoader.getPluginClassLoader() != pluginClassLoader) {
                 if (rewriteClassLoader != null) {
                     rewriteClassLoader.close();
                 }
-                rewriteClassLoader = new RewriteClassLoader(classpathUrls);
+                rewriteClassLoader = new RewriteClassLoader(classpathUrls, pluginClassLoader);
                 rewriteClasspath = classpathUrls;
             }
 
@@ -162,5 +171,31 @@ public class DelegatingProjectParser implements GradleProjectParser {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private ClassLoader getPluginClassLoader(Project project) {
+        ClassLoader pluginClassLoader = getAndroidPluginClassLoader(project);
+        if (pluginClassLoader == null) {
+            pluginClassLoader = getClass().getClassLoader();
+        }
+        return pluginClassLoader;
+    }
+
+    @Nullable
+    private ClassLoader getAndroidPluginClassLoader(Project project) {
+        List<String> pluginIds = Arrays.asList(
+                "com.android.application",
+                "com.android.library",
+                "com.android.feature",
+                "com.android.dynamic-feature",
+                "com.android.test");
+
+        for (String pluginId : pluginIds) {
+            if (project.getPlugins().hasPlugin(pluginId)) {
+                Object plugin = project.getPlugins().getPlugin(pluginId);
+                return plugin.getClass().getClassLoader();
+            }
+        }
+        return null;
     }
 }

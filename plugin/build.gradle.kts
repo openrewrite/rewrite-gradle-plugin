@@ -7,7 +7,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
 plugins {
-    kotlin("jvm") version("1.9.0")
+    id("org.jetbrains.kotlin.jvm") version "1.9.0"
     id("com.gradle.plugin-publish") version "1.1.0"
     id("com.github.hierynomus.license") version "0.16.1"
     id("nebula.maven-apache-license")
@@ -46,6 +46,8 @@ repositories {
             excludeVersionByRegex(".+", ".+", ".+-rc-?[0-9]*")
         }
     }
+    gradlePluginPortal()
+    google()
 }
 
 val latest = if (project.hasProperty("releasing")) {
@@ -116,9 +118,10 @@ dependencies {
     "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3") {
         because("Latest version supporting gradle 4.x")
     }
-    "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:latest.release")
+    "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
+    compileOnly("com.android.tools.build:gradle:7.0.4")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
     compileOnly("com.google.guava:guava:latest.release")
 

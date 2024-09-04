@@ -33,11 +33,11 @@ interface RewritePluginTest {
 
     fun taskName(): String
 
-    fun runGradle(testDir: File, vararg args: String): BuildResult =
-        GradleRunner.create()
+    fun runGradle(testDir: File, vararg args: String): BuildResult {
+        return GradleRunner.create()
             .withDebug(ManagementFactory.getRuntimeMXBean().inputArguments.toString().indexOf("-agentlib:jdwp") > 0)
             .withProjectDir(testDir)
-            .apply{
+            .apply {
                 if (gradleVersion != null) {
                     withGradleVersion(gradleVersion)
                 }
@@ -46,6 +46,7 @@ interface RewritePluginTest {
             .withPluginClasspath()
             .forwardOutput()
             .build()
+    }
 
     fun lessThanGradle6_1(): Boolean {
         val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
@@ -88,5 +89,12 @@ interface RewritePluginTest {
         val result = runGradle(projectDir, taskName(), "--configuration-cache")
         val taskResult = result.task(":${taskName()}")!!
         assertThat(taskResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+    }
+
+    fun isAgp3CompatibleGradleVersion(): Boolean {
+        val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
+        return System.getenv("ANDROID_HOME") != null &&
+                currentVersion >= GradleVersion.version("5.0") &&
+                currentVersion < GradleVersion.version("8.0")
     }
 }
