@@ -86,7 +86,7 @@ class AndroidProjectParser {
                 javaAndKotlinDirectories.addAll(variant.getJavaDirectories(sourceSetName));
                 javaAndKotlinDirectories.addAll(variant.getKotlinDirectories(sourceSetName));
 
-                List<Path> javaAndKotlinPaths = javaAndKotlinDirectories.stream()
+                Set<Path> javaAndKotlinPaths = javaAndKotlinDirectories.stream()
                         .filter(Files::exists)
                         .filter(dir -> !alreadyParsed.contains(dir))
                         .flatMap(dir -> {
@@ -99,8 +99,8 @@ class AndroidProjectParser {
                         .filter(Files::isRegularFile)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
-                        .distinct()
-                        .collect(Collectors.toList());
+                        .filter(path -> !alreadyParsed.contains(path))
+                        .collect(Collectors.toSet());
 
                 List<Path> javaPaths = javaAndKotlinPaths.stream()
                         .filter(path -> path.toString().endsWith(".java"))
@@ -156,6 +156,7 @@ class AndroidProjectParser {
                             javaTypeCache);
                     sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, parsedKotlinFiles);
                     sourceSetSize += kotlinPaths.size();
+
                     logger.info("Scanned {} Kotlin sources in {}/{}",
                             kotlinPaths.size(),
                             project.getPath(),
@@ -164,8 +165,13 @@ class AndroidProjectParser {
 
                 for (Path resourcesDir : variant.getResourcesDirectories(sourceSetName)) {
                     if (Files.exists(resourcesDir) && !alreadyParsed.contains(resourcesDir)) {
-                        List<Path> accepted = omniParser.acceptedPaths(baseDir, resourcesDir);
-                        sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles,
+                        Set<Path> accepted =
+                                omniParser.acceptedPaths(baseDir, resourcesDir)
+                                        .stream()
+                                        .filter(path -> !alreadyParsed.contains(path))
+                                        .collect(Collectors.toSet());
+                        sourceSetSourceFiles = Stream.concat(
+                                sourceSetSourceFiles,
                                 omniParser.parse(accepted, baseDir, new InMemoryExecutionContext())
                                         .map(it -> it.withMarkers(it.getMarkers().add(javaVersion))));
                         alreadyParsed.addAll(accepted);
@@ -232,8 +238,7 @@ class AndroidProjectParser {
                 sourceCompatibility = compileOptions.getSourceCompatibility();
                 targetCompatibility = compileOptions.getTargetCompatibility();
             } catch (Exception e) {
-                e.printStackTrace();
-                logger.warn("Unable to determine Java source or target compatibility versions: {}", e.getMessage());
+                logger.warn("Unable to determine Java source or target compatibility versions", e);
             }
         }
         return new JavaVersion(Tree.randomId(),
@@ -252,7 +257,7 @@ class AndroidProjectParser {
                         baseExtension);
                 return compileOptions.getEncoding();
             } catch (Exception e) {
-                logger.warn("Unable to determine Java source file encoding: {}", e.getMessage());
+                logger.warn("Unable to determine Java source file encoding", e);
             }
         }
         return defaultCharset;

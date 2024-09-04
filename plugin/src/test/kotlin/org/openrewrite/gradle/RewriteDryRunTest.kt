@@ -288,11 +288,11 @@ class RewriteDryRunTest : RewritePluginTest {
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         val patchFile = File(projectDir, "build/reports/rewrite/rewrite.patch")
         assertThat(patchFile).exists()
-        assertThat(patchFile.readText())
+        assertThat(patchFile.readText().trim())
             .isEqualTo(
                 """
                 diff --git a/src/main/java/HelloWorld.java b/src/main/java/HelloWorld.java
-                index d8a9002..7e3e2a0 100755
+                index d8a9002..7e3e2a0 100644
                 --- a/src/main/java/HelloWorld.java
                 +++ b/src/main/java/HelloWorld.java
                 @@ -1,5 +1,5 @@ org.openrewrite.java.OrderImports
