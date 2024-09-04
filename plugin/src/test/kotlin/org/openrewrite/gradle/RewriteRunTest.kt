@@ -873,6 +873,7 @@ class RewriteRunTest : RewritePluginTest {
     }
 
     @Test
+    @DisabledIf("lessThanGradle6_1")
     fun groovySourceGetsTypesFromJavaSource(@TempDir projectDir: File) {
         gradleProject(projectDir) {
             rewriteYaml("""
