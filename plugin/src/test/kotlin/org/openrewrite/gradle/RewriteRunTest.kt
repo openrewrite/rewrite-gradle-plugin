@@ -31,6 +31,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
+@Suppress("GroovyUnusedAssignment")
 class RewriteRunTest : RewritePluginTest {
 
     override fun taskName(): String = "rewriteRun"
@@ -1439,5 +1440,66 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(File(projectDir, "outside-of-sourceset.properties").readText()).isEqualTo("")
         assertThat(File(projectDir, "src/main/resources/application.properties").readText()).isEqualTo(propertiesTextExpected)
         assertThat(File(projectDir, "src/test/resources/application.properties").readText()).isEqualTo(propertiesTextExpected)
+    }
+
+    @Test
+    fun dependencyInScript(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.UpgradeDependencyInScript
+                displayName: Add a property if has java version
+                description: Add a property if has java version.
+                recipeList:
+                  - org.openrewrite.gradle.UpgradeDependencyVersion:
+                      groupId: com.fasterxml.jackson.core
+                      artifactId: jackson-databind  
+                      version: 2.17.2
+            """)
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+                
+                rewrite {
+                    activeRecipe("org.openrewrite.test.UpgradeDependencyInScript")
+                }
+                
+                apply from: 'dependencies.gradle'
+            """)
+            otherGradleScript("dependencies.gradle", """
+                 repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                 dependencies {
+                    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+                }
+            """)
+        }
+        projectDir.resolve("build").mkdirs()
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        //TODO: Uncomment once corresponding recipe changes have been made
+//        assertThat(projectDir.resolve("dependencies.gradle").readText())
+//            //language=groovy
+//            .isEqualTo("""
+//                repositories {
+//                    mavenLocal()
+//                    mavenCentral()
+//                    maven {
+//                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+//                    }
+//                }
+//                dependencies {
+//                    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
+//                }
+//            """.trimIndent())
     }
 }

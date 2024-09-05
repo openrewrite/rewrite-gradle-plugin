@@ -38,6 +38,11 @@ class GradleProjectSpec(
         groovyBuildScript = text.trimIndent()
     }
 
+    var otherGradleScripts: MutableMap<String, String> = mutableMapOf()
+    fun otherGradleScript(name: String, @Language("groovy") text: String) {
+        otherGradleScripts[name] = text.trimIndent()
+    }
+
     @Language("groovy")
     var settingsGradle: String? = null
     fun settingsGradle(@Language("groovy") text: String) {
@@ -120,7 +125,7 @@ class GradleProjectSpec(
             }
             lines.add("rootProject.name = \"${dir.name}\"")
             if (!subprojects.isEmpty()) {
-                subprojects.forEach {subproject -> lines.add("include('${subproject.dir.name}')")};
+                subprojects.forEach {subproject -> lines.add("include('${subproject.dir.name}')")}
             }
         } else {
             lines.add(settingsGradle!!)
@@ -129,6 +134,10 @@ class GradleProjectSpec(
 
         if (groovyBuildScript != null) {
             File(dir, "build.gradle").writeText(groovyBuildScript!!)
+        }
+
+        for (otherGradleScript in otherGradleScripts) {
+            File(dir, otherGradleScript.key).writeText(otherGradleScript.value)
         }
 
         if (rewriteYaml != null) {
