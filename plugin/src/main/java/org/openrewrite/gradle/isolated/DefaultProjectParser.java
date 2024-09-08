@@ -110,8 +110,10 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     @Nullable
     private List<NamedStyles> styles;
+
     @Nullable
     private Environment environment;
+
     @Nullable
     private AndroidProjectParser androidProjectParser;
 
