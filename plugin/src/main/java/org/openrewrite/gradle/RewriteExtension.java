@@ -94,8 +94,7 @@ public class RewriteExtension {
      * Will prefer to return an explicitly configured checkstyle configuration file location.
      * If none has been specified, will attempt to auto-detect an appropriate file.
      */
-    @Nullable
-    public File getCheckstyleConfigFile() {
+    public @Nullable File getCheckstyleConfigFile() {
         if (checkstyleConfigFile == null && checkstyleConfigProvider != null) {
             try {
                 return checkstyleConfigProvider.get();

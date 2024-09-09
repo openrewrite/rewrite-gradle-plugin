@@ -181,8 +181,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
         return pluginClassLoader;
     }
 
-    @Nullable
-    private ClassLoader getAndroidPluginClassLoader(Project project) {
+    private @Nullable ClassLoader getAndroidPluginClassLoader(Project project) {
         List<String> pluginIds = Arrays.asList(
                 "com.android.application",
                 "com.android.library",
