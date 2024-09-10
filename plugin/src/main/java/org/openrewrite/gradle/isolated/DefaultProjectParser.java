@@ -46,10 +46,7 @@ import org.openrewrite.gradle.GradleParser;
 import org.openrewrite.gradle.GradleProjectParser;
 import org.openrewrite.gradle.RewriteExtension;
 import org.openrewrite.gradle.SanitizedMarkerPrinter;
-import org.openrewrite.gradle.marker.GradleProject;
-import org.openrewrite.gradle.marker.GradleProjectBuilder;
-import org.openrewrite.gradle.marker.GradleSettings;
-import org.openrewrite.gradle.marker.GradleSettingsBuilder;
+import org.openrewrite.gradle.marker.*;
 import org.openrewrite.groovy.GroovyParser;
 import org.openrewrite.internal.InMemoryLargeSourceSet;
 import org.openrewrite.internal.ListUtils;
@@ -65,6 +62,7 @@ import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
+import org.openrewrite.maven.tree.MavenRepository;
 import org.openrewrite.polyglot.*;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.quark.Quark;
@@ -1379,6 +1377,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
+        Set<MavenRepository> allBuildscriptRepositories = new LinkedHashSet<>();
+        Set<MavenRepository> allRepositories = new LinkedHashSet<>();
         org.openrewrite.java.style.Autodetect.Detector javaDetector = org.openrewrite.java.style.Autodetect.detector();
         org.openrewrite.kotlin.style.Autodetect.Detector kotlinDetector = org.openrewrite.kotlin.style.Autodetect.detector();
         org.openrewrite.xml.style.Autodetect.Detector xmlDetector = org.openrewrite.xml.style.Autodetect.detector();
@@ -1389,14 +1389,24 @@ public class DefaultProjectParser implements GradleProjectParser {
                     } else if (s instanceof J.CompilationUnit) {
                         javaDetector.sample(s);
                     }
+                    s.getMarkers()
+                            .findFirst(GradleProject.class)
+                            .ifPresent(gp -> {
+                                allBuildscriptRepositories.addAll(gp.getBuildscript().getMavenRepositories());
+                                allRepositories.addAll(gp.getMavenRepositories());
+                            });
                 })
                 .peek(xmlDetector::sample)
                 .collect(toList());
-        Map<Class<? extends Tree>, NamedStyles> stylesByType = new HashMap<>();
+        Map<Class<? extends SourceFile>, NamedStyles> stylesByType = new HashMap<>();
         stylesByType.put(J.CompilationUnit.class, javaDetector.build());
         stylesByType.put(K.CompilationUnit.class, kotlinDetector.build());
         stylesByType.put(Xml.Document.class, xmlDetector.build());
-        sourceFiles = ListUtils.map(sourceFiles, applyAutodetectedStyle(stylesByType));
+        // Construct a synthetic marker to apply to freestanding Gradle scripts to aid recipes in resolving dependencies
+        GradleProject freestandingScriptMarker = new GradleProject(
+                randomId(), "", "", "", "", emptyList(), new ArrayList<>(allRepositories),
+                emptyList(), emptyMap(), new GradleBuildscript(randomId(), new ArrayList<>(allBuildscriptRepositories), emptyMap()));
+        sourceFiles = ListUtils.map(sourceFiles, applyAutodetected(stylesByType, freestandingScriptMarker));
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
@@ -1417,12 +1427,21 @@ public class DefaultProjectParser implements GradleProjectParser {
         GradleProjectBuilder.clearCaches();
     }
 
-    private UnaryOperator<SourceFile> applyAutodetectedStyle(Map<Class<? extends Tree>, NamedStyles> stylesByType) {
+    private UnaryOperator<SourceFile> applyAutodetected(
+            Map<Class<? extends SourceFile>, NamedStyles> stylesByType,
+            GradleProject freestandingScriptMarker) {
         return before -> {
-            for (Map.Entry<Class<? extends Tree>, NamedStyles> styleTypeEntry : stylesByType.entrySet()) {
+            for (Map.Entry<Class<? extends SourceFile>, NamedStyles> styleTypeEntry : stylesByType.entrySet()) {
                 if (styleTypeEntry.getKey().isAssignableFrom(before.getClass())) {
                     before = before.withMarkers(before.getMarkers().add(styleTypeEntry.getValue()));
                 }
+            }
+            // Add the synthetic GradleProject marker to any freestanding Gradle scripts
+            String path = before.getSourcePath().toString();
+            if ((path.endsWith(".gradle") || path.endsWith(".gradle.kts"))
+                   && !before.getMarkers().findFirst(GradleProject.class).isPresent()
+                   && !before.getMarkers().findFirst(GradleSettings.class).isPresent()) {
+                before = before.withMarkers(before.getMarkers().add(freestandingScriptMarker));
             }
             return before;
         };

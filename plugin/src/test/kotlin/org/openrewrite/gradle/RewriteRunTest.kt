@@ -1469,14 +1469,14 @@ class RewriteRunTest : RewritePluginTest {
                 apply from: 'dependencies.gradle'
             """)
             otherGradleScript("dependencies.gradle", """
-                 repositories {
+                repositories {
                     mavenLocal()
                     mavenCentral()
                     maven {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                 dependencies {
+                dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                 }
             """)
@@ -1486,20 +1486,19 @@ class RewriteRunTest : RewritePluginTest {
         val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
 
-        //TODO: Uncomment once corresponding recipe changes have been made
-//        assertThat(projectDir.resolve("dependencies.gradle").readText())
-//            //language=groovy
-//            .isEqualTo("""
-//                repositories {
-//                    mavenLocal()
-//                    mavenCentral()
-//                    maven {
-//                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
-//                    }
-//                }
-//                dependencies {
-//                    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
-//                }
-//            """.trimIndent())
+        assertThat(projectDir.resolve("dependencies.gradle").readText())
+            //language=groovy
+            .isEqualTo("""
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+                dependencies {
+                    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
+                }
+            """.trimIndent())
     }
 }
