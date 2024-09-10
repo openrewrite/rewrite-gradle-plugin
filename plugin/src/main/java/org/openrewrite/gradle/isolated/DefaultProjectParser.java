@@ -84,6 +84,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -628,7 +629,32 @@ public class DefaultProjectParser implements GradleProjectParser {
                 builder = Stream.concat(builder, parse(subProject, alreadyParsed, ctx));
             }
         }
-        builder = Stream.concat(builder, parse(project, alreadyParsed, ctx));
+        Set<MavenRepository> allBuildscriptRepositories = new LinkedHashSet<>();
+        Set<MavenRepository> allRepositories = new LinkedHashSet<>();
+        AtomicReference<GradleProject> freestandingScriptMarker = new AtomicReference<>();
+        builder = Stream.concat(builder, parse(project, alreadyParsed, ctx))
+                .peek(s -> s.getMarkers()
+                        .findFirst(GradleProject.class)
+                        .ifPresent(gp -> {
+                            allBuildscriptRepositories.addAll(gp.getBuildscript().getMavenRepositories());
+                            allRepositories.addAll(gp.getMavenRepositories());
+                        }))
+                .map(before -> {
+                    // Add the synthetic GradleProject marker to any freestanding Gradle scripts
+                    String path = before.getSourcePath().toString();
+                    if ((path.endsWith(".gradle") || path.endsWith(".gradle.kts"))
+                        && !before.getMarkers().findFirst(org.openrewrite.gradle.marker.GradleProject.class).isPresent()
+                        && !before.getMarkers().findFirst(GradleSettings.class).isPresent()) {
+                        //noinspection ConstantValue
+                        if (freestandingScriptMarker.get() == null) {
+                            freestandingScriptMarker.set(new org.openrewrite.gradle.marker.GradleProject(
+                                    randomId(), "", "", "", "", emptyList(), new ArrayList<>(allRepositories),
+                                    emptyList(), emptyMap(), new GradleBuildscript(randomId(), new ArrayList<>(allBuildscriptRepositories), emptyMap())));
+                        }
+                        return before.withMarkers(before.getMarkers().add(freestandingScriptMarker.get()));
+                    }
+                    return before;
+                });
 
         // log parse errors here at the end, so that we don't log parse errors for files that were excluded
         return builder.map(this::logParseErrors);
@@ -1377,8 +1403,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
-        Set<MavenRepository> allBuildscriptRepositories = new LinkedHashSet<>();
-        Set<MavenRepository> allRepositories = new LinkedHashSet<>();
         org.openrewrite.java.style.Autodetect.Detector javaDetector = org.openrewrite.java.style.Autodetect.detector();
         org.openrewrite.kotlin.style.Autodetect.Detector kotlinDetector = org.openrewrite.kotlin.style.Autodetect.detector();
         org.openrewrite.xml.style.Autodetect.Detector xmlDetector = org.openrewrite.xml.style.Autodetect.detector();
@@ -1389,12 +1413,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                     } else if (s instanceof J.CompilationUnit) {
                         javaDetector.sample(s);
                     }
-                    s.getMarkers()
-                            .findFirst(GradleProject.class)
-                            .ifPresent(gp -> {
-                                allBuildscriptRepositories.addAll(gp.getBuildscript().getMavenRepositories());
-                                allRepositories.addAll(gp.getMavenRepositories());
-                            });
                 })
                 .peek(xmlDetector::sample)
                 .collect(toList());
@@ -1402,11 +1420,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         stylesByType.put(J.CompilationUnit.class, javaDetector.build());
         stylesByType.put(K.CompilationUnit.class, kotlinDetector.build());
         stylesByType.put(Xml.Document.class, xmlDetector.build());
-        // Construct a synthetic marker to apply to freestanding Gradle scripts to aid recipes in resolving dependencies
-        GradleProject freestandingScriptMarker = new GradleProject(
-                randomId(), "", "", "", "", emptyList(), new ArrayList<>(allRepositories),
-                emptyList(), emptyMap(), new GradleBuildscript(randomId(), new ArrayList<>(allBuildscriptRepositories), emptyMap()));
-        sourceFiles = ListUtils.map(sourceFiles, applyAutodetected(stylesByType, freestandingScriptMarker));
+        sourceFiles = ListUtils.map(sourceFiles, applyAutodetected(stylesByType));
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
@@ -1428,20 +1442,12 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private UnaryOperator<SourceFile> applyAutodetected(
-            Map<Class<? extends SourceFile>, NamedStyles> stylesByType,
-            GradleProject freestandingScriptMarker) {
+            Map<Class<? extends SourceFile>, NamedStyles> stylesByType) {
         return before -> {
             for (Map.Entry<Class<? extends SourceFile>, NamedStyles> styleTypeEntry : stylesByType.entrySet()) {
                 if (styleTypeEntry.getKey().isAssignableFrom(before.getClass())) {
                     before = before.withMarkers(before.getMarkers().add(styleTypeEntry.getValue()));
                 }
-            }
-            // Add the synthetic GradleProject marker to any freestanding Gradle scripts
-            String path = before.getSourcePath().toString();
-            if ((path.endsWith(".gradle") || path.endsWith(".gradle.kts"))
-                   && !before.getMarkers().findFirst(GradleProject.class).isPresent()
-                   && !before.getMarkers().findFirst(GradleSettings.class).isPresent()) {
-                before = before.withMarkers(before.getMarkers().add(freestandingScriptMarker));
             }
             return before;
         };
