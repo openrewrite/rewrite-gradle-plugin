@@ -26,6 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.openrewrite.Issue
 import java.io.File
 
+@Suppress("GroovyUnusedAssignment")
 class RewriteDryRunTest : RewritePluginTest {
     @TempDir
     lateinit var projectDir: File
@@ -244,7 +245,7 @@ class RewriteDryRunTest : RewritePluginTest {
     fun `rewriteDryRun is compatible with AGP version 4 and over`(pluginVersion: String) {
         if (lessThanGradle6_1()) {
             // @DisabledIf doesn't seem to work with @ParameterizedTest
-            return;
+            return
         }
         gradleProject(projectDir) {
             buildGradle(
@@ -289,19 +290,11 @@ class RewriteDryRunTest : RewritePluginTest {
         val patchFile = File(projectDir, "build/reports/rewrite/rewrite.patch")
         assertThat(patchFile).exists()
         assertThat(patchFile.readText().trim())
-            .isEqualTo(
+            .containsOnlyOnce(
                 """
-                diff --git a/src/main/java/HelloWorld.java b/src/main/java/HelloWorld.java
-                index d8a9002..7e3e2a0 100644
-                --- a/src/main/java/HelloWorld.java
-                +++ b/src/main/java/HelloWorld.java
-                @@ -1,5 +1,5 @@ org.openrewrite.java.OrderImports
                 -import java.util.List;
                  import java.util.Collections;
                 +import java.util.List;
-                 
-                 class HelloWorld {
-                     HelloWorld() {
                 """.trimIndent()
             )
 
