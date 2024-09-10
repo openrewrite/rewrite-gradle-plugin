@@ -1454,7 +1454,7 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.gradle.UpgradeDependencyVersion:
                       groupId: com.fasterxml.jackson.core
                       artifactId: jackson-databind  
-                      version: 2.17.2
+                      version: 2.17.0-2.17.2
             """)
             buildGradle("""
                 plugins {
