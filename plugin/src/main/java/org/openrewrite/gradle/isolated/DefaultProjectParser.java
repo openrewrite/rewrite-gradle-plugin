@@ -629,10 +629,25 @@ public class DefaultProjectParser implements GradleProjectParser {
                 builder = Stream.concat(builder, parse(subProject, alreadyParsed, ctx));
             }
         }
+        builder = Stream.concat(builder, parse(project, alreadyParsed, ctx));
+        return applyGradleScriptMarkers(builder)
+                // log parse errors here at the end, so that we don't log parse errors for files that were excluded
+                .map(this::logParseErrors);
+    }
+
+    /**
+     * Sometimes Gradle script plugins will define dependencies.
+     * Recipes may want to modify dependencies declared in script plugins, which requires knowledge of which repositories dependencies should be resolved from.
+     * This adds a synthetic GradleProject marker listing dependency repositories to any freestanding Gradle script plugins.
+     *
+     * @param sourceFiles a stream of sources which may contain Gradle build files and scripts
+     * @return a stream of sources where any freestanding Gradle scripts have a GradleProject marker
+     */
+    private Stream<SourceFile> applyGradleScriptMarkers(Stream<SourceFile> sourceFiles) {
         Set<MavenRepository> allBuildscriptRepositories = new LinkedHashSet<>();
         Set<MavenRepository> allRepositories = new LinkedHashSet<>();
         AtomicReference<GradleProject> freestandingScriptMarker = new AtomicReference<>();
-        builder = Stream.concat(builder, parse(project, alreadyParsed, ctx))
+        return sourceFiles
                 .peek(s -> s.getMarkers()
                         .findFirst(GradleProject.class)
                         .ifPresent(gp -> {
@@ -655,9 +670,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                     }
                     return before;
                 });
-
-        // log parse errors here at the end, so that we don't log parse errors for files that were excluded
-        return builder.map(this::logParseErrors);
     }
 
     public Stream<SourceFile> parse(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
