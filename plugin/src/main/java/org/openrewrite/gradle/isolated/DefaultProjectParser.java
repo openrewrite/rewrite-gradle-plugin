@@ -19,6 +19,7 @@ import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -30,6 +31,7 @@ import org.gradle.api.plugins.GroovyPlugin;
 import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.TaskExecutionException;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
@@ -1303,7 +1305,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 try {
                     implementationClasspath = rewriteImplementation.resolve();
                 } catch (Exception e) {
-                    throw new RuntimeException(String.format("Failed to resolve the dependencies from %s:%s; " +
+                    throw new GradleException(String.format("Failed to resolve the dependencies from %s:%s; " +
                                     "We can not reliably continue without this information.",
                             subproject.getPath(), implementationName), e);
                 }
