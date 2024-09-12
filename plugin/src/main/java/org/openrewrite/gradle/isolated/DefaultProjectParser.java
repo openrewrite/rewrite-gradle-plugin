@@ -1303,9 +1303,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 try {
                     implementationClasspath = rewriteImplementation.resolve();
                 } catch (Exception e) {
-                    logger.warn("Failed to resolve dependencies from {}:{}. Some type information may be incomplete",
-                            subproject.getPath(), implementationName);
-                    implementationClasspath = emptySet();
+                    throw new RuntimeException(String.format("Failed to resolve the dependencies from %s:%s; " +
+                                    "We can not reliably continue without this information.",
+                            subproject.getPath(), implementationName), e);
                 }
 
                 String compileName = (String) sourceSet.getClass().getMethod("getCompileOnlyConfigurationName").invoke(sourceSet);
