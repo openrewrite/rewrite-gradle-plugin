@@ -15,11 +15,13 @@
  */
 package org.openrewrite.gradle;
 
+import groovy.lang.Closure;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.attributes.*;
 import org.gradle.api.attributes.java.TargetJvmEnvironment;
@@ -32,6 +34,7 @@ import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
+import org.jspecify.annotations.Nullable;
 
 import java.io.File;
 import java.util.Comparator;
@@ -52,6 +55,7 @@ import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENV
 @SuppressWarnings("unused")
 public class RewritePlugin implements Plugin<Project> {
 
+    @Nullable
     private Set<File> resolvedDependencies;
 
     @Override
@@ -210,7 +214,22 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
 
                 // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
-                deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion()),
+                deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion(), new Closure<Dependency>(deps) {
+                    @Override
+                    public Dependency call(Object arguments) {
+                        if (arguments instanceof ExternalModuleDependency) {
+                            ExternalModuleDependency dep = (ExternalModuleDependency) arguments;
+                            dep.setTransitive(false);
+                            return dep;
+                        }
+                        return super.call(arguments);
+                    }
+
+                    @Override
+                    public int getMaximumNumberOfParameters() {
+                        return 1;
+                    }
+                }),
                 deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
                 deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
         );
