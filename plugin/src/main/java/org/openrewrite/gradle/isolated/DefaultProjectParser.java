@@ -488,9 +488,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                         Path afterLocation = results.getProjectRoot().resolve(result.getAfter().getSourcePath());
                         File afterParentDir = afterLocation.toFile().getParentFile();
                         // Rename the directory if its name case has been changed, e.g. camel case to lower case.
-                        if (afterParentDir.exists()
-                            && afterParentDir.getAbsolutePath().equalsIgnoreCase((originalParentDir.getAbsolutePath()))
-                            && !afterParentDir.getAbsolutePath().equals(originalParentDir.getAbsolutePath())) {
+                        if (afterParentDir.exists() &&
+                            afterParentDir.getAbsolutePath().equalsIgnoreCase((originalParentDir.getAbsolutePath())) &&
+                            !afterParentDir.getAbsolutePath().equals(originalParentDir.getAbsolutePath())) {
                             if (!originalParentDir.renameTo(afterParentDir)) {
                                 throw new RuntimeException("Unable to rename directory from " + originalParentDir.getAbsolutePath() + " To: " + afterParentDir.getAbsolutePath());
                             }
@@ -1101,14 +1101,14 @@ public class DefaultProjectParser implements GradleProjectParser {
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                     Path dirFromRoot = baseDir.relativize(dir);
                     String name = dirFromRoot.toString();
-                    if (subproject.getLayout().getBuildDirectory().getAsFile().get().toPath().equals(dir)
-                        || name.startsWith(".") // Skip .gradle, .idea, .moderne, etc.
+                    if (subproject.getLayout().getBuildDirectory().getAsFile().get().toPath().equals(dir) ||
+                        name.startsWith(".") // Skip .gradle, .idea, .moderne, etc.
                         || name.equals("out") // IntelliJ standard output directory
                         || subproject.getSubprojects().stream()
-                                .anyMatch(sp -> dir.equals(sp.getProjectDir().toPath()))
-                        || subproject.getGradle().getIncludedBuilds().stream()
-                                .anyMatch(ib -> dir.equals(ib.getProjectDir().toPath()))
-                        || isExcluded(exclusions, baseDir.relativize(dir))) {
+                                .anyMatch(sp -> dir.equals(sp.getProjectDir().toPath())) ||
+                        subproject.getGradle().getIncludedBuilds().stream()
+                                .anyMatch(ib -> dir.equals(ib.getProjectDir().toPath())) ||
+                        isExcluded(exclusions, baseDir.relativize(dir))) {
                         return FileVisitResult.SKIP_SUBTREE;
                     }
 
