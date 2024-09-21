@@ -62,7 +62,6 @@ import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
-import org.openrewrite.maven.tree.MavenRepository;
 import org.openrewrite.polyglot.*;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.quark.Quark;
@@ -84,7 +83,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -629,47 +627,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 builder = Stream.concat(builder, parse(subProject, alreadyParsed, ctx));
             }
         }
-        builder = Stream.concat(builder, parse(project, alreadyParsed, ctx));
-        return applyGradleScriptMarkers(builder)
-                // log parse errors here at the end, so that we don't log parse errors for files that were excluded
-                .map(this::logParseErrors);
-    }
-
-    /**
-     * Sometimes Gradle script plugins will define dependencies.
-     * Recipes may want to modify dependencies declared in script plugins, which requires knowledge of which repositories dependencies should be resolved from.
-     * This adds a synthetic GradleProject marker listing dependency repositories to any freestanding Gradle script plugins.
-     *
-     * @param sourceFiles a stream of sources which may contain Gradle build files and scripts
-     * @return a stream of sources where any freestanding Gradle scripts have a GradleProject marker
-     */
-    private Stream<SourceFile> applyGradleScriptMarkers(Stream<SourceFile> sourceFiles) {
-        Set<MavenRepository> allBuildscriptRepositories = new LinkedHashSet<>();
-        Set<MavenRepository> allRepositories = new LinkedHashSet<>();
-        AtomicReference<GradleProject> freestandingScriptMarker = new AtomicReference<>();
-        return sourceFiles
-                .peek(s -> s.getMarkers()
-                        .findFirst(GradleProject.class)
-                        .ifPresent(gp -> {
-                            allBuildscriptRepositories.addAll(gp.getBuildscript().getMavenRepositories());
-                            allRepositories.addAll(gp.getMavenRepositories());
-                        }))
-                .map(before -> {
-                    // Add the synthetic GradleProject marker to any freestanding Gradle scripts
-                    String path = before.getSourcePath().toString();
-                    if ((path.endsWith(".gradle") || path.endsWith(".gradle.kts"))
-                        && !before.getMarkers().findFirst(org.openrewrite.gradle.marker.GradleProject.class).isPresent()
-                        && !before.getMarkers().findFirst(GradleSettings.class).isPresent()) {
-                        //noinspection ConstantValue
-                        if (freestandingScriptMarker.get() == null) {
-                            freestandingScriptMarker.set(new org.openrewrite.gradle.marker.GradleProject(
-                                    randomId(), "", "", "", "", emptyList(), new ArrayList<>(allRepositories),
-                                    emptyList(), emptyMap(), new GradleBuildscript(randomId(), new ArrayList<>(allBuildscriptRepositories), emptyMap())));
-                        }
-                        return before.withMarkers(before.getMarkers().add(freestandingScriptMarker.get()));
-                    }
-                    return before;
-                });
+        return Stream.concat(builder, parse(project, alreadyParsed, ctx)).map(this::logParseErrors);
     }
 
     public Stream<SourceFile> parse(Project subproject, Set<Path> alreadyParsed, ExecutionContext ctx) {
@@ -972,16 +930,17 @@ public class DefaultProjectParser implements GradleProjectParser {
         view(ctx).setCharset(javaSourceCharset);
 
         return Stream.of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
-                .classpath(dependencyPaths)
-                .styles(getStyles())
-                .typeCache(javaTypeCache)
-                .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                .build()).map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
-            if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                return null;
-            }
-            return cu;
-        }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                        .classpath(dependencyPaths)
+                        .styles(getStyles())
+                        .typeCache(javaTypeCache)
+                        .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                        .build())
+                .map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
+                    if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
+                        return null;
+                    }
+                    return cu;
+                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 
     private Stream<SourceFile> parseKotlinFiles(List<Path> kotlinPaths,
@@ -996,7 +955,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         return Stream.of((Supplier<KotlinParser>) () -> KotlinParser.builder()
                 .classpath(dependencyPaths)
-                .styles(styles)
+                .styles(getStyles())
                 .typeCache(javaTypeCache)
                 .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                 .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
@@ -1053,12 +1012,11 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         // build.gradle
         GradleParser gradleParser = null;
-        GradleProject gradleProject = null;
+        GradleProject gradleProject = GradleProjectBuilder.gradleProject(project);
         File buildGradleFile = subproject.getBuildscript().getSourceFile();
         if (buildGradleFile != null) {
             Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
             if (!isExcluded(exclusions, buildScriptPath) && buildGradleFile.exists()) {
-                gradleProject = GradleProjectBuilder.gradleProject(project);
                 if (buildScriptPath.toString().endsWith(".gradle")) {
                     gradleParser = gradleParser();
                     sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
@@ -1067,8 +1025,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
                 }
                 gradleFileCount++;
-                final GradleProject finalGradleProject = gradleProject;
-                sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(finalGradleProject)));
+                sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)));
                 alreadyParsed.add(buildGradleFile.toPath());
             }
         }
@@ -1122,7 +1079,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         // gradle.properties
         File gradlePropertiesFile = subproject.file("gradle.properties");
-        if (gradlePropertiesFile.exists() && gradleProject != null) {
+        if (gradlePropertiesFile.exists()) {
             Path gradlePropertiesPath = baseDir.relativize(gradlePropertiesFile.toPath());
             if (!isExcluded(exclusions, gradlePropertiesPath)) {
                 final GradleProject finalGradleProject = gradleProject;
@@ -1172,7 +1129,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 }
                 sourceFiles = Stream.concat(
                         sourceFiles,
-                        gradleParser.parse(freeStandingScripts, baseDir, ctx));
+                        gradleParser.parse(freeStandingScripts, baseDir, ctx)
+                                .map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
+                );
                 alreadyParsed.addAll(freeStandingScripts);
                 gradleFileCount += freeStandingScripts.size();
             }
