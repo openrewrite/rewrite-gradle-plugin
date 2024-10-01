@@ -653,13 +653,13 @@ public class DefaultProjectParser implements GradleProjectParser {
             List<NamedStyles> styles = getStyles();
             logger.lifecycle("Using active styles {}", styles.stream().map(NamedStyles::getName).collect(toList()));
 
-            if (subproject.getPlugins()
-                        .hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") || subproject.getExtensions()
-                                                                                                              .findByName("kotlin") != null && subproject.getExtensions()
-                                                                                                              .getByName("kotlin")
-                                                                                                              .getClass()
-                                                                                                              .getCanonicalName()
-                                                                                                              .startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
+            if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")
+                || subproject.getExtensions()
+                           .findByName("kotlin") != null && subproject.getExtensions()
+                           .getByName("kotlin")
+                           .getClass()
+                           .getCanonicalName()
+                           .startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
                 sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(
                         subproject,
                         exclusions,
@@ -857,7 +857,6 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                     Stream<SourceFile> cus = Stream.of((Supplier<GroovyParser>) () -> GroovyParser.builder()
                             .classpath(dependenciesWithBuildDirs)
-                            .styles(getStyles())
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(false)
                             .build()).map(Supplier::get).flatMap(gp -> gp.parse(groovyPaths, baseDir, ctx)).map(cu -> {
@@ -934,7 +933,6 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         return Stream.of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
                         .classpath(dependencyPaths)
-                        .styles(getStyles())
                         .typeCache(javaTypeCache)
                         .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                         .build())
@@ -958,7 +956,6 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         return Stream.of((Supplier<KotlinParser>) () -> KotlinParser.builder()
                 .classpath(dependencyPaths)
-                .styles(getStyles())
                 .typeCache(javaTypeCache)
                 .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                 .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
@@ -998,7 +995,6 @@ public class DefaultProjectParser implements GradleProjectParser {
         return GradleParser.builder()
                 .groovyParser(GroovyParser.builder()
                         .typeCache(new JavaTypeCache())
-                        .styles(getStyles())
                         .logCompilationWarningsAndErrors(false))
                 .buildscriptClasspath(buildscriptClasspath)
                 .settingsClasspath(settingsClasspath)
@@ -1289,7 +1285,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                     JavaTypeCache javaTypeCache = new JavaTypeCache();
                     KotlinParser kp = KotlinParser.builder()
                             .classpath(dependencyPaths)
-                            .styles(getStyles())
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                             .build();
@@ -1432,6 +1427,9 @@ public class DefaultProjectParser implements GradleProjectParser {
             Markers m = s.getMarkers();
             for (Marker marker : projectProvenance) {
                 m = m.addIfAbsent(marker);
+            }
+            for (NamedStyles style : getStyles()) {
+                m = m.addIfAbsent(style);
             }
             return s.withMarkers(m);
         };

@@ -429,7 +429,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 
                 rewrite {
-                    activeRecipe("org.openrewrite.staticanalysis.UnnecessaryParentheses")
+                    activeRecipe("org.openrewrite.staticanalysis.EqualsAvoidsNull")
                 }
                 
                 repositories {
@@ -441,7 +441,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 
                 dependencies {
-                    rewrite("org.openrewrite.recipe:rewrite-static-analysis:1.0.4")
+                    rewrite("org.openrewrite.recipe:rewrite-static-analysis:latest.release")
                 }
             """)
             sourceSet("main") {
@@ -451,8 +451,8 @@ class RewriteRunTest : RewritePluginTest {
                     public class A {
                         {
                             String s = null;
-                            if((s.equals("test"))) {}
-                            if(s.equalsIgnoreCase(("test"))) {}
+                            if(s.equals("test")) {}
+                            if(s.equalsIgnoreCase("test")) {}
                         }
                     }
                 """)
@@ -471,7 +471,7 @@ class RewriteRunTest : RewritePluginTest {
             public class A {
                 {
                     String s = null;
-                    if(s.equals("test")) {}
+                    if("test".equals(s)) {}
                     if(s.equalsIgnoreCase("test")) {}
                 }
             }
@@ -1454,7 +1454,7 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.gradle.UpgradeDependencyVersion:
                       groupId: com.fasterxml.jackson.core
                       artifactId: jackson-databind  
-                      version: 2.17.0-2.17.2
+                      version: 2.18.0
             """)
             buildGradle("""
                 plugins {
@@ -1497,7 +1497,7 @@ class RewriteRunTest : RewritePluginTest {
                     }
                 }
                 dependencies {
-                    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.2")
+                    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.0")
                 }
             """.trimIndent())
     }
