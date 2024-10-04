@@ -1011,7 +1011,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         // build.gradle
         GradleParser gradleParser = null;
-        GradleProject gradleProject = GradleProjectBuilder.gradleProject(project);
+        GradleProject gradleProject = GradleProjectBuilder.gradleProject(subproject);
         File buildGradleFile = subproject.getBuildscript().getSourceFile();
         if (buildGradleFile != null) {
             Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
