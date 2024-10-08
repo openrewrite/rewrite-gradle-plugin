@@ -653,8 +653,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             List<NamedStyles> styles = getStyles();
             logger.lifecycle("Using active styles {}", styles.stream().map(NamedStyles::getName).collect(toList()));
 
-            if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")
-                || subproject.getExtensions()
+            if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
+                subproject.getExtensions()
                            .findByName("kotlin") != null && subproject.getExtensions()
                            .getByName("kotlin")
                            .getClass()
