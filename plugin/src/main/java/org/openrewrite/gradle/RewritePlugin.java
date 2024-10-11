@@ -212,24 +212,6 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-polyglot:" + extension.getRewritePolyglotVersion()),
                 deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
-
-                // This is an optional dependency of rewrite-java needed when projects also apply the checkstyle plugin
-                deps.create("com.puppycrawl.tools:checkstyle:" + extension.getCheckstyleToolsVersion(), new Closure<Dependency>(deps) {
-                    @Override
-                    public Dependency call(Object arguments) {
-                        if (arguments instanceof ExternalModuleDependency) {
-                            ExternalModuleDependency dep = (ExternalModuleDependency) arguments;
-                            dep.setTransitive(false);
-                            return dep;
-                        }
-                        return super.call(arguments);
-                    }
-
-                    @Override
-                    public int getMaximumNumberOfParameters() {
-                        return 1;
-                    }
-                }),
                 deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
                 deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
         );

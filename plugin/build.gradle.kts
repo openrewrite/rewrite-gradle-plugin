@@ -114,13 +114,6 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-polyglot:$latest")
     "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
-    // Newer versions of checkstyle are compiled with a newer version of Java than is supported with gradle 4.x
-    @Suppress("VulnerableLibrariesLocal", "RedundantSuppression")
-    "rewriteDependencies"("com.puppycrawl.tools:checkstyle:9.3") {
-        because("Latest version supporting gradle 4.x")
-        // We only use checkstyle to load its configuration files, and it turns out this alone is sufficient
-        isTransitive = false
-    }
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))

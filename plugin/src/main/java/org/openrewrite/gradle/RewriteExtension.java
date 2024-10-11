@@ -38,8 +38,13 @@ public class RewriteExtension {
     protected final Project project;
     private File configFile;
 
+    @Nullable
     private Provider<File> checkstyleConfigProvider;
+
+    @Nullable
     private Provider<Map<String, Object>> checkstylePropertiesProvider;
+
+    @Nullable
     private File checkstyleConfigFile;
     private String metricsUri = magicalMetricsLogString;
     private boolean enableExperimentalGradleBuildScriptParsing = true;
@@ -198,6 +203,7 @@ public class RewriteExtension {
         return rewriteVersion;
     }
 
+    @Nullable
     private String rewritePolyglotVersion;
     public String getRewritePolyglotVersion() {
         if (rewritePolyglotVersion == null) {
@@ -206,6 +212,7 @@ public class RewriteExtension {
         return rewritePolyglotVersion;
     }
 
+    @Nullable
     private String rewriteGradleModelVersion;
     public String getRewriteGradleModelVersion() {
         if (rewriteGradleModelVersion == null) {
@@ -214,16 +221,13 @@ public class RewriteExtension {
         return rewriteGradleModelVersion;
     }
 
+    @Nullable
     private String rewriteKotlinVersion;
     public String getRewriteKotlinVersion() {
         if (rewriteKotlinVersion == null) {
             rewriteKotlinVersion = getVersionProps().getProperty("org.openrewrite:rewrite-kotlin");
         }
         return rewriteKotlinVersion;
-    }
-
-    public String getCheckstyleToolsVersion() {
-        return getVersionProps().getProperty("com.puppycrawl.tools:checkstyle");
     }
 
     public void setRewriteVersion(String value) {
