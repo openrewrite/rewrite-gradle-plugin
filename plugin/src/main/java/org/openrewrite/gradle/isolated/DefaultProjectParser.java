@@ -1396,7 +1396,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         if (extension.isExportDatatables()) {
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss-SSS"));
-            Path datatableDirectoryPath = Paths.get(baseDir.toString(), "build", "rewrite", "datatables", timestamp);
+            Path datatableDirectoryPath = project.getLayout().getBuildDirectory().dir("reports/rewrite/datatables/" + timestamp).get().getAsFile().toPath();
             logger.info(String.format("Printing available datatables to: %s", datatableDirectoryPath));
             recipeRun.exportDatatablesToCsv(datatableDirectoryPath, ctx);
         }
