@@ -22,9 +22,7 @@ package org.openrewrite.gradle
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.DisabledIf
-import org.junit.jupiter.api.condition.DisabledOnOs
-import org.junit.jupiter.api.condition.OS
+import org.junit.jupiter.api.condition.*
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
 import java.io.File
@@ -57,10 +55,10 @@ class RewriteRunTest : RewritePluginTest {
                 plugins {
                     id("java")
                     // nebula brings in jackson 2.5.4
-                    id("nebula.integtest") version "7.0.9" apply false 
+                    id("nebula.integtest") version "7.0.9" apply false
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -68,7 +66,7 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                 }
@@ -76,7 +74,7 @@ class RewriteRunTest : RewritePluginTest {
             sourceSet("test") {
                 java("""
                     package com.foo;
-                    
+
                     public class ATestClass {
                     public void passes() { }
                     }
@@ -110,7 +108,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -118,7 +116,7 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
                 }
@@ -126,7 +124,7 @@ class RewriteRunTest : RewritePluginTest {
             sourceSet("main") {
                 java("""
                     package org.openrewrite.before;
-                    
+
                     public class HelloWorld { public static void sayGoodbye() {System.out.println("Hello world");
                         }public static void main(String[] args) {   sayGoodbye(); }
                     }
@@ -145,12 +143,12 @@ class RewriteRunTest : RewritePluginTest {
                 //language=java
                 """
                 package org.openrewrite.after;
-                
+
                 public class HelloWorld {
                     public static void sayHello() {
                         System.out.println("Hello world");
                     }
-                
+
                     public static void main(String[] args) {
                         sayHello();
                     }
@@ -181,7 +179,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -189,21 +187,21 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
                 }
-                
+
                 tasks.compileJava {
                     options.encoding = "ISO-8859-1"
                 }
             """)
             sourceSet("main", sourceCharset = StandardCharsets.ISO_8859_1) {
-                java(""" 
+                java("""
                     package org.openrewrite.before;
-                    
+
                     /**
-                     * Special characters defined in ISO-8859-1: Üäöéèàñ 
+                     * Special characters defined in ISO-8859-1: Üäöéèàñ
                      */
                     public class HelloWorld { public static void sayGoodbye() {System.out.println("Hello world");
                         }public static void main(String[] args) {   sayGoodbye(); }
@@ -223,9 +221,9 @@ class RewriteRunTest : RewritePluginTest {
             //language=java
             """
                 package org.openrewrite.after;
-                
+
                 /**
-                 * Special characters defined in ISO-8859-1: Üäöéèàñ 
+                 * Special characters defined in ISO-8859-1: Üäöéèàñ
                  */
                 public class HelloWorld {
                     public static void sayHello() {
@@ -246,11 +244,11 @@ class RewriteRunTest : RewritePluginTest {
     ) {
         val bTestClassExpected = """
                 package com.foo;
-                
+
                 import org.junit.Test;
-                
+
                 public class BTestClass {
-                
+
                     @Test
                     public void passes() { }
                 }
@@ -270,12 +268,12 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                     id("java")
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.FormatAndAddProperty")
                     exclusion("**/BTestClass.java")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -283,14 +281,14 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 subprojects {
                     apply plugin: "java"
-                
+
                     repositories {
                         mavenCentral()
                     }
-                
+
                     dependencies {
                         implementation(project(":"))
                         implementation("junit:junit:4.12")
@@ -301,11 +299,11 @@ class RewriteRunTest : RewritePluginTest {
                 sourceSet("test") {
                     java("""
                         package com.foo;
-            
+
                         import org.junit.Test;
-                        
+
                         public class ATestClass {
-                        
+
                             @Test
                             public void passes() { }
                         }
@@ -326,11 +324,11 @@ class RewriteRunTest : RewritePluginTest {
         //language=java
         val aTestClassExpected = """
             package com.foo;
-            
+
             import org.junit.Test;
-            
+
             public class ATestClass {
-            
+
                 @Test
                 public void passes() {
                 }
@@ -363,11 +361,11 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                     id("java")
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.ChangeFooToBar")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -375,14 +373,14 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 subprojects {
                     apply plugin: "java"
-                
+
                     repositories {
                         mavenCentral()
                     }
-                
+
                     dependencies {
                         implementation(project(":"))
                         implementation("junit:junit:4.12")
@@ -427,11 +425,11 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                     id("checkstyle")
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.staticanalysis.EqualsAvoidsNull")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -439,7 +437,7 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 dependencies {
                     rewrite("org.openrewrite.recipe:rewrite-static-analysis:latest.release")
                 }
@@ -447,7 +445,7 @@ class RewriteRunTest : RewritePluginTest {
             sourceSet("main") {
                 java("""
                     package com.foo;
-                    
+
                     public class A {
                         {
                             String s = null;
@@ -467,7 +465,7 @@ class RewriteRunTest : RewritePluginTest {
         //language=java
         val aClassExpected = """
             package com.foo;
-            
+
             public class A {
                 {
                     String s = null;
@@ -499,7 +497,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -507,7 +505,7 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 rewrite {
                     activeRecipe("com.example.RenameSam")
                 }
@@ -545,7 +543,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -553,7 +551,7 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.test.AddGradleWrapper")
                 }
@@ -603,7 +601,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -611,16 +609,16 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 def foo() {}
                 class A {}
-                
-                
+
+
                 dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                     implementation("com.fasterxml.jackson.core:jackson-core:2.15.2")
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.test.RemoveJacksonCore")
                 }
@@ -638,7 +636,7 @@ class RewriteRunTest : RewritePluginTest {
                 id("java")
                 id("org.openrewrite.rewrite")
             }
-            
+
             repositories {
                 mavenLocal()
                 mavenCentral()
@@ -646,15 +644,15 @@ class RewriteRunTest : RewritePluginTest {
                    url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                 }
             }
-            
+
             def foo() {}
             class A {}
-            
-            
+
+
             dependencies {
                 implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
             }
-            
+
             rewrite {
                 activeRecipe("org.openrewrite.test.RemoveJacksonCore")
             }
@@ -695,11 +693,11 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-core:2.15.1")
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.test.UpgradeJacksonCore")
                 }
@@ -717,11 +715,11 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-core:2.16.0")
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.test.UpgradeJacksonCore")
                 }
@@ -744,7 +742,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -761,7 +759,7 @@ class RewriteRunTest : RewritePluginTest {
                 // Uses spaces, to be converted to tabs
                 java("""
                     package com.foo;
-                    
+
                     class A {
                         void bar() {
                             System.out.println("Hello world");
@@ -806,7 +804,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -823,8 +821,8 @@ class RewriteRunTest : RewritePluginTest {
             sourceSet("main") {
                 java("""
                     package com.foo;
-                    
-                    class A { 
+
+                    class A {
                       void bar() {
                         System.out.println("Hello world");
                         if(true) {
@@ -850,7 +848,7 @@ class RewriteRunTest : RewritePluginTest {
         //language=java
         val expected = """
             package com.foo;
-            
+
             class A {
                 void bar() {
                     System.out.println("Hello world");
@@ -859,7 +857,7 @@ class RewriteRunTest : RewritePluginTest {
                     if (true) {
                     }
                 }
-            
+
                 void baz() {
                     bar();
                     if (true) {
@@ -891,7 +889,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("groovy")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -903,24 +901,24 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.test.FindA")
                 }
-                
+
                 dependencies {
                     implementation(localGroovy())
                 }
-                
+
             """)
             sourceSet("main") {
                 java("""
                     package com.foo;
-                    
-                    public class A { 
+
+                    public class A {
                         public static void foo() {
                         }
                     }
                 """)
                 groovyClass("""
                     package com.foo
-                    
+
                     class B {
                         def bar() {
                             new A().foo()
@@ -938,7 +936,7 @@ class RewriteRunTest : RewritePluginTest {
         //language=groovy
         val bExpected = """
             package com.foo
-            
+
             class B {
                 def bar() {
                     new /*~~>*/A().foo()
@@ -981,7 +979,7 @@ class RewriteRunTest : RewritePluginTest {
             sourceSet("main") {
                 kotlin("""
                     package com.foo
-                    
+
                     class A {
                         fun foo(s: String): String {
                             return s
@@ -1026,7 +1024,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -1034,7 +1032,7 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                 }
@@ -1042,10 +1040,10 @@ class RewriteRunTest : RewritePluginTest {
             sourceSet("main") {
                 java("""
                     package org.openrewrite.before;
-                
+
                     import java.util.ArrayList;
                     import java.util.List;
-                    
+
                     public class HelloWorld {
                         public static void main(String[] args) {
                             System.out.print("Hello");
@@ -1064,10 +1062,10 @@ class RewriteRunTest : RewritePluginTest {
             //language=java
             .isEqualTo("""
                 package org.openrewrite.before;
-                
+
                 import java.util.ArrayList;
                 import java.util.List;
-                
+
                 public class HelloWorld {
                     public static void main(String[] args) {
                         System.out.print("Hello");
@@ -1091,7 +1089,7 @@ class RewriteRunTest : RewritePluginTest {
             """)
             subproject("recipe") {
                 buildGradle("""
-                    plugins { 
+                    plugins {
                         id("java")
                     }
                 """)
@@ -1122,11 +1120,11 @@ class RewriteRunTest : RewritePluginTest {
                            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                         }
                     }
-                    
+
                     rewrite {
                         activeRecipe("com.example.TextToSam")
                     }
-                    
+
                     dependencies {
                         rewrite(project(":recipe"))
                     }
@@ -1163,11 +1161,11 @@ class RewriteRunTest : RewritePluginTest {
                 - org.openrewrite.FindDuplicateSourceFiles
             """)
             buildGradle("""
-                plugins { 
+                plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -1175,7 +1173,7 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 sourceSets {
                     create("overlapping") {
                         java.srcDir("src/test/java")
@@ -1185,7 +1183,7 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.Overlaps")
                 }
-                
+
                 dependencies {
                     rewrite("org.openrewrite.recipe:rewrite-all:latest.integration")
                     testImplementation("org.projectlombok:lombok:latest.release")
@@ -1194,13 +1192,13 @@ class RewriteRunTest : RewritePluginTest {
             sourceSet("test") {
                 java("""
                     package com.foo;
-                    
+
                     import lombok.SneakyThrows;
-                    
+
                     public class ATest {
-                    
+
                         @SneakyThrows
-                        public void fail() { 
+                        public void fail() {
                         }
                     }
                 """)
@@ -1215,13 +1213,13 @@ class RewriteRunTest : RewritePluginTest {
             //language=java
             .isEqualTo("""
                 package com.foo;
-                
+
                 import lombok.SneakyThrows;
-                
+
                 public class ATest {
-                
+
                     @/*~~>*/SneakyThrows
-                    public void fail() { 
+                    public void fail() {
                     }
                 }
                 """.trimIndent()
@@ -1237,7 +1235,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -1245,7 +1243,7 @@ class RewriteRunTest : RewritePluginTest {
                         url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 rewrite {
                     activeRecipe("com.test.DeleteYamlKey")
                 }
@@ -1301,7 +1299,7 @@ class RewriteRunTest : RewritePluginTest {
                 id("java")
                 id("org.openrewrite.rewrite")
             }
-            
+
             repositories {
                 mavenLocal()
                 mavenCentral()
@@ -1309,7 +1307,7 @@ class RewriteRunTest : RewritePluginTest {
                     url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                 }
             }
-            
+
             rewrite {
                 activeRecipe("org.openrewrite.gradle.FindDistributionUrl")
             }
@@ -1396,9 +1394,9 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 sourceCompatibility = JavaVersion.VERSION_17
-                
+
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -1406,7 +1404,7 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.test.AddJavaApplicationProperty")
                 }
@@ -1415,10 +1413,10 @@ class RewriteRunTest : RewritePluginTest {
             sourceSet("main") {
                 java("""
                     package org.openrewrite.before;
-                
+
                     import java.util.ArrayList;
                     import java.util.List;
-                    
+
                     public class HelloWorld {
                         public static void main(String[] args) {
                             System.out.print("Hello");
@@ -1453,7 +1451,7 @@ class RewriteRunTest : RewritePluginTest {
                 recipeList:
                   - org.openrewrite.gradle.UpgradeDependencyVersion:
                       groupId: com.fasterxml.jackson.core
-                      artifactId: jackson-databind  
+                      artifactId: jackson-databind
                       version: 2.18.0
             """)
             buildGradle("""
@@ -1461,11 +1459,11 @@ class RewriteRunTest : RewritePluginTest {
                     id("java")
                     id("org.openrewrite.rewrite")
                 }
-                
+
                 rewrite {
                     activeRecipe("org.openrewrite.test.UpgradeDependencyInScript")
                 }
-                
+
                 apply from: 'dependencies.gradle'
             """)
             otherGradleScript("dependencies.gradle", """
@@ -1498,6 +1496,83 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.0")
+                }
+            """.trimIndent())
+    }
+
+    @EnabledOnJre(JRE.JAVA_17)
+    @Test
+    fun lombokTypeAttribution(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            rewriteYaml("""
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.FindLombokGetter
+                displayName: Find a getter method generated by lombok
+                description: Find a getter method generated by lombok.
+                recipeList:
+                  - org.openrewrite.java.search.FindMethods:
+                      methodPattern: org.openrewrite.before.N getN()
+            """)
+            buildGradle("""
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+
+                rewrite {
+                    activeRecipe("org.openrewrite.test.FindLombokGetter")
+                }
+
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+
+                dependencies {
+                    compileOnly("org.projectlombok:lombok:1.18.34")
+                    annotationProcessor("org.projectlombok:lombok:1.18.34")
+                }
+            """)
+            sourceSet("main") {
+                java("""
+                    package org.openrewrite.before;
+
+                    import lombok.Getter;
+
+                    public class N {
+                        @Getter
+                        int n;
+
+                        public static void foo() {
+                            System.out.println(new N().getN());
+                        }
+                    }
+                """)
+            }
+        }
+
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val nFile = projectDir.resolve("src/main/java/org/openrewrite/before/N.java")
+        assertThat(nFile.readText())
+            //language=java
+            .isEqualTo("""
+                package org.openrewrite.before;
+
+                import lombok.Getter;
+
+                public class N {
+                    @Getter
+                    int n;
+
+                    public static void foo() {
+                        System.out.println(/*~~>*/new N().getN());
+                    }
                 }
             """.trimIndent())
     }
