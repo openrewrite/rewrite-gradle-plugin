@@ -71,8 +71,38 @@ public class RewritePlugin implements Plugin<Project> {
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
+        rewriteConf.withDependencies(deps -> {
+            knownRewriteDependencies(extension, project.getDependencies()).forEach(deps::add);
+        });
 
-        Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(project, extension, rewriteConf));
+        // Because of how this Gradle has no criteria with which to select between variants of
+        // dependencies which expose differing capabilities. So those must be manually configured
+        try {
+            final ObjectFactory objectFactory = project.getObjects();
+            rewriteConf.attributes(attributes -> {
+                // Adapted from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
+                attributes.attribute(
+                        Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(
+                        LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                        objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+                attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+                try {
+                    attributes.attribute(
+                            TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
+                            objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
+                } catch (final NoClassDefFoundError ex) {
+                    // Old versions of Gradle don't have the class TargetJvmEnvironment and that's OK, we can always
+                    // try this attribute instead
+                    attributes.attribute(Attribute.of("org.gradle.jvm.environment", String.class), "standard-jvm");
+                }
+            });
+        } catch (final NoClassDefFoundError ex) {
+            // Old versions of Gradle don't have all of these attributes and that's OK
+        }
+
+        Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(rewriteConf));
 
         TaskProvider<RewriteRunTask> rewriteRun = project.getTasks().register("rewriteRun", RewriteRunTask.class, task -> {
             task.setExtension(extension);
@@ -154,12 +184,12 @@ public class RewritePlugin implements Plugin<Project> {
         });
     }
 
-    private Set<File> getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
-        if (resolvedDependencies == null) {
-            DependencySet dependencies = rewriteConf.getDependencies();
-            knownRewriteDependencies(extension, project.getDependencies()).forEach(dependencies::add);
-            resolvedDependencies = rewriteConf.resolve();
+    private Set<File> getResolvedDependencies(Configuration rewriteConf) {
+        if (resolvedDependencies != null) {
+            return resolvedDependencies;
         }
+
+        resolvedDependencies = rewriteConf.resolve();
         return resolvedDependencies;
     }
 
