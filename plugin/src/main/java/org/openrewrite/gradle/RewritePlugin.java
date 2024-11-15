@@ -38,7 +38,9 @@ import org.jspecify.annotations.Nullable;
 import java.io.File;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
@@ -71,9 +73,9 @@ public class RewritePlugin implements Plugin<Project> {
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
-        rewriteConf.withDependencies(deps -> {
-            knownRewriteDependencies(extension, project.getDependencies()).forEach(deps::add);
-        });
+        rewriteConf.getDependencies().addAllLater(
+                project.provider(() -> knownRewriteDependencies(extension, project.getDependencies()))
+        );
 
         // Because of how this Gradle has no criteria with which to select between variants of
         // dependencies which expose differing capabilities. So those must be manually configured
@@ -193,7 +195,7 @@ public class RewritePlugin implements Plugin<Project> {
         return resolvedDependencies;
     }
 
-    private static Stream<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
+    private static List<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
         String rewriteVersion = extension.getRewriteVersion();
         return Stream.of(
                 deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
@@ -216,6 +218,6 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
                 deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
                 deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
-        );
+        ).collect(Collectors.toList());
     }
 }
