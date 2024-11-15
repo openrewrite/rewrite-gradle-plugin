@@ -73,9 +73,9 @@ public class RewritePlugin implements Plugin<Project> {
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
-        rewriteConf.getDependencies().addAllLater(
-                project.provider(() -> knownRewriteDependencies(extension, project.getDependencies()))
-        );
+        knownRewriteDependencies(extension, project.getDependencies()).forEach(dep -> {
+            rewriteConf.getDependencies().addLater(project.provider(() -> dep));
+        });
 
         // Because of how this Gradle has no criteria with which to select between variants of
         // dependencies which expose differing capabilities. So those must be manually configured
