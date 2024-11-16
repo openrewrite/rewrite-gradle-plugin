@@ -73,8 +73,13 @@ public class RewritePlugin implements Plugin<Project> {
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
-        knownRewriteDependencies(extension, project.getDependencies()).forEach(dep -> {
-            rewriteConf.getDependencies().addLater(project.provider(() -> dep));
+        // Defer actually evaluating the dependencies until resolution is triggered. This should allow
+        // the user to set the rewrite version in the extension. `addLater` doesn't work here because
+        // it operates on a single dependency at a time.
+        rewriteConf.getIncoming().beforeResolve(conf -> {
+            rewriteConf.getDependencies().addAll(
+                knownRewriteDependencies(extension, project.getDependencies())
+            );
         });
 
         // Because of how this Gradle has no criteria with which to select between variants of
