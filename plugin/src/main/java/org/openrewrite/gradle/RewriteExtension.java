@@ -319,6 +319,7 @@ public class RewriteExtension {
                     "**/*.htm*",
                     "**/gradlew",
                     "**/.java-version",
+                    "**/*.jelly",
                     "**/*.jsp",
                     "**/*.ksh",
                     "**/lombok.config",
