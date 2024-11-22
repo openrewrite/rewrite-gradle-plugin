@@ -20,6 +20,7 @@ import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.attributes.*;
 import org.gradle.api.attributes.java.TargetJvmEnvironment;
@@ -37,7 +38,9 @@ import org.jspecify.annotations.Nullable;
 import java.io.File;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
@@ -70,8 +73,43 @@ public class RewritePlugin implements Plugin<Project> {
 
         // Rewrite module dependencies put here will be available to all rewrite tasks
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
+        // Defer actually evaluating the dependencies until resolution is triggered. This should allow
+        // the user to set the rewrite version in the extension. `addLater` doesn't work here because
+        // it operates on a single dependency at a time.
+        rewriteConf.getIncoming().beforeResolve(conf -> {
+            rewriteConf.getDependencies().addAll(
+                knownRewriteDependencies(extension, project.getDependencies())
+            );
+        });
 
-        Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(project, extension, rewriteConf));
+        // Because of how this Gradle has no criteria with which to select between variants of
+        // dependencies which expose differing capabilities. So those must be manually configured
+        try {
+            final ObjectFactory objectFactory = project.getObjects();
+            rewriteConf.attributes(attributes -> {
+                // Adapted from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
+                attributes.attribute(
+                        Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(
+                        LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                        objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+                attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+                try {
+                    attributes.attribute(
+                            TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
+                            objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
+                } catch (final NoClassDefFoundError ex) {
+                    // Old versions of Gradle don't have the class TargetJvmEnvironment and that's OK, we can always
+                    // try this attribute instead
+                    attributes.attribute(Attribute.of("org.gradle.jvm.environment", String.class), "standard-jvm");
+                }
+            });
+        } catch (final NoClassDefFoundError ex) {
+            // Old versions of Gradle don't have all of these attributes and that's OK
+        }
+
+        Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(rewriteConf));
 
         TaskProvider<RewriteRunTask> rewriteRun = project.getTasks().register("rewriteRun", RewriteRunTask.class, task -> {
             task.setExtension(extension);
@@ -153,43 +191,16 @@ public class RewritePlugin implements Plugin<Project> {
         });
     }
 
-    private Set<File> getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
-        if (resolvedDependencies == null) {
-            Dependency[] dependencies = Stream.concat(
-                    knownRewriteDependencies(extension, project.getDependencies()),
-                    rewriteConf.getDependencies().stream()
-            ).toArray(Dependency[]::new);
-            // By using a detached configuration, we separate this dependency resolution from the rest of the project's
-            // configuration. This also means that Gradle has no criteria with which to select between variants of
-            // dependencies which expose differing capabilities. So those must be manually configured
-            Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
-
-            try {
-                ObjectFactory objectFactory = project.getObjects();
-                detachedConf.attributes(attributes -> {
-                    // Adapted from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
-                    attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
-                    attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
-                    attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
-                    attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
-                    try {
-                        attributes.attribute(TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
-                    } catch (NoClassDefFoundError e) {
-                        // Old versions of Gradle don't have the class TargetJvmEnvironment and that's OK, we can always
-                        // try this attribute instead
-                        attributes.attribute(Attribute.of("org.gradle.jvm.environment", String.class), "standard-jvm");
-                    }
-                });
-            } catch (NoClassDefFoundError e) {
-                // Old versions of Gradle don't have all of these attributes and that's OK
-            }
-
-            resolvedDependencies = detachedConf.resolve();
+    private Set<File> getResolvedDependencies(Configuration rewriteConf) {
+        if (resolvedDependencies != null) {
+            return resolvedDependencies;
         }
+
+        resolvedDependencies = rewriteConf.resolve();
         return resolvedDependencies;
     }
 
-    private static Stream<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
+    private static List<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
         String rewriteVersion = extension.getRewriteVersion();
         return Stream.of(
                 deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
@@ -212,6 +223,6 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
                 deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
                 deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
-        );
+        ).collect(Collectors.toList());
     }
 }
