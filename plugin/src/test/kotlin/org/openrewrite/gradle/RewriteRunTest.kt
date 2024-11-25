@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:Suppress("UnusedProperty", "GrPackage", "GrMethodMayBeStatic", "ConstantConditions", "StatementWithEmptyBody",
+@file:Suppress(
+    "UnusedProperty", "GrPackage", "GrMethodMayBeStatic", "ConstantConditions", "StatementWithEmptyBody",
     "InfiniteRecursion"
 )
 
@@ -21,6 +22,8 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.*
 import org.junit.jupiter.api.io.TempDir
@@ -43,7 +46,8 @@ class RewriteRunTest : RewritePluginTest {
         // So even if isolation isn't working at all, this could pass if it happens to put the rewrite's required version
         // of jackson first on the classpath.
         gradleProject(projectDir) {
-            buildGradle("""
+            buildGradle(
+                """
                 buildscript {
                     repositories {
                         mavenCentral()
@@ -70,15 +74,18 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                 }
-            """)
+            """
+            )
             sourceSet("test") {
-                java("""
+                java(
+                    """
                     package com.foo;
 
                     public class ATestClass {
                     public void passes() { }
                     }
-                """)
+                """
+                )
             }
         }
 
@@ -92,7 +99,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
                 recipeList:
@@ -102,8 +110,10 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.java.ChangePackage:
                       oldPackageName: org.openrewrite.before
                       newPackageName: org.openrewrite.after
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -120,28 +130,31 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
                 }
-            """)
+            """
+            )
             sourceSet("main") {
-                java("""
+                java(
+                    """
                     package org.openrewrite.before;
 
                     public class HelloWorld { public static void sayGoodbye() {System.out.println("Hello world");
                         }public static void main(String[] args) {   sayGoodbye(); }
                     }
-                """)
+                """
+                )
             }
         }
         assertThat(File(projectDir, "build.gradle").exists()).isTrue
-            val buildResult = runGradle(projectDir, taskName())
-            val taskResult = buildResult.task(":${taskName()}")!!
+        val buildResult = runGradle(projectDir, taskName())
+        val taskResult = buildResult.task(":${taskName()}")!!
 
 
-            assertThat(taskResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
-            val sourceFileAfter = File(projectDir, "src/main/java/org/openrewrite/after/HelloWorld.java")
-            assertThat(sourceFileAfter.exists()).isTrue
-            val expected =
-                //language=java
-                """
+        assertThat(taskResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val sourceFileAfter = File(projectDir, "src/main/java/org/openrewrite/after/HelloWorld.java")
+        assertThat(sourceFileAfter.exists()).isTrue
+        val expected =
+            //language=java
+            """
                 package org.openrewrite.after;
 
                 public class HelloWorld {
@@ -154,7 +167,7 @@ class RewriteRunTest : RewritePluginTest {
                     }
                 }
             """.trimIndent()
-            assertThat(sourceFileAfter.readText()).isEqualTo(expected)
+        assertThat(sourceFileAfter.readText()).isEqualTo(expected)
     }
 
     @DisabledIf("lessThanGradle6_8")
@@ -163,7 +176,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.gradle.SayHello
                 recipeList:
@@ -173,8 +187,10 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.java.ChangePackage:
                       oldPackageName: org.openrewrite.before
                       newPackageName: org.openrewrite.after
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -195,9 +211,11 @@ class RewriteRunTest : RewritePluginTest {
                 tasks.compileJava {
                     options.encoding = "ISO-8859-1"
                 }
-            """)
+            """
+            )
             sourceSet("main", sourceCharset = StandardCharsets.ISO_8859_1) {
-                java("""
+                java(
+                    """
                     package org.openrewrite.before;
 
                     /**
@@ -206,7 +224,8 @@ class RewriteRunTest : RewritePluginTest {
                     public class HelloWorld { public static void sayGoodbye() {System.out.println("Hello world");
                         }public static void main(String[] args) {   sayGoodbye(); }
                     }
-                """)
+                """
+                )
             }
         }
         assertThat(File(projectDir, "build.gradle").exists()).isTrue
@@ -254,7 +273,8 @@ class RewriteRunTest : RewritePluginTest {
                 }
         """.trimIndent()
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.FormatAndAddProperty
                 recipeList:
@@ -262,8 +282,10 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.properties.ChangePropertyKey:
                       oldPropertyKey: foo
                       newPropertyKey: bar
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("org.openrewrite.rewrite")
                     id("java")
@@ -294,10 +316,12 @@ class RewriteRunTest : RewritePluginTest {
                         implementation("junit:junit:4.12")
                     }
                 }
-            """)
+            """
+            )
             subproject("a") {
                 sourceSet("test") {
-                    java("""
+                    java(
+                        """
                         package com.foo;
 
                         import org.junit.Test;
@@ -307,7 +331,8 @@ class RewriteRunTest : RewritePluginTest {
                             @Test
                             public void passes() { }
                         }
-                    """)
+                    """
+                    )
                     propertiesFile("test.properties", "foo=baz\n")
                 }
             }
@@ -348,15 +373,18 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.ChangeFooToBar
                 recipeList:
                   - org.openrewrite.properties.ChangePropertyKey:
                       oldPropertyKey: foo
                       newPropertyKey: bar
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("org.openrewrite.rewrite")
                     id("java")
@@ -386,7 +414,8 @@ class RewriteRunTest : RewritePluginTest {
                         implementation("junit:junit:4.12")
                     }
                 }
-            """.trimIndent())
+            """.trimIndent()
+            )
             subproject("a") {
                 sourceSet("main") {
                     propertiesFile("test.properties", "foo=baz\n")
@@ -409,7 +438,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            checkstyleXml("""
+            checkstyleXml(
+                """
                 <!DOCTYPE module PUBLIC
                     "-//Checkstyle//DTD Checkstyle Configuration 1.2//EN"
                     "https://checkstyle.org/dtds/configuration_1_2.dtd">
@@ -418,8 +448,10 @@ class RewriteRunTest : RewritePluginTest {
                         <property name="ignoreEqualsIgnoreCase" value="true" />
                     </module>
                 </module>
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -441,9 +473,11 @@ class RewriteRunTest : RewritePluginTest {
                 dependencies {
                     rewrite("org.openrewrite.recipe:rewrite-static-analysis:latest.release")
                 }
-            """)
+            """
+            )
             sourceSet("main") {
-                java("""
+                java(
+                    """
                     package com.foo;
 
                     public class A {
@@ -453,7 +487,8 @@ class RewriteRunTest : RewritePluginTest {
                             if(s.equalsIgnoreCase("test")) {}
                         }
                     }
-                """)
+                """
+                )
             }
         }
 
@@ -482,7 +517,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: com.example.RenameSam
                 displayName: Rename property keys
@@ -491,8 +527,10 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.properties.ChangePropertyKey:
                       oldPropertyKey: sam
                       newPropertyKey: samuel
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -509,7 +547,8 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("com.example.RenameSam")
                 }
-            """)
+            """
+            )
             propertiesFile("outside-of-sourceset.properties", "sam=true\n")
             sourceSet("main") {
                 propertiesFile("in-sourceset.properties", "sam=true\n")
@@ -521,7 +560,9 @@ class RewriteRunTest : RewritePluginTest {
 
         val propertiesTextExpected = "samuel=true\n"
         assertThat(File(projectDir, "outside-of-sourceset.properties").readText()).isEqualTo(propertiesTextExpected)
-        assertThat(File(projectDir, "src/main/resources/in-sourceset.properties").readText()).isEqualTo(propertiesTextExpected)
+        assertThat(File(projectDir, "src/main/resources/in-sourceset.properties").readText()).isEqualTo(
+            propertiesTextExpected
+        )
     }
 
     @Test
@@ -529,7 +570,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.AddGradleWrapper
                 displayName: Adds a Gradle wrapper
@@ -537,8 +579,10 @@ class RewriteRunTest : RewritePluginTest {
                 recipeList:
                   - org.openrewrite.gradle.UpdateGradleWrapper:
                       version: "7.4.2"
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -555,7 +599,8 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.test.AddGradleWrapper")
                 }
-            """)
+            """
+            )
         }
 
         val result = runGradle(projectDir, taskName())
@@ -586,7 +631,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.RemoveJacksonCore
                 displayName: Remove jackson-core
@@ -595,8 +641,10 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.gradle.RemoveDependency:
                       groupId: com.fasterxml.jackson.core
                       artifactId: jackson-core
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -622,7 +670,8 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.test.RemoveJacksonCore")
                 }
-            """)
+            """
+            )
         }
 
         val result = runGradle(projectDir, taskName())
@@ -631,7 +680,8 @@ class RewriteRunTest : RewritePluginTest {
 
         assertThat(projectDir.resolve("build.gradle").readText())
             //language=groovy
-            .isEqualTo("""
+            .isEqualTo(
+                """
             plugins {
                 id("java")
                 id("org.openrewrite.rewrite")
@@ -656,7 +706,8 @@ class RewriteRunTest : RewritePluginTest {
             rewrite {
                 activeRecipe("org.openrewrite.test.RemoveJacksonCore")
             }
-            """.trimIndent())
+            """.trimIndent()
+            )
     }
 
 
@@ -666,7 +717,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.UpgradeJacksonCore
                 displayName: Remove jackson-core
@@ -676,8 +728,10 @@ class RewriteRunTest : RewritePluginTest {
                       groupId: com.fasterxml.jackson.core
                       artifactId: jackson-core
                       newVersion: 2.16.0
-            """)
-            settingsGradle("""
+            """
+            )
+            settingsGradle(
+                """
                 dependencyResolutionManagement {
                     repositories {
                         mavenLocal()
@@ -687,8 +741,10 @@ class RewriteRunTest : RewritePluginTest {
                         }
                     }
                 }
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -701,7 +757,8 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.test.UpgradeJacksonCore")
                 }
-            """)
+            """
+            )
         }
 
         val result = runGradle(projectDir, taskName())
@@ -710,7 +767,8 @@ class RewriteRunTest : RewritePluginTest {
 
         assertThat(projectDir.resolve("build.gradle").readText())
             //language=groovy
-            .isEqualTo("""
+            .isEqualTo(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -723,21 +781,25 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.test.UpgradeJacksonCore")
                 }
-                """.trimIndent())
+                """.trimIndent()
+            )
     }
 
     @Test
     fun mergeConfiguredAndAutodetectedStyles(@TempDir projectDir: File) {
         gradleProject(projectDir) {
             propertiesFile("gradle.properties", "systemProp.rewrite.activeStyles=org.openrewrite.testStyle")
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/style
                 name: org.openrewrite.testStyle
                 styleConfigs:
                   - org.openrewrite.java.style.TabsAndIndentsStyle:
                       useTabCharacter: true
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -754,10 +816,12 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                 }
-            """)
+            """
+            )
             sourceSet("main") {
                 // Uses spaces, to be converted to tabs
-                java("""
+                java(
+                    """
                     package com.foo;
 
                     class A {
@@ -768,7 +832,8 @@ class RewriteRunTest : RewritePluginTest {
                             if(true) {}
                         }
                     }
-                """)
+                """
+                )
             }
         }
         val result = runGradle(projectDir, taskName())
@@ -799,7 +864,8 @@ class RewriteRunTest : RewritePluginTest {
     @Test
     fun reformatToIntelliJStyle(@TempDir projectDir: File) {
         gradleProject(projectDir) {
-            buildGradle("""
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -817,9 +883,11 @@ class RewriteRunTest : RewritePluginTest {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                     activeStyle("org.openrewrite.java.IntelliJ")
                 }
-            """)
+            """
+            )
             sourceSet("main") {
-                java("""
+                java(
+                    """
                     package com.foo;
 
                     class A {
@@ -837,7 +905,8 @@ class RewriteRunTest : RewritePluginTest {
                         }
                       }
                     }
-                """)
+                """
+                )
             }
         }
         val result = runGradle(projectDir, taskName())
@@ -875,7 +944,8 @@ class RewriteRunTest : RewritePluginTest {
     @DisabledIf("lessThanGradle6_1")
     fun groovySourceGetsTypesFromJavaSource(@TempDir projectDir: File) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.FindA
                 displayName: Rename build.gradle to build.gradle.kts
@@ -883,8 +953,10 @@ class RewriteRunTest : RewritePluginTest {
                 recipeList:
                   - org.openrewrite.java.search.FindTypes:
                       fullyQualifiedTypeName: com.foo.A
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("groovy")
                     id("org.openrewrite.rewrite")
@@ -906,17 +978,21 @@ class RewriteRunTest : RewritePluginTest {
                     implementation(localGroovy())
                 }
 
-            """)
+            """
+            )
             sourceSet("main") {
-                java("""
+                java(
+                    """
                     package com.foo;
 
                     public class A {
                         public static void foo() {
                         }
                     }
-                """)
-                groovyClass("""
+                """
+                )
+                groovyClass(
+                    """
                     package com.foo
 
                     class B {
@@ -924,7 +1000,8 @@ class RewriteRunTest : RewritePluginTest {
                             new A().foo()
                         }
                     }
-                """)
+                """
+                )
             }
         }
 
@@ -966,8 +1043,10 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.test.FindString")
                 }
-            """)
-            rewriteYaml("""
+            """
+            )
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.FindString
                 displayName: Find kotlin strings
@@ -975,9 +1054,11 @@ class RewriteRunTest : RewritePluginTest {
                 recipeList:
                   - org.openrewrite.java.search.FindTypes:
                       fullyQualifiedTypeName: kotlin.String
-            """)
+            """
+            )
             sourceSet("main") {
-                kotlin("""
+                kotlin(
+                    """
                     package com.foo
 
                     class A {
@@ -985,7 +1066,8 @@ class RewriteRunTest : RewritePluginTest {
                             return s
                         }
                     }
-                """)
+                """
+                )
             }
         }
 
@@ -999,27 +1081,28 @@ class RewriteRunTest : RewritePluginTest {
 
     @Test
     fun `build root and repository root do not need to be the same`(@TempDir repositoryRoot: File) {
-        repositoryRoot.apply{
-            resolve(".git").apply{
+        repositoryRoot.apply {
+            resolve(".git").apply {
                 mkdirs()
-                resolve("HEAD").apply{
+                resolve("HEAD").apply {
                     createNewFile()
                     writeText("ref: refs/heads/main")
                 }
-                resolve("objects").apply{
+                resolve("objects").apply {
                     mkdir()
                 }
-                resolve("refs").apply{
+                resolve("refs").apply {
                     mkdir()
                 }
-                resolve("reftable").apply{
+                resolve("reftable").apply {
                     mkdir()
                 }
             }
         }
-        val buildRoot = repositoryRoot.resolve("test-project").apply{  mkdirs() }
+        val buildRoot = repositoryRoot.resolve("test-project").apply { mkdirs() }
         gradleProject(buildRoot) {
-            buildGradle("""
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -1036,9 +1119,11 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
                 }
-            """)
+            """
+            )
             sourceSet("main") {
-                java("""
+                java(
+                    """
                     package org.openrewrite.before;
 
                     import java.util.ArrayList;
@@ -1050,7 +1135,8 @@ class RewriteRunTest : RewritePluginTest {
                                 System.out.println(" world");
                         }
                     }
-                """)
+                """
+                )
             }
         }
 
@@ -1060,7 +1146,8 @@ class RewriteRunTest : RewritePluginTest {
         val javaFile = buildRoot.resolve("src/main/java/org/openrewrite/before/HelloWorld.java")
         assertThat(javaFile.readText())
             //language=java
-            .isEqualTo("""
+            .isEqualTo(
+                """
                 package org.openrewrite.before;
 
                 import java.util.ArrayList;
@@ -1081,20 +1168,25 @@ class RewriteRunTest : RewritePluginTest {
     @Test
     fun runRecipeFromProjectDependency(@TempDir projectDir: File) {
         gradleProject(projectDir) {
-            settingsGradle("""
+            settingsGradle(
+                """
                 rootProject.name = 'multi-project-recipe'
 
                 include("recipe")
                 include("product")
-            """)
+            """
+            )
             subproject("recipe") {
-                buildGradle("""
+                buildGradle(
+                    """
                     plugins {
                         id("java")
                     }
-                """)
+                """
+                )
                 sourceSet("main") {
-                    yamlFile("META-INF/rewrite/recipe.yml", """
+                    yamlFile(
+                        "META-INF/rewrite/recipe.yml", """
                         type: specs.openrewrite.org/v1beta/recipe
                         name: com.example.TextToSam
                         displayName: Changes contents of sam.txt
@@ -1105,11 +1197,13 @@ class RewriteRunTest : RewritePluginTest {
                         recipeList:
                           - org.openrewrite.text.ChangeText:
                               toText: sam
-                    """)
+                    """
+                    )
                 }
             }
             subproject("product") {
-                buildGradle("""
+                buildGradle(
+                    """
                     plugins {
                         id("org.openrewrite.rewrite")
                     }
@@ -1128,7 +1222,8 @@ class RewriteRunTest : RewritePluginTest {
                     dependencies {
                         rewrite(project(":recipe"))
                     }
-                """)
+                """
+                )
                 textFile("sam.txt", "notsam")
                 textFile("jonathan.txt", "jonathan")
             }
@@ -1150,7 +1245,8 @@ class RewriteRunTest : RewritePluginTest {
     @Test
     fun overlappingSourceSet(@TempDir buildRoot: File) {
         gradleProject(buildRoot) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
               type: specs.openrewrite.org/v1beta/recipe
               name: org.openrewrite.Overlaps
               displayName: Find overlaps
@@ -1159,8 +1255,10 @@ class RewriteRunTest : RewritePluginTest {
                 - org.openrewrite.java.search.FindTypes:
                     fullyQualifiedTypeName: lombok.SneakyThrows
                 - org.openrewrite.FindDuplicateSourceFiles
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -1188,9 +1286,11 @@ class RewriteRunTest : RewritePluginTest {
                     rewrite("org.openrewrite.recipe:rewrite-all:latest.integration")
                     testImplementation("org.projectlombok:lombok:latest.release")
                 }
-            """)
+            """
+            )
             sourceSet("test") {
-                java("""
+                java(
+                    """
                     package com.foo;
 
                     import lombok.SneakyThrows;
@@ -1201,7 +1301,8 @@ class RewriteRunTest : RewritePluginTest {
                         public void fail() {
                         }
                     }
-                """)
+                """
+                )
             }
         }
 
@@ -1211,7 +1312,8 @@ class RewriteRunTest : RewritePluginTest {
         val javaFile = buildRoot.resolve("src/test/java/com/foo/ATest.java")
         assertThat(javaFile.readText())
             //language=java
-            .isEqualTo("""
+            .isEqualTo(
+                """
                 package com.foo;
 
                 import lombok.SneakyThrows;
@@ -1230,7 +1332,8 @@ class RewriteRunTest : RewritePluginTest {
     @Test
     fun deleteFromGitRepository(@TempDir projectDir: File) {
         gradleProject(projectDir) {
-            buildGradle("""
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -1247,8 +1350,10 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("com.test.DeleteYamlKey")
                 }
-            """.trimIndent())
-            rewriteYaml("""
+            """.trimIndent()
+            )
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: com.test.DeleteYamlKey
                 displayName: Delete yaml
@@ -1256,11 +1361,14 @@ class RewriteRunTest : RewritePluginTest {
                 recipeList:
                   - org.openrewrite.DeleteSourceFiles:
                       filePattern: "**/foo.yml"
-            """.trimIndent())
+            """.trimIndent()
+            )
             sourceSet("main") {
-                yamlFile("foo.yml", """
+                yamlFile(
+                    "foo.yml", """
                   foo: bar
-                """.trimIndent())
+                """.trimIndent()
+                )
             }
         }
         gitInit(projectDir.toPath(), "test-project")
@@ -1294,7 +1402,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            buildGradle("""
+            buildGradle(
+                """
             plugins {
                 id("java")
                 id("org.openrewrite.rewrite")
@@ -1311,29 +1420,35 @@ class RewriteRunTest : RewritePluginTest {
             rewrite {
                 activeRecipe("org.openrewrite.gradle.FindDistributionUrl")
             }
-            """.trimIndent())
-            propertiesFile("gradle/wrapper/gradle-wrapper.properties", """
+            """.trimIndent()
+            )
+            propertiesFile(
+                "gradle/wrapper/gradle-wrapper.properties", """
             distributionBase=GRADLE_USER_HOME
             distributionPath=wrapper/dists
             distributionUrl=https\://services.gradle.org/distributions/gradle-6.8.3-bin.zip
             zipStoreBase=GRADLE_USER_HOME
             zipStorePath=wrapper/dists
-            """.trimIndent())
-            rewriteYaml("""
+            """.trimIndent()
+            )
+            rewriteYaml(
+                """
             type: specs.openrewrite.org/v1beta/recipe
             name: org.openrewrite.gradle.FindDistributionUrl
             description: Test.
             recipeList:
               - org.openrewrite.properties.search.FindProperties:
                   propertyKey: distributionUrl
-            """.trimIndent())
+            """.trimIndent()
+            )
         }
         val result = runGradle(projectDir, taskName())
         val task = result.task(":${taskName()}")!!
         assertThat(task.outcome).isEqualTo(TaskOutcome.SUCCESS)
         val propertiesFile = projectDir.resolve("gradle/wrapper/gradle-wrapper.properties")
         assertThat(propertiesFile.readText())
-            .isEqualTo("""
+            .isEqualTo(
+                """
                 distributionBase=GRADLE_USER_HOME
                 distributionPath=wrapper/dists
                 distributionUrl=~~>https\://services.gradle.org/distributions/gradle-6.8.3-bin.zip
@@ -1352,7 +1467,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            buildGradle("""
+            buildGradle(
+                """
                 plugins {
                     id("org.openrewrite.rewrite")
                 }
@@ -1363,7 +1479,8 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-            """)
+            """
+            )
         }
         val result = runGradle(projectDir, taskName(), "--configuration-cache")
         val rewriteRunResult = result.task(":${taskName()}")!!
@@ -1376,7 +1493,8 @@ class RewriteRunTest : RewritePluginTest {
         @TempDir projectDir: File,
     ) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.AddJavaApplicationProperty
                 displayName: Add a property if has java version
@@ -1388,8 +1506,10 @@ class RewriteRunTest : RewritePluginTest {
                   - org.openrewrite.properties.AddProperty:
                       property: has.java.version
                       value: true
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -1408,10 +1528,12 @@ class RewriteRunTest : RewritePluginTest {
                 rewrite {
                     activeRecipe("org.openrewrite.test.AddJavaApplicationProperty")
                 }
-            """)
+            """
+            )
             propertiesFile("outside-of-sourceset.properties", "")
             sourceSet("main") {
-                java("""
+                java(
+                    """
                     package org.openrewrite.before;
 
                     import java.util.ArrayList;
@@ -1423,7 +1545,8 @@ class RewriteRunTest : RewritePluginTest {
                                 System.out.println(" world");
                         }
                     }
-                """)
+                """
+                )
                 propertiesFile("application.properties", "")
             }
             sourceSet("test") {
@@ -1436,14 +1559,19 @@ class RewriteRunTest : RewritePluginTest {
 
         val propertiesTextExpected = "has.java.version=true"
         assertThat(File(projectDir, "outside-of-sourceset.properties").readText()).isEqualTo("")
-        assertThat(File(projectDir, "src/main/resources/application.properties").readText()).isEqualTo(propertiesTextExpected)
-        assertThat(File(projectDir, "src/test/resources/application.properties").readText()).isEqualTo(propertiesTextExpected)
+        assertThat(File(projectDir, "src/main/resources/application.properties").readText()).isEqualTo(
+            propertiesTextExpected
+        )
+        assertThat(File(projectDir, "src/test/resources/application.properties").readText()).isEqualTo(
+            propertiesTextExpected
+        )
     }
 
     @Test
     fun dependencyInScript(@TempDir projectDir: File) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.UpgradeDependencyInScript
                 displayName: Add a property if has java version
@@ -1453,8 +1581,10 @@ class RewriteRunTest : RewritePluginTest {
                       groupId: com.fasterxml.jackson.core
                       artifactId: jackson-databind
                       newVersion: 2.18.0
-            """)
-            buildGradle("""
+            """
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -1465,8 +1595,10 @@ class RewriteRunTest : RewritePluginTest {
                 }
 
                 apply from: 'dependencies.gradle'
-            """)
-            otherGradleScript("dependencies.gradle", """
+            """
+            )
+            otherGradleScript(
+                "dependencies.gradle", """
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -1477,7 +1609,8 @@ class RewriteRunTest : RewritePluginTest {
                 dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                 }
-            """)
+            """
+            )
         }
         projectDir.resolve("build").mkdirs()
         val result = runGradle(projectDir, taskName())
@@ -1486,7 +1619,8 @@ class RewriteRunTest : RewritePluginTest {
 
         assertThat(projectDir.resolve("dependencies.gradle").readText())
             //language=groovy
-            .isEqualTo("""
+            .isEqualTo(
+                """
                 repositories {
                     mavenLocal()
                     mavenCentral()
@@ -1497,14 +1631,31 @@ class RewriteRunTest : RewritePluginTest {
                 dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.0")
                 }
-            """.trimIndent())
+            """.trimIndent()
+            )
+    }
+
+
+    companion object {
+        @BeforeAll
+        @JvmStatic
+        fun setUp() {
+            System.setProperty("rewrite.lombok", "true")
+        }
+
+        @AfterAll
+        @JvmStatic
+        fun tearDown() {
+            System.clearProperty("rewrite.lombok")
+        }
     }
 
     @EnabledOnJre(JRE.JAVA_17)
     @Test
     fun lombokTypeAttribution(@TempDir projectDir: File) {
         gradleProject(projectDir) {
-            rewriteYaml("""
+            rewriteYaml(
+                """
                 type: specs.openrewrite.org/v1beta/recipe
                 name: org.openrewrite.test.FindLombokGetter
                 displayName: Find a getter method generated by lombok
@@ -1512,8 +1663,10 @@ class RewriteRunTest : RewritePluginTest {
                 recipeList:
                   - org.openrewrite.java.search.FindMethods:
                       methodPattern: org.openrewrite.before.N getN()
-            """)
-            buildGradle("""
+                """.trimIndent()
+            )
+            buildGradle(
+                """
                 plugins {
                     id("java")
                     id("org.openrewrite.rewrite")
@@ -1535,9 +1688,11 @@ class RewriteRunTest : RewritePluginTest {
                     compileOnly("org.projectlombok:lombok:1.18.34")
                     annotationProcessor("org.projectlombok:lombok:1.18.34")
                 }
-            """)
+                """.trimIndent()
+            )
             sourceSet("main") {
-                java("""
+                java(
+                    """
                     package org.openrewrite.before;
 
                     import lombok.Getter;
@@ -1550,7 +1705,8 @@ class RewriteRunTest : RewritePluginTest {
                             System.out.println(new N().getN());
                         }
                     }
-                """)
+                    """
+                )
             }
         }
 
@@ -1561,7 +1717,8 @@ class RewriteRunTest : RewritePluginTest {
         val nFile = projectDir.resolve("src/main/java/org/openrewrite/before/N.java")
         assertThat(nFile.readText())
             //language=java
-            .isEqualTo("""
+            .isEqualTo(
+                """
                 package org.openrewrite.before;
 
                 import lombok.Getter;
@@ -1574,6 +1731,7 @@ class RewriteRunTest : RewritePluginTest {
                         System.out.println(/*~~>*/new N().getN());
                     }
                 }
-            """.trimIndent())
+                """.trimIndent()
+            )
     }
 }
