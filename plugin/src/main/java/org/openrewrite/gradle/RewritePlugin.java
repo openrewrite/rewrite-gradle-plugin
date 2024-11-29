@@ -81,6 +81,7 @@ public class RewritePlugin implements Plugin<Project> {
             );
         });
 
+
         // Because of how this Gradle has no criteria with which to select between variants of
         // dependencies which expose differing capabilities. So those must be manually configured
         try {
@@ -107,7 +108,7 @@ public class RewritePlugin implements Plugin<Project> {
         } catch (final NoClassDefFoundError ex) {
             // Old versions of Gradle don't have all of these attributes and that's OK
         }
-
+        Provider<Set<File>> tt = project.provider(rewriteConf::resolve);
         Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(project, extension, rewriteConf));
 
         TaskProvider<RewriteRunTask> rewriteRun = project.getTasks().register("rewriteRun", RewriteRunTask.class, task -> {
@@ -118,7 +119,7 @@ public class RewritePlugin implements Plugin<Project> {
 
         TaskProvider<RewriteDryRunTask> rewriteDryRun = project.getTasks().register("rewriteDryRun", RewriteDryRunTask.class, task -> {
             task.setExtension(extension);
-            task.setResolvedDependencies(resolvedDependenciesProvider);
+            task.setResolvedDependencies(tt);
             task.dependsOn(rewriteConf);
         });
 
@@ -192,8 +193,14 @@ public class RewritePlugin implements Plugin<Project> {
 
     private Set<File> getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
         if (resolvedDependencies == null) {
+            List<Dependency> knowDependencies = knownRewriteDependencies(extension, project.getDependencies());
+            rewriteConf.getIncoming().beforeResolve(conf -> {
+                rewriteConf.getDependencies().addAll(
+                        knowDependencies
+                );
+            });
             Dependency[] dependencies = Stream.concat(
-                    knownRewriteDependencies(extension, project.getDependencies()).stream(),
+                    knowDependencies.stream(),
                     rewriteConf.getDependencies().stream()
             ).toArray(Dependency[]::new);
             // By using a detached configuration, we separate this dependency resolution from the rest of the project's
@@ -204,9 +211,7 @@ public class RewritePlugin implements Plugin<Project> {
 
 
             resolvedDependencies = detachedConf.resolve();
-            resolvedDependencies.stream()
-                    .map(File::getName)
-                    .forEach(System.out::println);
+
         }
         return resolvedDependencies;
     }
