@@ -201,11 +201,7 @@ public class RewritePlugin implements Plugin<Project> {
             // configuration. This also means that Gradle has no criteria with which to select between variants of
             // dependencies which expose differing capabilities. So those must be manually configured
             Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
-
-
-
             resolvedDependencies = detachedConf.resolve();
-
         }
         return resolvedDependencies;
     }
@@ -232,7 +228,6 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("org.openrewrite:rewrite-polyglot:" + extension.getRewritePolyglotVersion()),
                 deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
                 deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
-                deps.create("com.fasterxml.jackson.core:jackson-annotations:" + extension.getJacksonModuleKotlinVersion()),
                 deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
         ).collect(Collectors.toList());
     }
