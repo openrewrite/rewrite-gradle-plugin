@@ -77,37 +77,14 @@ public class RewritePlugin implements Plugin<Project> {
         // it operates on a single dependency at a time.
         rewriteConf.getIncoming().beforeResolve(conf -> {
             rewriteConf.getDependencies().addAll(
-                knownRewriteDependencies(extension, project.getDependencies())
+                    knownRewriteDependencies(extension, project.getDependencies())
             );
         });
 
 
         // Because of how this Gradle has no criteria with which to select between variants of
         // dependencies which expose differing capabilities. So those must be manually configured
-        try {
-            final ObjectFactory objectFactory = project.getObjects();
-            rewriteConf.attributes(attributes -> {
-                // Adapted from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
-                attributes.attribute(
-                        Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
-                attributes.attribute(
-                        LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
-                        objectFactory.named(LibraryElements.class, LibraryElements.JAR));
-                attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
-                try {
-                    attributes.attribute(
-                            TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
-                            objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
-                } catch (final NoClassDefFoundError ex) {
-                    // Old versions of Gradle don't have the class TargetJvmEnvironment and that's OK, we can always
-                    // try this attribute instead
-                    attributes.attribute(Attribute.of("org.gradle.jvm.environment", String.class), "standard-jvm");
-                }
-            });
-        } catch (final NoClassDefFoundError ex) {
-            // Old versions of Gradle don't have all of these attributes and that's OK
-        }
+        addAttributesToConfiguration(project, rewriteConf);
 
         Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(project, extension, rewriteConf));
 
@@ -201,7 +178,9 @@ public class RewritePlugin implements Plugin<Project> {
             // configuration. This also means that Gradle has no criteria with which to select between variants of
             // dependencies which expose differing capabilities. So those must be manually configured
             Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
+            addAttributesToConfiguration(project, detachedConf);
             resolvedDependencies = detachedConf.resolve();
+
         }
         return resolvedDependencies;
     }
@@ -230,5 +209,32 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
                 deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
         ).collect(Collectors.toList());
+    }
+
+    private static void addAttributesToConfiguration(Project project, Configuration rewriteConf) {
+        try {
+            final ObjectFactory objectFactory = project.getObjects();
+            rewriteConf.attributes(attributes -> {
+                // Adapted from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
+                attributes.attribute(
+                        Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(
+                        LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+                        objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+                attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+                try {
+                    attributes.attribute(
+                            TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
+                            objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
+                } catch (final NoClassDefFoundError ex) {
+                    // Old versions of Gradle don't have the class TargetJvmEnvironment and that's OK, we can always
+                    // try this attribute instead
+                    attributes.attribute(Attribute.of("org.gradle.jvm.environment", String.class), "standard-jvm");
+                }
+            });
+        } catch (final NoClassDefFoundError ex) {
+            // Old versions of Gradle don't have all of these attributes and that's OK
+        }
     }
 }
