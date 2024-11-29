@@ -108,7 +108,7 @@ public class RewritePlugin implements Plugin<Project> {
             // Old versions of Gradle don't have all of these attributes and that's OK
         }
 
-        Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(rewriteConf));
+        Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(project, extension, rewriteConf));
 
         TaskProvider<RewriteRunTask> rewriteRun = project.getTasks().register("rewriteRun", RewriteRunTask.class, task -> {
             task.setExtension(extension);
@@ -190,12 +190,24 @@ public class RewritePlugin implements Plugin<Project> {
         });
     }
 
-    private Set<File> getResolvedDependencies(Configuration rewriteConf) {
-        if (resolvedDependencies != null) {
-            return resolvedDependencies;
-        }
+    private Set<File> getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
+        if (resolvedDependencies == null) {
+            Dependency[] dependencies = Stream.concat(
+                    knownRewriteDependencies(extension, project.getDependencies()).stream(),
+                    rewriteConf.getDependencies().stream()
+            ).toArray(Dependency[]::new);
+            // By using a detached configuration, we separate this dependency resolution from the rest of the project's
+            // configuration. This also means that Gradle has no criteria with which to select between variants of
+            // dependencies which expose differing capabilities. So those must be manually configured
+            Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
 
-        resolvedDependencies = rewriteConf.resolve();
+
+
+            resolvedDependencies = detachedConf.resolve();
+            resolvedDependencies.stream()
+                    .map(File::getName)
+                    .forEach(System.out::println);
+        }
         return resolvedDependencies;
     }
 
