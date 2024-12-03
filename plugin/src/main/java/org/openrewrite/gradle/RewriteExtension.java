@@ -322,6 +322,7 @@ public class RewriteExtension {
                     "**/*.jelly",
                     "**/*.jsp",
                     "**/*.ksh",
+                    "**/*.lock",
                     "**/lombok.config",
                     "**/*.md",
                     "**/*.mf",
