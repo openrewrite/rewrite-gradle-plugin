@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
-    <suppress until="2024-12-17Z">
+    <suppress until="2025-01-02Z">
         <notes><![CDATA[
             file name: rewrite-gradle-8.14.0-SNAPSHOT.jar: gradle-core-api-6.1.1.jar
             ]]></notes>
@@ -14,7 +14,7 @@
         <cve>CVE-2023-42445</cve>
         <cve>CVE-2023-44387</cve>
     </suppress>
-    <suppress until="2024-12-17Z" >
+    <suppress until="2025-01-02Z" >
         <notes><![CDATA[
             Already on the latest version
             file name: rewrite-gradle-8.15.0-SNAPSHOT.jar: gradle-enterprise-gradle-plugin-3.16.2.jar
@@ -57,7 +57,7 @@
         <packageUrl regex="true">^pkg:maven/org\.eclipse\.jgit/org\.eclipse\.jgit@.*$</packageUrl>
         <vulnerabilityName>CVE-2023-4759</vulnerabilityName>
     </suppress>
-    <suppress until="2024-11-22Z">
+    <suppress until="2025-01-02Z">
         <notes><![CDATA[
             Already on the latest version of develocity-gradle-plugin
             file name: rewrite-gradle-8.32.0.jar: develocity-gradle-plugin-3.17.6.jar: junit-platform-engine-1.10.3.jar
