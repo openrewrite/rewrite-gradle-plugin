@@ -72,7 +72,8 @@ interface RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            buildGradle("""
+            buildGradle(
+                """
                 plugins {
                     id("org.openrewrite.rewrite")
                 }
@@ -84,7 +85,8 @@ interface RewritePluginTest {
                        url = uri("https://oss.sonatype.org/content/repositories/snapshots")
                     }
                 }
-            """)
+                """
+            )
         }
         val result = runGradle(projectDir, taskName(), "--configuration-cache")
         val taskResult = result.task(":${taskName()}")!!
