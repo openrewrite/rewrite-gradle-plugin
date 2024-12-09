@@ -1595,7 +1595,7 @@ class RewriteRunTest : RewritePluginTest {
                 }
 
                 apply from: 'dependencies.gradle'
-            """
+                """
             )
             otherGradleScript(
                 "dependencies.gradle", """
@@ -1609,7 +1609,7 @@ class RewriteRunTest : RewritePluginTest {
                 dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                 }
-            """
+                """
             )
         }
         projectDir.resolve("build").mkdirs()
