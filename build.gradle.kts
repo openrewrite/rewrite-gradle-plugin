@@ -3,7 +3,6 @@ plugins {
     id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
     id("org.owasp.dependencycheck") version "10.+" apply false
     id("nebula.maven-resolved-dependencies") version "18.4.0" apply false
-    id("org.openrewrite.build.moderne-source-available-license") version "latest.release"
 }
 
 configure<nebula.plugin.release.git.base.ReleasePluginExtension> {
