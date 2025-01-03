@@ -49,14 +49,6 @@
         <vulnerabilityName>CVE-2023-2976</vulnerabilityName>
         <vulnerabilityName>CVE-2020-8908</vulnerabilityName>
     </suppress>
-    <suppress until="2024-12-17Z">
-        <notes><![CDATA[
-            file name: rewrite-core-8.6.0-SNAPSHOT.jar (shaded: org.eclipse.jgit:org.eclipse.jgit:5.13.2.202306221912-r)
-            Not relevant. And we pin to this version to support Java8.
-            ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.eclipse\.jgit/org\.eclipse\.jgit@.*$</packageUrl>
-        <vulnerabilityName>CVE-2023-4759</vulnerabilityName>
-    </suppress>
     <suppress until="2025-01-02Z">
         <notes><![CDATA[
             Already on the latest version of develocity-gradle-plugin
