@@ -95,7 +95,7 @@ configurations.named("compileOnly").configure {
 }
 
 dependencies {
-    "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:$latest"))
+    "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:8.41.1"))
     "rewriteDependencies"("org.openrewrite:rewrite-core")
     "rewriteDependencies"("org.openrewrite:rewrite-hcl")
     "rewriteDependencies"("org.openrewrite:rewrite-java")
@@ -104,19 +104,20 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-java-11")
     "rewriteDependencies"("org.openrewrite:rewrite-java-8")
     "rewriteDependencies"("org.openrewrite:rewrite-json")
-    "rewriteDependencies"("org.openrewrite:rewrite-kotlin:$latest")
+    "rewriteDependencies"("org.openrewrite:rewrite-kotlin:1.23.1")
     "rewriteDependencies"("org.openrewrite:rewrite-xml")
     "rewriteDependencies"("org.openrewrite:rewrite-yaml")
     "rewriteDependencies"("org.openrewrite:rewrite-properties")
     "rewriteDependencies"("org.openrewrite:rewrite-protobuf")
     "rewriteDependencies"("org.openrewrite:rewrite-groovy")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle")
-    "rewriteDependencies"("org.openrewrite:rewrite-polyglot:$latest")
+    "rewriteDependencies"("org.openrewrite:rewrite-polyglot:1.16.1")
     "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
-    implementation(platform("org.openrewrite:rewrite-bom:$latest"))
+
+    implementation(platform("org.openrewrite:rewrite-bom:8.41.1"))
     compileOnly("com.android.tools.build:gradle:7.0.4")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
     compileOnly("com.google.guava:guava:latest.release")
