@@ -1,5 +1,3 @@
-import org.gradle.api.publish.maven.internal.publication.DefaultMavenPom
-
 plugins {
     `groovy-gradle-plugin`
 }
@@ -40,20 +38,5 @@ dependencies {
     testImplementation(localGroovy())
     testImplementation("org.spockframework:spock-core:2.0-groovy-3.0") {
         exclude(group = "org.codehaus.groovy")
-    }
-}
-
-publishing {
-    publications.withType(MavenPublication::class) {
-        pom {
-            licenses {
-                this as DefaultMavenPom
-                licenses.clear()
-                license {
-                    name.set("Moderne Source Available License")
-                    url.set("https://docs.moderne.io/licensing/moderne-source-available-license")
-                }
-            }
-        }
     }
 }

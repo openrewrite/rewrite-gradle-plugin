@@ -13,7 +13,7 @@
 </div>
 
 <div align="center">
-    
+
 <!-- Keep the gap above this line, otherwise they won't render correctly! -->
 [![ci](https://github.com/openrewrite/rewrite-gradle-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/openrewrite/rewrite-gradle-plugin/actions/workflows/ci.yml)
 [![Gradle Plugin Portal](https://img.shields.io/maven-metadata/v/https/plugins.gradle.org/m2/org.openrewrite/plugin/maven-metadata.xml.svg?label=gradlePluginPortal)](https://plugins.gradle.org/plugin/org.openrewrite.rewrite)

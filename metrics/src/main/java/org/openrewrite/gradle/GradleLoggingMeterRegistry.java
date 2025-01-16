@@ -1,7 +1,3 @@
-/*
- * Licensed under the Moderne Source Available License.
- * See https://docs.moderne.io/licensing/moderne-source-available-license
- */
 package org.openrewrite.gradle;
 
 import io.micrometer.core.instrument.*;

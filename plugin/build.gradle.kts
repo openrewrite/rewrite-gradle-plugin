@@ -1,6 +1,6 @@
 @file:Suppress("UnstableApiUsage")
 
-import org.gradle.api.publish.maven.internal.publication.DefaultMavenPom
+import nl.javadude.gradle.plugins.license.LicenseExtension
 import org.gradle.rewrite.build.GradleVersionData
 import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -206,7 +206,7 @@ tasks.named("check").configure {
     dependsOn(testGradle4)
 }
 
-license {
+configure<LicenseExtension> {
     ext.set("year", Calendar.getInstance().get(Calendar.YEAR))
     skipExistingHeaders = true
     header = project.rootProject.file("gradle/licenseHeader.txt")
@@ -214,19 +214,4 @@ license {
     strictCheck = true
     exclude("**/versions.properties")
     exclude("**/*.txt")
-}
-
-publishing {
-    publications.withType(MavenPublication::class) {
-        pom {
-            licenses {
-                this as DefaultMavenPom
-                licenses.clear()
-                license {
-                    name.set("Moderne Source Available License")
-                    url.set("https://docs.moderne.io/licensing/moderne-source-available-license")
-                }
-            }
-        }
-    }
 }
