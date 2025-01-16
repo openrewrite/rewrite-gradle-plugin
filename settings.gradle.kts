@@ -1,10 +1,3 @@
-pluginManagement {
-    repositories {
-        mavenLocal()
-        gradlePluginPortal()
-    }
-}
-
 rootProject.name = "rewrite-gradle-plugin"
 
 include("plugin")

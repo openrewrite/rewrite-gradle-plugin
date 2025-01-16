@@ -1,7 +1,9 @@
-import org.gradle.api.publish.maven.internal.publication.DefaultMavenPom
+import nl.javadude.gradle.plugins.license.LicenseExtension
+import java.util.*
 
 plugins {
     `groovy-gradle-plugin`
+    id("com.github.hierynomus.license") version "0.16.1"
 }
 
 gradlePlugin {
@@ -43,17 +45,12 @@ dependencies {
     }
 }
 
-publishing {
-    publications.withType(MavenPublication::class) {
-        pom {
-            licenses {
-                this as DefaultMavenPom
-                licenses.clear()
-                license {
-                    name.set("Moderne Source Available License")
-                    url.set("https://docs.moderne.io/licensing/moderne-source-available-license")
-                }
-            }
-        }
-    }
+configure<LicenseExtension> {
+    ext.set("year", Calendar.getInstance().get(Calendar.YEAR))
+    skipExistingHeaders = true
+    header = project.rootProject.file("gradle/licenseHeader.txt")
+    mapping(mapOf("kt" to "SLASHSTAR_STYLE", "java" to "SLASHSTAR_STYLE"))
+    strictCheck = true
+    exclude("**/versions.properties")
+    exclude("**/*.txt")
 }
