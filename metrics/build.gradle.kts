@@ -1,5 +1,9 @@
+import nl.javadude.gradle.plugins.license.LicenseExtension
+import java.util.*
+
 plugins {
     `groovy-gradle-plugin`
+    id("com.github.hierynomus.license") version "0.16.1"
 }
 
 gradlePlugin {
@@ -39,4 +43,14 @@ dependencies {
     testImplementation("org.spockframework:spock-core:2.0-groovy-3.0") {
         exclude(group = "org.codehaus.groovy")
     }
+}
+
+configure<LicenseExtension> {
+    ext.set("year", Calendar.getInstance().get(Calendar.YEAR))
+    skipExistingHeaders = true
+    header = project.rootProject.file("gradle/licenseHeader.txt")
+    mapping(mapOf("kt" to "SLASHSTAR_STYLE", "java" to "SLASHSTAR_STYLE"))
+    strictCheck = true
+    exclude("**/versions.properties")
+    exclude("**/*.txt")
 }
