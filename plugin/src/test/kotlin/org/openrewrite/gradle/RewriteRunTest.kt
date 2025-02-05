@@ -1635,21 +1635,6 @@ class RewriteRunTest : RewritePluginTest {
             )
     }
 
-
-    companion object {
-        @BeforeAll
-        @JvmStatic
-        fun setUp() {
-            System.setProperty("rewrite.lombok", "true")
-        }
-
-        @AfterAll
-        @JvmStatic
-        fun tearDown() {
-            System.clearProperty("rewrite.lombok")
-        }
-    }
-
     @EnabledOnJre(JRE.JAVA_17)
     @Test
     fun lombokTypeAttribution(@TempDir projectDir: File) {
