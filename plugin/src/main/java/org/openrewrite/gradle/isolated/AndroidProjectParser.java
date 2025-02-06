@@ -172,7 +172,7 @@ class AndroidProjectParser {
                                         .collect(Collectors.toSet());
                         sourceSetSourceFiles = Stream.concat(
                                 sourceSetSourceFiles,
-                                omniParser.parse(accepted, baseDir, new InMemoryExecutionContext())
+                                omniParser.parse(accepted, baseDir, ctx)
                                         .map(it -> it.withMarkers(it.getMarkers().add(javaVersion))));
                         alreadyParsed.addAll(accepted);
                         sourceSetSize += accepted.size();
