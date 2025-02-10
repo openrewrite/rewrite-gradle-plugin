@@ -50,6 +50,7 @@ public class RewriteExtension {
     private boolean enableExperimentalGradleBuildScriptParsing = true;
     private boolean exportDatatables;
     private final List<String> exclusions = new ArrayList<>();
+    private final List<String> inclusions = new ArrayList<>();
     private final List<String> plainTextMasks = new ArrayList<>();
 
     private int sizeThresholdMb = 10;
@@ -300,6 +301,18 @@ public class RewriteExtension {
 
     public void exclusion(Collection<String> exclusions) {
         this.exclusions.addAll(exclusions);
+    }
+
+    public List<String> getInclusions() {
+        return inclusions;
+    }
+
+    public void inclusion(String... inclusions) {
+        this.inclusions.addAll(asList(inclusions));
+    }
+
+    public void inclusion(Collection<String> inclusions) {
+        this.inclusions.addAll(inclusions);
     }
 
     public List<String> getPlainTextMasks() {

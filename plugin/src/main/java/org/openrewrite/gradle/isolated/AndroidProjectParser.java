@@ -68,6 +68,7 @@ class AndroidProjectParser {
                                             Charset sourceCharset,
                                             Set<Path> alreadyParsed,
                                             Collection<PathMatcher> exclusions,
+                                            Collection<PathMatcher> inclusions,
                                             ExecutionContext ctx,
                                             OmniParser omniParser) {
         SourceFileStream sourceFileStream = SourceFileStream.build(
@@ -134,6 +135,7 @@ class AndroidProjectParser {
                             ctx,
                             buildDir,
                             exclusions,
+                            inclusions,
                             javaSourceCharset,
                             javaVersion,
                             dependencyPaths,
@@ -150,6 +152,7 @@ class AndroidProjectParser {
                             ctx,
                             buildDir,
                             exclusions,
+                            inclusions,
                             javaSourceCharset,
                             javaVersion,
                             dependencyPaths,
@@ -267,6 +270,7 @@ class AndroidProjectParser {
                                               ExecutionContext ctx,
                                               Path buildDir,
                                               Collection<PathMatcher> exclusions,
+                                              Collection<PathMatcher> inclusions,
                                               Charset javaSourceCharset,
                                               JavaVersion javaVersion,
                                               Set<Path> dependencyPaths,
@@ -279,7 +283,7 @@ class AndroidProjectParser {
                 .typeCache(javaTypeCache)
                 .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
                 .build()).map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
-            if (DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath()
+            if ((DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) && !DefaultProjectParser.isIncluded(inclusions, cu.getSourcePath())) || cu.getSourcePath()
                     .startsWith(buildDir)) {
                 return null;
             }
@@ -291,6 +295,7 @@ class AndroidProjectParser {
                                                 ExecutionContext ctx,
                                                 Path buildDir,
                                                 Collection<PathMatcher> exclusions,
+                                                Collection<PathMatcher> inclusions,
                                                 Charset javaSourceCharset,
                                                 JavaVersion javaVersion,
                                                 Set<Path> dependencyPaths,
@@ -303,7 +308,7 @@ class AndroidProjectParser {
                 .typeCache(javaTypeCache)
                 .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
                 .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
-            if (DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath()
+            if ((DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) && !DefaultProjectParser.isIncluded(inclusions, cu.getSourcePath())) || cu.getSourcePath()
                     .startsWith(buildDir)) {
                 return null;
             }
