@@ -367,6 +367,98 @@ class RewriteRunTest : RewritePluginTest {
     }
 
     @Test
+    fun `rewriteRun applies recipe to only included files in multi-project build`(
+        @TempDir projectDir: File
+    ) {
+        val testClassExpected = """
+                package com.foo;
+
+                import org.junit.Test;
+
+                public class TestClass {
+
+                    @Test
+                    public void passes() { }
+                }
+        """.trimIndent()
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.Format
+                recipeList:
+                  - org.openrewrite.java.format.AutoFormat
+            """
+            )
+            buildGradle(
+                """
+                plugins {
+                    id("org.openrewrite.rewrite")
+                    id("java")
+                }
+
+                rewrite {
+                    activeRecipe("org.openrewrite.Format")
+                    inclusion("a/**")
+                }
+
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+
+                subprojects {
+                    apply plugin: "java"
+
+                    repositories {
+                        mavenCentral()
+                    }
+
+                    dependencies {
+                        implementation(project(":"))
+                        implementation("junit:junit:4.12")
+                    }
+                }
+            """
+            )
+            subproject("a") {
+                sourceSet("test") {
+                    java(testClassExpected)
+                }
+            }
+            subproject("b") {
+                sourceSet("test") {
+                    java(testClassExpected)
+                }
+            }
+        }
+
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        //language=java
+        val aTestClassExpected = """
+            package com.foo;
+
+            import org.junit.Test;
+
+            public class TestClass {
+
+                @Test
+                public void passes() {
+                }
+            }
+        """.trimIndent()
+        val aTestClassFile = File(projectDir, "a/src/test/java/com/foo/TestClass.java")
+        assertThat(aTestClassFile.readText()).isEqualTo(aTestClassExpected)
+        val bTestClassFile = File(projectDir, "b/src/test/java/com/foo/TestClass.java")
+        assertThat(bTestClassFile.readText()).isEqualTo(testClassExpected)
+    }
+
+    @Test
     fun `resources in subproject committed to git are correctly processed`(
         @TempDir projectDir: File
     ) {
