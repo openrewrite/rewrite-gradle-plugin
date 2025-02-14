@@ -283,7 +283,7 @@ class AndroidProjectParser {
                 .typeCache(javaTypeCache)
                 .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
                 .build()).map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
-            if ((DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) && !DefaultProjectParser.isIncluded(inclusions, cu.getSourcePath())) || cu.getSourcePath()
+            if (!DefaultProjectParser.isIncluded(inclusions, cu.getSourcePath()) || DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath()
                     .startsWith(buildDir)) {
                 return null;
             }
@@ -308,7 +308,7 @@ class AndroidProjectParser {
                 .typeCache(javaTypeCache)
                 .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
                 .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
-            if ((DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) && !DefaultProjectParser.isIncluded(inclusions, cu.getSourcePath())) || cu.getSourcePath()
+            if (!DefaultProjectParser.isIncluded(inclusions, cu.getSourcePath()) || DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath()
                     .startsWith(buildDir)) {
                 return null;
             }

@@ -644,11 +644,14 @@ public class DefaultProjectParser implements GradleProjectParser {
             Collection<PathMatcher> exclusions = extension.getExclusions().stream()
                     .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
                     .collect(toList());
-            Collection<PathMatcher> inclusions = extension.getInclusions().stream()
-                    .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
-                    .collect(toList());
+            Collection<PathMatcher> inclusions = emptyList();
+            if (!extension.getInclusions().isEmpty()) {
+                inclusions = extension.getInclusions().stream()
+                        .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
+                        .collect(toList());
+            }
 
-            if (isExcluded(exclusions, baseDir.relativize(subproject.getProjectDir().toPath())) && !isIncluded(inclusions, baseDir.relativize(subproject.getProjectDir().toPath()))) {
+            if (!isIncluded(inclusions, baseDir.relativize(subproject.getProjectDir().toPath())) || isExcluded(exclusions, baseDir.relativize(subproject.getProjectDir().toPath()))) {
                 logger.lifecycle("Skipping project {} because it is excluded", subproject.getPath());
                 return Stream.empty();
             }
@@ -659,11 +662,11 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
                 subproject.getExtensions()
-                           .findByName("kotlin") != null && subproject.getExtensions()
-                           .getByName("kotlin")
-                           .getClass()
-                           .getCanonicalName()
-                           .startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
+                        .findByName("kotlin") != null && subproject.getExtensions()
+                        .getByName("kotlin")
+                        .getClass()
+                        .getCanonicalName()
+                        .startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
                 sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(
                         subproject,
                         exclusions,
@@ -870,7 +873,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(false)
                             .build()).map(Supplier::get).flatMap(gp -> gp.parse(groovyPaths, baseDir, ctx)).map(cu -> {
-                        if ((isExcluded(exclusions, cu.getSourcePath()) && !isIncluded(inclusions, cu.getSourcePath())) || cu.getSourcePath().startsWith(buildDir)) {
+                        if (!isIncluded(inclusions, cu.getSourcePath()) || isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
                             return null;
                         }
                         return cu;
@@ -950,7 +953,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                         .build())
                 .map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
-                    if ((isExcluded(exclusions, cu.getSourcePath()) && !isIncluded(inclusions, cu.getSourcePath())) || cu.getSourcePath().startsWith(buildDir)) {
+                    if (!isIncluded(inclusions, cu.getSourcePath()) || isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
+                        logger.info("{} is not included or is excluded", cu.getSourcePath());
                         return null;
                     }
                     return cu;
@@ -973,7 +977,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 .typeCache(javaTypeCache)
                 .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                 .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
-            if ((isExcluded(exclusions, cu.getSourcePath()) && !isIncluded(inclusions, cu.getSourcePath())) || cu.getSourcePath().startsWith(buildDir)) {
+            if (!isIncluded(inclusions, cu.getSourcePath()) || isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
                 return null;
             }
             return cu;
@@ -1030,7 +1034,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         File buildGradleFile = subproject.getBuildscript().getSourceFile();
         if (buildGradleFile != null) {
             Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
-            if ((!isExcluded(exclusions, buildScriptPath) || isIncluded(inclusions, buildScriptPath)) && buildGradleFile.exists()) {
+            if ((isIncluded(inclusions, buildScriptPath) && !isExcluded(exclusions, buildScriptPath)) && buildGradleFile.exists()) {
                 if (buildScriptPath.toString().endsWith(".gradle")) {
                     gradleParser = gradleParser();
                     sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
@@ -1055,7 +1059,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             GradleSettings finalGs = gs;
             if (settingsGradleFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleFile.toPath());
-                if ((!isExcluded(exclusions, settingsPath) || isIncluded(inclusions, settingsPath))) {
+                if (isIncluded(inclusions, settingsPath) && !isExcluded(exclusions, settingsPath)) {
                     if (gradleParser == null) {
                         gradleParser = gradleParser();
                     }
@@ -1074,7 +1078,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 alreadyParsed.add(settingsGradleFile.toPath());
             } else if (settingsGradleKtsFile.exists()) {
                 Path settingsPath = baseDir.relativize(settingsGradleKtsFile.toPath());
-                if ((!isExcluded(exclusions, settingsPath) || isIncluded(inclusions, settingsPath))) {
+                if (isIncluded(inclusions, settingsPath) && !isExcluded(exclusions, settingsPath)) {
                     sourceFiles = Stream.concat(
                             sourceFiles,
                             PlainTextParser.builder().build()
@@ -1095,7 +1099,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         File gradlePropertiesFile = subproject.file("gradle.properties");
         if (gradlePropertiesFile.exists()) {
             Path gradlePropertiesPath = baseDir.relativize(gradlePropertiesFile.toPath());
-            if ((!isExcluded(exclusions, gradlePropertiesPath) || isIncluded(inclusions, gradlePropertiesPath))) {
+            if (isIncluded(inclusions, gradlePropertiesPath) && !isExcluded(exclusions, gradlePropertiesPath)) {
                 final GradleProject finalGradleProject = gradleProject;
                 sourceFiles = Stream.concat(
                         sourceFiles,
@@ -1122,7 +1126,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .anyMatch(sp -> dir.equals(sp.getProjectDir().toPath())) ||
                         subproject.getGradle().getIncludedBuilds().stream()
                                 .anyMatch(ib -> dir.equals(ib.getProjectDir().toPath())) ||
-                        (isExcluded(exclusions, baseDir.relativize(dir)) && !isIncluded(inclusions, baseDir.relativize(dir)))) {
+                        !isIncluded(inclusions, baseDir.relativize(dir)) ||
+                        isExcluded(exclusions, baseDir.relativize(dir))) {
                         return FileVisitResult.SKIP_SUBTREE;
                     }
 
@@ -1131,7 +1136,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    if (file.toString().endsWith(".gradle") && !alreadyParsed.contains(file) && (!isExcluded(exclusions, baseDir.relativize(file)) || isIncluded(inclusions, baseDir.relativize(file)))) {
+                    if (file.toString().endsWith(".gradle") && !alreadyParsed.contains(file) && (isIncluded(inclusions, baseDir.relativize(file)) && !isExcluded(exclusions, baseDir.relativize(file)))) {
                         freeStandingScripts.add(file);
                     }
                     return FileVisitResult.CONTINUE;
@@ -1173,7 +1178,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     .map(project::file)
                     .filter(File::exists)
                     .map(File::toPath)
-                    .filter(it -> !isExcluded(exclusions, it) || isIncluded(inclusions, it))
+                    .filter(it -> isIncluded(inclusions, it) && !isExcluded(exclusions, it))
                     .filter(omniParser::accept)
                     .collect(toList());
             sourceFiles = omniParser.parse(gradleWrapperFiles, baseDir, ctx);
@@ -1307,7 +1312,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Stream<SourceFile> cus = kp.parse(kotlinPaths, baseDir, ctx);
                     alreadyParsed.addAll(kotlinPaths);
                     cus = cus.map(cu -> {
-                        if ((isExcluded(exclusions, cu.getSourcePath()) && !isIncluded(inclusions, cu.getSourcePath())) ||
+                        if (!isIncluded(inclusions, cu.getSourcePath()) || isExcluded(exclusions, cu.getSourcePath()) ||
                             cu.getSourcePath().startsWith(buildDirPath)) {
                             return null;
                         }
@@ -1353,6 +1358,9 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     static boolean isIncluded(Collection<PathMatcher> inclusions, Path path) {
+        if (inclusions.isEmpty()) {
+            return true;
+        }
         for (PathMatcher included : inclusions) {
             if (included.matches(path)) {
                 return true;
