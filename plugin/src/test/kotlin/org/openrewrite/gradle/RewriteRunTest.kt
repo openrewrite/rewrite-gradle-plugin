@@ -399,7 +399,7 @@ class RewriteRunTest : RewritePluginTest {
 
                 rewrite {
                     activeRecipe("org.openrewrite.Format")
-                    inclusion("**/a/**/*", "**/a/**")
+                    inclusion("**/a", "**/a/**")
                 }
 
                 repositories {
