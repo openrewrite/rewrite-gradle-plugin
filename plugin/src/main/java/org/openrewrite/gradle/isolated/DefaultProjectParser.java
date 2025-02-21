@@ -1392,7 +1392,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         sourceFiles = ListUtils.map(sourceFiles, applyAutodetected(stylesByType));
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
-        RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
+        RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles, selectClassLoader(recipe.getRecipeList())), ctx);
 
         if (extension.isExportDatatables()) {
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss-SSS"));
@@ -1523,5 +1523,35 @@ public class DefaultProjectParser implements GradleProjectParser {
             sourceEncoding = compileOptions.getEncoding();
         }
         return Optional.ofNullable(sourceEncoding).map(Charset::forName).orElse(defaultCharset);
+    }
+
+    @Nullable
+    private ClassLoader selectClassLoader(List<Recipe> recipes) {
+        if (recipes.isEmpty()){
+            return null;
+        } else if (recipes.size() == 1) {
+            return recipes.get(0).getClass().getClassLoader();
+        } else {
+            List<ClassLoader> recipeCLs = recipes.stream()
+                    .map(Recipe::getClass)
+                    .map(Class::getClassLoader)
+                    .collect(Collectors.toList());
+
+            return new ClassLoader() {
+                private final List<ClassLoader> cls = recipeCLs;
+                @Override
+                protected Class<?> findClass(String name) throws ClassNotFoundException {
+                    for (ClassLoader cl : cls) {
+                        try {
+                            return cl.loadClass(name);
+                        } catch (ClassNotFoundException ignored) {
+                            // no class found so try the next one
+                        }
+                    }
+                    // try the parent classloader, if non found ClassNotFoundException will be thrown
+                    return super.findClass(name);
+                }
+            };
+        }
     }
 }
