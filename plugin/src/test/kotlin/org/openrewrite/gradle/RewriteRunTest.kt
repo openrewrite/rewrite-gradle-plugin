@@ -503,7 +503,7 @@ class RewriteRunTest : RewritePluginTest {
                 {
                     String s = null;
                     if("test".equals(s)) {}
-                    if(s.equalsIgnoreCase("test")) {}
+                    if("test".equalsIgnoreCase(s)) {}
                 }
             }
         """.trimIndent()
