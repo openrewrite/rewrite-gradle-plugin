@@ -37,8 +37,6 @@ dependencies {
     implementation("io.projectreactor.netty:reactor-netty-http:latest.release")
     implementation("com.google.guava:guava:latest.release")
 
-    runtimeOnly("org.xerial.snappy:snappy-java:latest.release")
-
     testImplementation(localGroovy())
     testImplementation("org.spockframework:spock-core:2.0-groovy-3.0") {
         exclude(group = "org.codehaus.groovy")
