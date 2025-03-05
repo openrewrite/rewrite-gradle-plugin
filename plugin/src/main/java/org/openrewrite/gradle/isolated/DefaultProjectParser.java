@@ -1016,13 +1016,8 @@ public class DefaultProjectParser implements GradleProjectParser {
         if (buildGradleFile != null) {
             Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
             if (!isExcluded(exclusions, buildScriptPath) && buildGradleFile.exists()) {
-                if (buildScriptPath.toString().endsWith(".gradle")) {
-                    gradleParser = gradleParser();
-                    sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
-                } else {
-                    sourceFiles = PlainTextParser.builder().build()
-                            .parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
-                }
+                gradleParser = gradleParser();
+                sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
                 gradleFileCount++;
                 sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)));
                 alreadyParsed.add(buildGradleFile.toPath());
@@ -1031,16 +1026,15 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         // settings.gradle
         if (subproject == project.getRootProject()) {
-            File settingsGradleFile = subproject.file("settings.gradle");
-            File settingsGradleKtsFile = subproject.file("settings.gradle.kts");
-            GradleSettings gs = null;
-            if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0 && (settingsGradleFile.exists() || settingsGradleKtsFile.exists())) {
-                gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
-            }
-            GradleSettings finalGs = gs;
-            if (settingsGradleFile.exists()) {
+            File settingsGradleFile = determineGradleSettingsFile(subproject);
+            if (settingsGradleFile != null) {
                 Path settingsPath = baseDir.relativize(settingsGradleFile.toPath());
                 if (!isExcluded(exclusions, settingsPath)) {
+                    GradleSettings gs = null;
+                    if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0) {
+                        gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
+                    }
+                    GradleSettings finalGs = gs;
                     if (gradleParser == null) {
                         gradleParser = gradleParser();
                     }
@@ -1057,22 +1051,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                     gradleFileCount++;
                 }
                 alreadyParsed.add(settingsGradleFile.toPath());
-            } else if (settingsGradleKtsFile.exists()) {
-                Path settingsPath = baseDir.relativize(settingsGradleKtsFile.toPath());
-                if (!isExcluded(exclusions, settingsPath)) {
-                    sourceFiles = Stream.concat(
-                            sourceFiles,
-                            PlainTextParser.builder().build()
-                                    .parse(singleton(settingsGradleKtsFile.toPath()), baseDir, ctx)
-                                    .map(sourceFile -> {
-                                        if (finalGs == null) {
-                                            return sourceFile;
-                                        }
-                                        return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
-                                    }));
-                    gradleFileCount++;
-                }
-                alreadyParsed.add(settingsGradleKtsFile.toPath());
             }
         }
 
@@ -1116,7 +1094,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    if (file.toString().endsWith(".gradle") && !alreadyParsed.contains(file) && !isExcluded(exclusions, baseDir.relativize(file))) {
+                    if ((file.toString().endsWith(".gradle") || file.toString().endsWith(".gradle.kts")) && !alreadyParsed.contains(file) && !isExcluded(exclusions, baseDir.relativize(file))) {
                         freeStandingScripts.add(file);
                     }
                     return FileVisitResult.CONTINUE;
@@ -1140,6 +1118,19 @@ public class DefaultProjectParser implements GradleProjectParser {
 
         return SourceFileStream.build("", s -> {
         }).concat(sourceFiles, gradleFileCount);
+    }
+
+    private @Nullable File determineGradleSettingsFile(Project rootProject) {
+        File settingsFile = rootProject.file("settings.gradle.kts");
+        if (settingsFile.exists()) {
+            return settingsFile;
+        }
+
+        settingsFile = rootProject.file("settings.gradle");
+        if (settingsFile.exists()) {
+            return settingsFile;
+        }
+        return null;
     }
 
     /**
