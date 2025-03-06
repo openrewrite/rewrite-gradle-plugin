@@ -18,19 +18,15 @@ package org.openrewrite.gradle;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 
+import javax.annotation.Nullable;
 import java.net.InetAddress;
-import java.net.URI;
 import java.net.UnknownHostException;
 
 public class RewriteMetricsExtension {
     /**
-     * In the form tcp://host:port, http://host:port, https://host:port, ws://host:port, wss://host:port. Port is optional.
+     * Metrics destination such as "LOG".
      */
-    private URI metricsUri;
-
-    private String metricsUsername;
-    private String metricsPassword;
-
+    private String metricsDestination;
     /**
      * In addition to a set of tags like Gradle project name, root project name, group, etc. that are
      * preconfigured.
@@ -44,12 +40,13 @@ public class RewriteMetricsExtension {
         }
     }
 
-    public URI getMetricsUri() {
-        return metricsUri;
+    @Nullable
+    public String getMetricsDestination() {
+        return metricsDestination;
     }
 
-    public void setMetricsUri(URI metricsUri) {
-        this.metricsUri = metricsUri;
+    public void setMetricsDestination(String metricsDestination) {
+        this.metricsDestination = metricsDestination;
     }
 
     public Iterable<Tag> getExtraMetricsTags() {
@@ -58,21 +55,5 @@ public class RewriteMetricsExtension {
 
     public void setExtraMetricsTags(Iterable<Tag> extraMetricsTags) {
         this.extraMetricsTags = extraMetricsTags;
-    }
-
-    public String getMetricsUsername() {
-        return metricsUsername;
-    }
-
-    public void setMetricsUsername(String metricsUsername) {
-        this.metricsUsername = metricsUsername;
-    }
-
-    public String getMetricsPassword() {
-        return metricsPassword;
-    }
-
-    public void setMetricsPassword(String metricsPassword) {
-        this.metricsPassword = metricsPassword;
     }
 }

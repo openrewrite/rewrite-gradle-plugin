@@ -29,12 +29,7 @@ repositories {
 }
 
 dependencies {
-    api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    api("io.rsocket:rsocket-transport-netty:latest.release")
-
-    implementation(platform("io.netty:netty-bom:latest.release"))
-    implementation("io.projectreactor.netty:reactor-netty-core:latest.release")
-    implementation("io.projectreactor.netty:reactor-netty-http:latest.release")
+    implementation("io.micrometer:micrometer-core:latest.release")
     implementation("com.google.guava:guava:latest.release")
 
     testImplementation(localGroovy())
