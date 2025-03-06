@@ -32,6 +32,14 @@ dependencies {
     api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
     api("io.rsocket:rsocket-transport-netty:latest.release")
 
+    constraints {
+        // prometheus-rsocket-client depends on this
+        // @see https://github.com/xerial/snappy-java/releases/tag/v1.1.10.4
+        api("org.xerial.snappy:snappy-java:1.1.10.4") {
+            because("CVE-2023-43642")
+        }
+    }
+
     implementation(platform("io.netty:netty-bom:latest.release"))
     implementation("io.projectreactor.netty:reactor-netty-core:latest.release")
     implementation("io.projectreactor.netty:reactor-netty-http:latest.release")
