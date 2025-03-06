@@ -6,17 +6,6 @@ plugins {
     id("com.github.hierynomus.license") version "0.16.1"
 }
 
-gradlePlugin {
-    plugins {
-        create("rewriteMetrics") {
-            id = "org.openrewrite.rewrite-metrics"
-            displayName = "Rewrite metrics publishing"
-            description = "Publish metrics about refactoring operations happening across your organization."
-            implementationClass = "org.openrewrite.gradle.RewriteMetricsPlugin"
-        }
-    }
-}
-
 repositories {
     if (!project.hasProperty("releasing")) {
         mavenLocal()
@@ -29,18 +18,8 @@ repositories {
 }
 
 dependencies {
-    api("io.micrometer.prometheus:prometheus-rsocket-client:latest.release")
-    api("io.rsocket:rsocket-transport-netty:latest.release")
-
-    implementation(platform("io.netty:netty-bom:latest.release"))
-    implementation("io.projectreactor.netty:reactor-netty-core:latest.release")
-    implementation("io.projectreactor.netty:reactor-netty-http:latest.release")
+    implementation("io.micrometer:micrometer-core:latest.release")
     implementation("com.google.guava:guava:latest.release")
-
-    testImplementation(localGroovy())
-    testImplementation("org.spockframework:spock-core:2.0-groovy-3.0") {
-        exclude(group = "org.codehaus.groovy")
-    }
 }
 
 configure<LicenseExtension> {
