@@ -46,7 +46,6 @@ public class RewriteExtension {
 
     @Nullable
     private File checkstyleConfigFile;
-    private String metricsUri = magicalMetricsLogString;
     private boolean enableExperimentalGradleBuildScriptParsing = true;
     private boolean exportDatatables;
     private final List<String> exclusions = new ArrayList<>();
@@ -129,22 +128,6 @@ public class RewriteExtension {
 
     public File getConfigFile() {
         return configFile;
-    }
-
-    public void enableRouteMetricsToLog() {
-        metricsUri = magicalMetricsLogString;
-    }
-
-    public boolean isRouteMetricsToLog() {
-        return metricsUri.equals(magicalMetricsLogString);
-    }
-
-    public String getMetricsUri() {
-        return metricsUri;
-    }
-
-    public void setMetricsUri(String value) {
-        metricsUri = value;
     }
 
     public void activeRecipe(String... recipes) {
