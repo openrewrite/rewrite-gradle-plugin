@@ -1,7 +1,6 @@
 rootProject.name = "rewrite-gradle-plugin"
 
 include("plugin")
-include("metrics")
 
 plugins {
     id("com.gradle.develocity") version "latest.release"
