@@ -127,7 +127,7 @@ dependencies {
     testImplementation("org.openrewrite.tools:jgit:latest.release")
     testImplementation("org.openrewrite:rewrite-test")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
-    testImplementation("org.assertj:assertj-core:latest.release")
+    testImplementation("org.assertj:assertj-core:3.+")
 
     modules {
         module("com.google.guava:listenablefuture") {
