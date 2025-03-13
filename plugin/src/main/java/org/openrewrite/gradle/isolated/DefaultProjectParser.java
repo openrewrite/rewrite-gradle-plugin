@@ -992,9 +992,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                 .map(File::toPath)
                 .collect(toList());
 
+        JavaTypeCache typeCache = new JavaTypeCache();
         return GradleParser.builder()
                 .groovyParser(GroovyParser.builder()
-                        .typeCache(new JavaTypeCache())
+                        .typeCache(typeCache)
+                        .logCompilationWarningsAndErrors(false))
+                .kotlinParser(KotlinParser.builder()
+                        .typeCache(typeCache)
                         .logCompilationWarningsAndErrors(false))
                 .buildscriptClasspath(buildscriptClasspath)
                 .settingsClasspath(settingsClasspath)
