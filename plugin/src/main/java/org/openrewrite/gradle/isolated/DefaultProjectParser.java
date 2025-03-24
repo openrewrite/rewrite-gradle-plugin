@@ -40,6 +40,7 @@ import org.jspecify.annotations.Nullable;
 import org.openrewrite.*;
 import org.openrewrite.binary.Binary;
 import org.openrewrite.config.Environment;
+import org.openrewrite.config.License;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
 import org.openrewrite.gradle.GradleParser;
@@ -1367,6 +1368,13 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
+        logger.lifecycle("Check recipe licences...");
+        failedValidations = checkLicence(recipe);
+        if (!failedValidations.isEmpty()) {
+            failedValidations.forEach(failedValidation -> logger.error("Recipe is proprietary:{}", failedValidation.getMessage()));
+            throw new RuntimeException("Proprietary Recipe(s) detected as part of one or more activeRecipe(s). Please check error logs.");
+        }
+
         org.openrewrite.java.style.Autodetect.Detector javaDetector = org.openrewrite.java.style.Autodetect.detector();
         org.openrewrite.kotlin.style.Autodetect.Detector kotlinDetector = org.openrewrite.kotlin.style.Autodetect.detector();
         org.openrewrite.xml.style.Autodetect.Detector xmlDetector = org.openrewrite.xml.style.Autodetect.detector();
@@ -1397,6 +1405,26 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
 
         return new ResultsContainer(baseDir, recipeRun);
+    }
+
+    private List<Validated.Invalid<Object>> checkLicence(Recipe recipe) {
+        List<Validated.Invalid<Object>> results = new ArrayList<>();
+
+        // check current recipe
+        License license = recipe.getDescriptor().getLicense();
+        if (license == null) {
+            logger.warn("No license detected for recipe {}", recipe.getName());
+        } else if (License.MODERNE_PROPRIETARY.equals(license)) {
+            logger.error("{} is proprietary and not allowed to run in unlicensed environments", recipe.getName());
+            results.add(Validated.invalid("License", License.MODERNE_PROPRIETARY.getFullName(), "is not allowed in unlicensed environments"));
+        }
+
+        // check children
+        for (Recipe child : recipe.getRecipeList()) {
+            results.addAll(checkLicence(child));
+        }
+
+        return results;
     }
 
     @Override

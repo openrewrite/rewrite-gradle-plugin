@@ -22,6 +22,7 @@ package org.openrewrite.gradle
 
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.*
 import org.junit.jupiter.api.io.TempDir
@@ -1454,6 +1455,154 @@ class RewriteRunTest : RewritePluginTest {
                 zipStorePath=wrapper/dists
                 """.trimIndent()
             )
+    }
+
+    @Nested
+    inner class `Reject proprietary recipes` {
+        @Test
+        fun `proprietary recipe direct`(
+            @TempDir projectDir: File
+        ) {
+            gradleProject(projectDir) {
+                buildGradle(
+                    """
+                    plugins {
+                        id("java")
+                        id("org.openrewrite.rewrite")
+                    }
+
+                    repositories {
+                        mavenLocal()
+                        mavenCentral()
+                        maven {
+                            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                        }
+                    }
+
+                    rewrite {
+                        activeRecipe("io.moderne.java.spring.boot3.SpringBootProperties_3_4")
+                    }
+
+                    dependencies {
+                        rewrite("io.moderne.recipe:rewrite-spring:0.3.2")
+                    }
+                    """.trimIndent()
+                )
+            }
+            val result = runGradle(projectDir, taskName())
+            val task = result.task(":${taskName()}")!!
+            assertThat(task.outcome).isEqualTo(TaskOutcome.FAILED)
+        }
+
+        @Test
+        fun `proprietary recipe in yaml`(
+            @TempDir projectDir: File
+        ) {
+            gradleProject(projectDir) {
+                buildGradle(
+                    """
+                    plugins {
+                        id("java")
+                        id("org.openrewrite.rewrite")
+                    }
+
+                    repositories {
+                        mavenLocal()
+                        mavenCentral()
+                        maven {
+                            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                        }
+                    }
+
+                    rewrite {
+                        activeRecipe("org.openrewrite.update.MySpring")
+                    }
+
+                    dependencies {
+                        rewrite("io.moderne.recipe:rewrite-spring:0.3.2")
+                    }
+                    """.trimIndent()
+                )
+                rewriteYaml(
+                    """
+                    type: specs.openrewrite.org/v1beta/recipe
+                    name: org.openrewrite.update.MySpring
+                    description: Test.
+                    recipeList:
+                      - io.moderne.java.spring.boot3.SpringBootProperties_3_4
+                    """.trimIndent()
+                )
+            }
+            val result = runGradle(projectDir, taskName())
+            val task = result.task(":${taskName()}")!!
+            assertThat(task.outcome).isEqualTo(TaskOutcome.FAILED)
+        }
+
+        @Test
+        fun `execute MSAL`(
+            @TempDir projectDir: File
+        ) {
+            gradleProject(projectDir) {
+                buildGradle(
+                    """
+                    plugins {
+                        id("java")
+                        id("org.openrewrite.rewrite")
+                    }
+
+                    repositories {
+                        mavenLocal()
+                        mavenCentral()
+                        maven {
+                            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                        }
+                    }
+
+                    rewrite {
+                        activeRecipe("org.openrewrite.java.spring.boot3.SpringBootProperties_3_3")
+                    }
+
+                    dependencies {
+                        rewrite("org.openrewrite.recipe:rewrite-spring:6.3.0")
+                    }
+                    """.trimIndent()
+                )
+            }
+            val result = runGradle(projectDir, taskName())
+            val task = result.task(":${taskName()}")!!
+            assertThat(task.outcome).isEqualTo(TaskOutcome.FAILED)
+        }
+
+        @Test
+        fun `execute OS Recipe`(
+            @TempDir projectDir: File
+        ) {
+            gradleProject(projectDir) {
+                buildGradle(
+                    """
+                    plugins {
+                        id("java")
+                        id("org.openrewrite.rewrite")
+                    }
+
+                    repositories {
+                        mavenLocal()
+                        mavenCentral()
+                        maven {
+                            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                        }
+                    }
+
+                    rewrite {
+                        activeRecipe("org.openrewrite.java.AddApache2LicenseHeader")
+                    }
+                    """.trimIndent()
+                )
+            }
+            val result = runGradle(projectDir, taskName())
+            val task = result.task(":${taskName()}")!!
+            assertThat(task.outcome).isEqualTo(TaskOutcome.FAILED)
+        }
     }
 
     // The configuration cache works on Gradle 6.6+, but rewrite-gradle-plugin uses notCompatibleWithConfigurationCache,
