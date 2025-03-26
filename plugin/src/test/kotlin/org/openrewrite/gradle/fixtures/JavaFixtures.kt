@@ -7,7 +7,7 @@ class JavaFixtures {
             package org.openrewrite.before;
 
             public interface HelloWorld {
-                void sayGoodbye();
+                void sayHello();
             }
         """.trimIndent()
 
@@ -17,8 +17,29 @@ class JavaFixtures {
 
             public class HelloWorldImpl implements HelloWorld {
                 @Override
-                public void sayGoodbye() {
+                public void sayHello() {
                     System.out.println("Hello world");
+                }
+            }
+        """.trimIndent()
+
+        //language=java
+        val GOODBYE_WORLD_JAVA_INTERFACE = """
+            package org.openrewrite.before;
+
+            public interface GoodbyeWorld {
+                void sayGoodbye();
+            }
+        """.trimIndent()
+
+        //language=java
+        val GOODBYE_WORLD_JAVA_CLASS = """
+            package org.openrewrite.before;
+
+            public class GoodbyeWorldImpl implements GoodbyeWorld {
+                @Override
+                public void sayGoodbye() {
+                    System.out.println("Goodbye world");
                 }
             }
         """.trimIndent()

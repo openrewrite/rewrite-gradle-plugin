@@ -21,6 +21,8 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.gradle.fixtures.GradleFixtures.Companion.REWRITE_BUILD_GRADLE
+import org.openrewrite.gradle.fixtures.JavaFixtures.Companion.GOODBYE_WORLD_JAVA_CLASS
+import org.openrewrite.gradle.fixtures.JavaFixtures.Companion.GOODBYE_WORLD_JAVA_INTERFACE
 import org.openrewrite.gradle.fixtures.JavaFixtures.Companion.HELLO_WORLD_JAVA_CLASS
 import org.openrewrite.gradle.fixtures.JavaFixtures.Companion.HELLO_WORLD_JAVA_INTERFACE
 import java.io.File
@@ -57,7 +59,7 @@ class RewriteDryRunSourceSetTest : GradleRunnerTest {
     }
 
     @Test
-    fun `can use default source set directories`() {
+    fun `can run a recipe for default source set directories`() {
         gradleProject(projectDir) {
             rewriteYaml(REWRITE_YAML)
             buildGradle(
@@ -76,12 +78,13 @@ class RewriteDryRunSourceSetTest : GradleRunnerTest {
 
         val result = runGradle(projectDir, TASK_NAME)
 
-        assertTaskOutcome(result)
-        assertPatchFileContents(DEFAULT_SRC_DIR)
+        assertDryRunTaskOutcome(result)
+        val patchFile = assertPatchFile()
+        assertHelloWorldInPatchFileContents(patchFile, DEFAULT_SRC_DIR)
     }
 
     @Test
-    fun `can use only custom Java source set directory`() {
+    fun `can run a recipe for custom Java source set directory with default directories`() {
         gradleProject(projectDir) {
             rewriteYaml(REWRITE_YAML)
             buildGradle(
@@ -99,19 +102,20 @@ class RewriteDryRunSourceSetTest : GradleRunnerTest {
             """
             )
 
-            createJavaInterfaceFile(CUSTOM_SRC_DIR)
-            createJavaClassFile(CUSTOM_SRC_DIR)
+            createHelloWorldJavaInterfaceFile(CUSTOM_SRC_DIR)
+            createHelloWorldJavaClassFile(CUSTOM_SRC_DIR)
             createYamlFile(DEFAULT_RESOURCES_DIR)
         }
 
         val result = runGradle(projectDir, TASK_NAME)
 
-        assertTaskOutcome(result)
-        assertPatchFileContents(CUSTOM_SRC_DIR)
+        assertDryRunTaskOutcome(result)
+        val patchFile = assertPatchFile()
+        assertHelloWorldInPatchFileContents(patchFile, CUSTOM_SRC_DIR)
     }
 
     @Test
-    fun `can use non-overlapping custom source set directories`() {
+    fun `can run a recipe for non-overlapping custom source set directories`() {
         gradleProject(projectDir) {
             rewriteYaml(REWRITE_YAML)
             buildGradle(
@@ -132,19 +136,20 @@ class RewriteDryRunSourceSetTest : GradleRunnerTest {
             """
             )
 
-            createJavaInterfaceFile(CUSTOM_SRC_DIR)
-            createJavaClassFile(CUSTOM_SRC_DIR)
+            createHelloWorldJavaInterfaceFile(CUSTOM_SRC_DIR)
+            createHelloWorldJavaClassFile(CUSTOM_SRC_DIR)
             createYamlFile(CUSTOM_RESOURCES_DIR)
         }
 
         val result = runGradle(projectDir, TASK_NAME)
 
-        assertTaskOutcome(result)
-        assertPatchFileContents(CUSTOM_SRC_DIR)
+        assertDryRunTaskOutcome(result)
+        val patchFile = assertPatchFile()
+        assertHelloWorldInPatchFileContents(patchFile, CUSTOM_SRC_DIR)
     }
 
     @Test
-    fun `can use overlapping custom source set directories`() {
+    fun `can run a recipe for overlapping custom source set directories`() {
         gradleProject(projectDir) {
             rewriteYaml(REWRITE_YAML)
             buildGradle(
@@ -166,19 +171,20 @@ class RewriteDryRunSourceSetTest : GradleRunnerTest {
             """
             )
 
-            createJavaInterfaceFile(CUSTOM_SRC_DIR)
-            createJavaClassFile(CUSTOM_SRC_DIR)
+            createHelloWorldJavaInterfaceFile(CUSTOM_SRC_DIR)
+            createHelloWorldJavaClassFile(CUSTOM_SRC_DIR)
             createYamlFile(CUSTOM_SRC_DIR)
         }
 
         val result = runGradle(projectDir, TASK_NAME)
 
-        assertTaskOutcome(result)
-        assertPatchFileContents(CUSTOM_SRC_DIR)
+        assertDryRunTaskOutcome(result)
+        val patchFile = assertPatchFile()
+        assertHelloWorldInPatchFileContents(patchFile, CUSTOM_SRC_DIR)
     }
 
     @Test
-    fun `can add custom source set directories to default directories`() {
+    fun `can run a recipe for custom source set directories added to default directories`() {
         gradleProject(projectDir) {
             rewriteYaml(REWRITE_YAML)
             buildGradle(
@@ -200,23 +206,72 @@ class RewriteDryRunSourceSetTest : GradleRunnerTest {
             """
             )
 
-            createJavaInterfaceFile(CUSTOM_SRC_DIR)
-            createJavaClassFile(CUSTOM_SRC_DIR)
+            createHelloWorldJavaInterfaceFile(CUSTOM_SRC_DIR)
+            createHelloWorldJavaClassFile(CUSTOM_SRC_DIR)
             createYamlFile(CUSTOM_SRC_DIR)
         }
 
         val result = runGradle(projectDir, TASK_NAME)
 
-        assertTaskOutcome(result)
-        assertPatchFileContents(CUSTOM_SRC_DIR)
+        assertDryRunTaskOutcome(result)
+        val patchFile = assertPatchFile()
+        assertHelloWorldInPatchFileContents(patchFile, CUSTOM_SRC_DIR)
     }
 
-    private fun createJavaInterfaceFile(sourceDir: String) {
+    @Test
+    fun `can run a recipe for overlapping source sets`() {
+        gradleProject(projectDir) {
+            rewriteYaml(REWRITE_YAML)
+            buildGradle(
+                REWRITE_BUILD_GRADLE +
+                REWRITE_PLUGIN_ACTIVE_RECIPE +
+                //language=groovy
+                """
+                sourceSets {
+                    main {
+                        java {
+                            srcDirs = ["src"]
+                        }
+                    }
+                    other {
+                        java {
+                            srcDirs = ["src"]
+                        }
+                    }
+                }
+            """
+            )
+
+            createHelloWorldJavaInterfaceFile(CUSTOM_SRC_DIR)
+            createHelloWorldJavaClassFile(CUSTOM_SRC_DIR)
+            createGoodbyeWorldJavaInterfaceFile(CUSTOM_SRC_DIR)
+            createGoodbyeWorldJavaClassFile(CUSTOM_SRC_DIR)
+        }
+
+        val result = runGradle(projectDir, TASK_NAME)
+
+        assertDryRunTaskOutcome(result)
+        val compileOtherJavaResult = result.task(":compileOtherJava")!!
+        assertThat(compileOtherJavaResult.outcome).isEqualTo(TaskOutcome.SKIPPED)
+        val patchFile = assertPatchFile()
+        assertHelloWorldInPatchFileContents(patchFile, CUSTOM_SRC_DIR)
+        assertGoodbyeWorldInPatchFileContents(patchFile, CUSTOM_SRC_DIR)
+    }
+
+    private fun createHelloWorldJavaInterfaceFile(sourceDir: String) {
         createJavaFile(projectDir, sourceDir, "HelloWorld.java", HELLO_WORLD_JAVA_INTERFACE)
     }
 
-    private fun createJavaClassFile(sourceDir: String) {
+    private fun createHelloWorldJavaClassFile(sourceDir: String) {
         createJavaFile(projectDir, sourceDir, "HelloWorldImpl.java", HELLO_WORLD_JAVA_CLASS)
+    }
+
+    private fun createGoodbyeWorldJavaInterfaceFile(sourceDir: String) {
+        createJavaFile(projectDir, sourceDir, "GoodbyeWorld.java", GOODBYE_WORLD_JAVA_INTERFACE)
+    }
+
+    private fun createGoodbyeWorldJavaClassFile(sourceDir: String) {
+        createJavaFile(projectDir, sourceDir, "GoodbyeWorldImpl.java", GOODBYE_WORLD_JAVA_CLASS)
     }
 
     private fun createJavaFile(projectDir: File, sourceDir: String, fileName: String, content: String) {
@@ -233,19 +288,32 @@ class RewriteDryRunSourceSetTest : GradleRunnerTest {
         File(dir, "foo.yml").writeText("foo: test")
     }
 
-    private fun assertTaskOutcome(result: BuildResult) {
+    private fun assertDryRunTaskOutcome(result: BuildResult) {
         val rewriteDryRunResult = result.task(":${TASK_NAME}")!!
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 
-    private fun assertPatchFileContents(sourceDir: String) {
+    private fun assertPatchFile(): File {
         val patchFile = File(projectDir, "build/reports/rewrite/rewrite.patch")
         assertThat(patchFile.exists()).isTrue
+        return patchFile
+    }
+
+    private fun assertHelloWorldInPatchFileContents(patchFile: File, javaSourceDir: String) {
         assertThat(patchFile.readText()).contains(
-            "rename from ${sourceDir}/org/openrewrite/before/HelloWorld.java",
-            "rename to ${sourceDir}/org/openrewrite/after/HelloWorld.java",
-            "rename from ${sourceDir}/org/openrewrite/before/HelloWorldImpl.java",
-            "rename to ${sourceDir}/org/openrewrite/after/HelloWorldImpl.java"
+            "rename from ${javaSourceDir}/org/openrewrite/before/HelloWorld.java",
+            "rename to ${javaSourceDir}/org/openrewrite/after/HelloWorld.java",
+            "rename from ${javaSourceDir}/org/openrewrite/before/HelloWorldImpl.java",
+            "rename to ${javaSourceDir}/org/openrewrite/after/HelloWorldImpl.java"
+        )
+    }
+
+    private fun assertGoodbyeWorldInPatchFileContents(patchFile: File, javaSourceDir: String) {
+        assertThat(patchFile.readText()).contains(
+            "rename from ${javaSourceDir}/org/openrewrite/before/GoodbyeWorld.java",
+            "rename to ${javaSourceDir}/org/openrewrite/after/GoodbyeWorld.java",
+            "rename from ${javaSourceDir}/org/openrewrite/before/GoodbyeWorldImpl.java",
+            "rename to ${javaSourceDir}/org/openrewrite/after/GoodbyeWorldImpl.java"
         )
     }
 }
