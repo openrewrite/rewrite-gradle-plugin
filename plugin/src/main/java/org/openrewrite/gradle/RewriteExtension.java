@@ -29,7 +29,6 @@ import static java.util.Collections.emptyMap;
 
 @SuppressWarnings("unused")
 public class RewriteExtension {
-    private static final String magicalMetricsLogString = "LOG";
 
     private final List<String> activeRecipes = new ArrayList<>();
     private final List<String> activeStyles = new ArrayList<>();
