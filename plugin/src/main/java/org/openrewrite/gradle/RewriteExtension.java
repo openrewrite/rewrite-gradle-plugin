@@ -203,15 +203,6 @@ public class RewriteExtension {
         return rewriteGradleModelVersion;
     }
 
-    @Nullable
-    private String rewriteKotlinVersion;
-    public String getRewriteKotlinVersion() {
-        if (rewriteKotlinVersion == null) {
-            rewriteKotlinVersion = getVersionProps().getProperty("org.openrewrite:rewrite-kotlin");
-        }
-        return rewriteKotlinVersion;
-    }
-
     public void setRewriteVersion(String value) {
         rewriteVersion = value;
     }

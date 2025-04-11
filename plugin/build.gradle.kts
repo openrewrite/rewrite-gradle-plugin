@@ -104,7 +104,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-java-11")
     "rewriteDependencies"("org.openrewrite:rewrite-java-8")
     "rewriteDependencies"("org.openrewrite:rewrite-json")
-    "rewriteDependencies"("org.openrewrite:rewrite-kotlin:$latest")
+    "rewriteDependencies"("org.openrewrite:rewrite-kotlin")
     "rewriteDependencies"("org.openrewrite:rewrite-xml")
     "rewriteDependencies"("org.openrewrite:rewrite-yaml")
     "rewriteDependencies"("org.openrewrite:rewrite-properties")
