@@ -35,10 +35,7 @@ import org.gradle.api.tasks.TaskProvider;
 import org.jspecify.annotations.Nullable;
 
 import java.io.File;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Stream;
+import java.util.*;
 
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
 import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE;
@@ -155,14 +152,14 @@ public class RewritePlugin implements Plugin<Project> {
 
     private Set<File> getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
         if (resolvedDependencies == null) {
-            Dependency[] dependencies = Stream.concat(
-                    knownRewriteDependencies(extension, project.getDependencies()),
-                    rewriteConf.getDependencies().stream()
-            ).toArray(Dependency[]::new);
+            // Avoid Stream.concat here pending https://github.com/gradle/gradle/issues/33152
+            List<Dependency> dependencies = new ArrayList<>();
+            dependencies.addAll(knownRewriteDependencies(extension, project.getDependencies()));
+            dependencies.addAll(rewriteConf.getDependencies());
             // By using a detached configuration, we separate this dependency resolution from the rest of the project's
             // configuration. This also means that Gradle has no criteria with which to select between variants of
             // dependencies which expose differing capabilities. So those must be manually configured
-            Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies);
+            Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies.toArray(new Dependency[0]));
 
             try {
                 ObjectFactory objectFactory = project.getObjects();
@@ -189,9 +186,9 @@ public class RewritePlugin implements Plugin<Project> {
         return resolvedDependencies;
     }
 
-    private static Stream<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
+    private static Collection<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
         String rewriteVersion = extension.getRewriteVersion();
-        return Stream.of(
+        return Arrays.asList(
                 deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
