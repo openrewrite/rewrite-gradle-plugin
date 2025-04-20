@@ -203,6 +203,7 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("org.openrewrite:rewrite-maven:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-properties:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-protobuf:" + rewriteVersion),
+                deps.create("org.openrewrite:rewrite-toml:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-xml:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-yaml:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-polyglot:" + extension.getRewritePolyglotVersion()),
