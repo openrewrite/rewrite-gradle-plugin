@@ -1120,6 +1120,25 @@ public class DefaultProjectParser implements GradleProjectParser {
             logger.warn("Unable to walk file tree for project {}", subproject.getPath(), e);
         }
 
+        // if there is a gradle.lockfile or buildscript-gradle.lockfile parse it as plain text
+        // Can be renamed according to https://docs.gradle.org/current/userguide/dependency_locking.html#sec:configuring-the-per-project-lock-file-name-and-location
+        File lockfile = subproject.file("gradle.lockfile");
+        if(lockfile.exists()) {
+            sourceFiles = Stream.concat(sourceFiles,
+                    PlainTextParser.builder().build()
+                            .parse(singletonList(lockfile.toPath()), baseDir, ctx)
+                            .map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
+            );
+        }
+        File buildscriptLockfile = subproject.file("buildscript-gradle.lockfile");
+        if(buildscriptLockfile.exists()) {
+            sourceFiles = Stream.concat(sourceFiles,
+                    PlainTextParser.builder().build()
+                            .parse(singletonList(buildscriptLockfile.toPath()), baseDir, ctx)
+                            .map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
+            );
+        }
+
         return SourceFileStream.build("", s -> {
         }).concat(sourceFiles, gradleFileCount);
     }
