@@ -1717,4 +1717,77 @@ class RewriteRunTest : RewritePluginTest {
                 """.trimIndent()
             )
     }
+
+    @Test
+    fun canAddPropertyToGradlePropertiesFile(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            propertiesFile(
+                "gradle.properties", """
+                aaa=true
+                zzz=true
+            """.trimIndent()
+            )
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.testsuite.AddPropertyToGradlePropertiesFile
+                recipeList:
+                  - org.openrewrite.gradle.AddProperty:
+                      key: foobar.enabled
+                      value: true
+                      filePattern: gradle.properties
+            """
+            )
+            buildGradle(
+                """
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+                    }
+                }
+
+                rewrite {
+                    activeRecipe("org.openrewrite.testsuite.AddPropertyToGradlePropertiesFile")
+                }
+            """
+            )
+            subproject("sub") {
+                sourceSet("main") {
+                    java(
+                    """
+                        package com.foo;
+
+                        class A {
+                            void bar() {
+                                System.out.println("Hello world");
+                            }
+                        }
+                    """
+                )
+               }
+            }
+        }
+
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val propFile = projectDir.resolve("gradle.properties")
+
+        //language=properties
+        val expected = """
+            aaa=true
+            foobar.enabled=true
+            zzz=true
+        """.trimIndent()
+
+        assertThat(propFile.readText()).isEqualTo(expected)
+    }
 }
