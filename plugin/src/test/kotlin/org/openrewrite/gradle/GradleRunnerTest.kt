@@ -40,6 +40,21 @@ interface GradleRunnerTest {
             .build()
     }
 
+    fun runFailedGradle(testDir: File, vararg args: String): BuildResult {
+        return GradleRunner.create()
+            .withDebug(ManagementFactory.getRuntimeMXBean().inputArguments.toString().indexOf("-agentlib:jdwp") > 0)
+            .withProjectDir(testDir)
+            .apply {
+                if (gradleVersion != null) {
+                    withGradleVersion(gradleVersion)
+                }
+            }
+            .withArguments(*args)
+            .withPluginClasspath()
+            .forwardOutput()
+            .buildAndFail()
+    }
+
     fun lessThanGradle6_1(): Boolean {
         val currentVersion = if (gradleVersion == null) GradleVersion.current() else GradleVersion.version(gradleVersion)
         return currentVersion < GradleVersion.version("6.1")

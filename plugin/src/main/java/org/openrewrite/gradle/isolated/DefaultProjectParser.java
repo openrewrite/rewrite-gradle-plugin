@@ -333,7 +333,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
     }
 
-    public void dryRun(Path reportPath, ResultsContainer results) {
+    private void dryRun(Path reportPath, ResultsContainer results) {
         try {
             RuntimeException firstException = results.getFirstException();
             if (firstException != null) {
@@ -419,7 +419,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         run(listResults(ctx), ctx);
     }
 
-    public void run(ResultsContainer results, ExecutionContext ctx) {
+    private void run(ResultsContainer results, ExecutionContext ctx) {
         try {
             if (results.isNotEmpty()) {
                 Duration estimateTimeSaved = Duration.ZERO;

@@ -32,7 +32,9 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.openrewrite.Issue
 import org.openrewrite.gradle.fixtures.GradleFixtures.Companion.REWRITE_BUILD_GRADLE
-import java.io.*
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileWriter
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.time.Instant
@@ -497,7 +499,7 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(projectDir, taskName())
+        val result = runGradle(projectDir, taskName(), "-Drewrite.acceptedLicense.MSAL")
         val rewriteRunResult = result.task(":${taskName()}")!!
 
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
@@ -1756,7 +1758,7 @@ class RewriteRunTest : RewritePluginTest {
             )
         }
         assertThat(File(projectDir, "build.gradle").exists()).isTrue
-        val buildResult = runGradle(projectDir, taskName())
+        val buildResult = runFailedGradle(projectDir, taskName())
         assertThat(buildResult.task(":${taskName()}")!!.outcome).isEqualTo(TaskOutcome.FAILED)
         restoreUserHome(originalHome)
     }
@@ -1808,15 +1810,9 @@ class RewriteRunTest : RewritePluginTest {
     ) {
         val originalHome = overwriteUserHome(userHome)
         val userHomeRewriteLicenseConfig = File(System.getProperty("user.home") + "/.rewrite/licenses.properties")
-        try {
-            val writer = BufferedWriter(FileWriter(userHomeRewriteLicenseConfig))
-            if (!userHomeRewriteLicenseConfig.exists()) {
-                userHomeRewriteLicenseConfig.mkdirs()
-                userHomeRewriteLicenseConfig.createNewFile()
-            }
+        userHomeRewriteLicenseConfig.parentFile.mkdirs()
+        BufferedWriter(FileWriter(userHomeRewriteLicenseConfig)).use { writer ->
             writer.write("Moderne Source Available License=" + Instant.now().epochSecond)
-        } catch (e: IOException) {
-            throw UncheckedIOException(e)
         }
         gradleProject(projectDir) {
             rewriteYaml(
