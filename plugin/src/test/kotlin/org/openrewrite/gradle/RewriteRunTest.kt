@@ -25,10 +25,17 @@ import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.*
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.api.parallel.ResourceAccessMode
+import org.junit.jupiter.api.parallel.ResourceLock
+import org.junit.jupiter.api.parallel.Resources
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.openrewrite.Issue
-import java.io.File
+import org.openrewrite.gradle.fixtures.GradleFixtures.Companion.REWRITE_BUILD_GRADLE
+import java.io.*
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
+import java.time.Instant
 
 @Suppress("GroovyUnusedAssignment")
 class RewriteRunTest : RewritePluginTest {
@@ -1304,7 +1311,7 @@ class RewriteRunTest : RewritePluginTest {
             }
         }
 
-        val result = runGradle(buildRoot, taskName())
+        val result = runGradle(buildRoot, taskName(), "-Drewrite.acceptedLicense.MSAL")
         val rewriteRunResult = result.task(":${taskName()}")!!
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
         val javaFile = buildRoot.resolve("src/test/java/com/foo/ATest.java")
@@ -1716,5 +1723,250 @@ class RewriteRunTest : RewritePluginTest {
                 }
                 """.trimIndent()
             )
+    }
+
+    @Test
+    @ResourceLock(value = Resources.SYSTEM_PROPERTIES, mode = ResourceAccessMode.READ_WRITE)
+    fun `fails if not all licenses are accepted`(
+        @TempDir projectDir: File,
+        @TempDir userHome: File
+    ) {
+        val originalHome = overwriteUserHome(userHome)
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.gradle.SayHello
+                recipeList:
+                  - org.openrewrite.java.ChangeMethodName:
+                      methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
+                      newMethodName: sayHello
+            """
+            )
+            buildGradle(
+                REWRITE_BUILD_GRADLE + """
+                rewrite {
+                    activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
+                }
+                dependencies {
+                    rewrite(platform("org.openrewrite.recipe:rewrite-recipe-bom:latest.release"))
+                    rewrite("org.openrewrite.recipe:rewrite-migrate-java")
+                }
+            """
+            )
+        }
+        assertThat(File(projectDir, "build.gradle").exists()).isTrue
+        val buildResult = runGradle(projectDir, taskName())
+        assertThat(buildResult.task(":${taskName()}")!!.outcome).isEqualTo(TaskOutcome.FAILED)
+        restoreUserHome(originalHome)
+    }
+
+    @Test
+    @ResourceLock(value = Resources.SYSTEM_PROPERTIES, mode = ResourceAccessMode.READ_WRITE)
+    fun `stores the accepted licenses in the licenses properties file`(
+        @TempDir projectDir: File,
+        @TempDir userHome: File
+    ) {
+        val originalHome = overwriteUserHome(userHome)
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.gradle.SayHello
+                recipeList:
+                  - org.openrewrite.java.ChangeMethodName:
+                      methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
+                      newMethodName: sayHello
+            """
+            )
+            buildGradle(
+                REWRITE_BUILD_GRADLE + """
+                rewrite {
+                    activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
+                }
+                dependencies {
+                    rewrite(platform("org.openrewrite.recipe:rewrite-recipe-bom:latest.release"))
+                    rewrite("org.openrewrite.recipe:rewrite-migrate-java")
+                }
+            """
+            )
+        }
+        assertThat(File(projectDir, "build.gradle").exists()).isTrue
+        val buildResult = runGradle(projectDir, taskName(), "-Drewrite.acceptedLicense.MSAL")
+        assertThat(buildResult.task(":${taskName()}")!!.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        assertThat(File(System.getProperty("user.home") + "/.rewrite/licenses.properties"))
+            .exists()
+            .content().contains("Moderne Source Available License=")
+        restoreUserHome(originalHome)
+    }
+
+    @Test
+    @ResourceLock(value = Resources.SYSTEM_PROPERTIES, mode = ResourceAccessMode.READ_WRITE)
+    fun `can accept license by rewrite folder properties file in user home`(
+        @TempDir projectDir: File,
+        @TempDir userHome: File
+    ) {
+        val originalHome = overwriteUserHome(userHome)
+        val userHomeRewriteLicenseConfig = File(System.getProperty("user.home") + "/.rewrite/licenses.properties")
+        try {
+            val writer = BufferedWriter(FileWriter(userHomeRewriteLicenseConfig))
+            if (!userHomeRewriteLicenseConfig.exists()) {
+                userHomeRewriteLicenseConfig.mkdirs()
+                userHomeRewriteLicenseConfig.createNewFile()
+            }
+            writer.write("Moderne Source Available License=" + Instant.now().epochSecond)
+        } catch (e: IOException) {
+            throw UncheckedIOException(e)
+        }
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.gradle.SayHello
+                recipeList:
+                  - org.openrewrite.java.ChangeMethodName:
+                      methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
+                      newMethodName: sayHello
+            """
+            )
+            buildGradle(
+                REWRITE_BUILD_GRADLE + """
+                rewrite {
+                    activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
+                }
+                dependencies {
+                    rewrite(platform("org.openrewrite.recipe:rewrite-recipe-bom:latest.release"))
+                    rewrite("org.openrewrite.recipe:rewrite-migrate-java")
+                }
+            """
+            )
+        }
+        assertThat(File(projectDir, "build.gradle").exists()).isTrue
+        val buildResult = runGradle(projectDir, taskName())
+        assertThat(buildResult.task(":${taskName()}")!!.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        restoreUserHome(originalHome)
+    }
+
+    @Test
+    @ResourceLock(value = Resources.SYSTEM_PROPERTIES, mode = ResourceAccessMode.READ_WRITE)
+    fun `can accept license by JVM args`(
+        @TempDir projectDir: File,
+        @TempDir userHome: File
+    ) {
+        val originalHome = overwriteUserHome(userHome)
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.gradle.SayHello
+                recipeList:
+                  - org.openrewrite.java.ChangeMethodName:
+                      methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
+                      newMethodName: sayHello
+            """
+            )
+            buildGradle(
+                REWRITE_BUILD_GRADLE + """
+                rewrite {
+                    activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
+                }
+                dependencies {
+                    rewrite(platform("org.openrewrite.recipe:rewrite-recipe-bom:latest.release"))
+                    rewrite("org.openrewrite.recipe:rewrite-migrate-java")
+                }
+            """
+            )
+        }
+        assertThat(File(projectDir, "build.gradle").exists()).isTrue
+        val buildResult = runGradle(projectDir, taskName(), "-Drewrite.acceptedLicense.MSAL")
+        assertThat(buildResult.task(":${taskName()}")!!.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        restoreUserHome(originalHome)
+    }
+
+    @ParameterizedTest
+    @CsvSource("MSAL", "Moderne Source Available License")
+    @ResourceLock(value = Resources.SYSTEM_PROPERTIES, mode = ResourceAccessMode.READ_WRITE)
+    fun `can accept license by extension`(
+        license: String,
+        @TempDir projectDir: File,
+        @TempDir userHome: File
+    ) {
+        val originalHome = overwriteUserHome(userHome)
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.gradle.SayHello
+                recipeList:
+                  - org.openrewrite.java.ChangeMethodName:
+                      methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
+                      newMethodName: sayHello
+            """
+            )
+            buildGradle(
+                REWRITE_BUILD_GRADLE + """
+                rewrite {
+                    activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
+                    acceptedLicenses("$license")
+                }
+                dependencies {
+                    rewrite(platform("org.openrewrite.recipe:rewrite-recipe-bom:latest.release"))
+                    rewrite("org.openrewrite.recipe:rewrite-migrate-java")
+                }
+            """
+            )
+        }
+        assertThat(File(projectDir, "build.gradle").exists()).isTrue
+        val buildResult = runGradle(projectDir, taskName())
+        assertThat(buildResult.task(":${taskName()}")!!.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        restoreUserHome(originalHome)
+    }
+
+    @Test
+    @ResourceLock(value = Resources.SYSTEM_PROPERTIES, mode = ResourceAccessMode.READ_WRITE)
+    fun `remembers the accepted licenses between runs`(
+        @TempDir projectDir: File,
+        @TempDir userHome: File
+    ) {
+        val originalHome = overwriteUserHome(userHome)
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.gradle.SayHello
+                recipeList:
+                  - org.openrewrite.java.ChangeMethodName:
+                      methodPattern: org.openrewrite.before.HelloWorld sayGoodbye()
+                      newMethodName: sayHello
+            """
+            )
+            buildGradle(
+                REWRITE_BUILD_GRADLE + """
+                rewrite {
+                    activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
+                }
+                dependencies {
+                    rewrite(platform("org.openrewrite.recipe:rewrite-recipe-bom:latest.release"))
+                    rewrite("org.openrewrite.recipe:rewrite-migrate-java")
+                }
+            """
+            )
+        }
+        assertThat(File(projectDir, "build.gradle").exists()).isTrue
+        var buildResult = runGradle(projectDir, taskName(), "-Drewrite.acceptedLicense.MSAL")
+        assertThat(buildResult.task(":${taskName()}")!!.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        buildResult = runGradle(projectDir, taskName())
+        assertThat(buildResult.task(":${taskName()}")!!.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        restoreUserHome(originalHome)
+    }
+
+    fun overwriteUserHome(newUserHome: File): String {
+        val originalHome = System.getProperty("user.home")
+        System.setProperty("user.home", newUserHome.toString())
+        return originalHome;
+    }
+
+    fun restoreUserHome(userHome: String) {
+        System.setProperty("user.home", userHome)
     }
 }

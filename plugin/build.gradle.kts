@@ -117,6 +117,7 @@ dependencies {
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
+    implementation("org.openrewrite.recipe:rewrite-all:latest.integration")
     compileOnly("com.android.tools.build:gradle:7.0.4")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
     compileOnly("com.google.guava:guava:latest.release")

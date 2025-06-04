@@ -30,6 +30,7 @@ import static java.util.Collections.emptyMap;
 @SuppressWarnings("unused")
 public class RewriteExtension {
 
+    private final List<String> acceptedLicenses = new ArrayList<>();
     private final List<String> activeRecipes = new ArrayList<>();
     private final List<String> activeStyles = new ArrayList<>();
     private boolean configFileSetDeliberately;
@@ -129,6 +130,19 @@ public class RewriteExtension {
         return configFile;
     }
 
+    public void acceptedLicenses(String... acceptedLicenses) {
+        this.acceptedLicenses.addAll(asList(acceptedLicenses));
+    }
+
+    public void setAcceptedLicenses(List<String> acceptedLicenses) {
+        this.acceptedLicenses.clear();
+        this.acceptedLicenses.addAll(acceptedLicenses);
+    }
+
+    public List<String> getAcceptedLicenses() {
+        return acceptedLicenses;
+    }
+
     public void activeRecipe(String... recipes) {
         activeRecipes.addAll(asList(recipes));
     }
@@ -140,6 +154,10 @@ public class RewriteExtension {
     public void setActiveRecipes(List<String> activeRecipes) {
         this.activeRecipes.clear();
         this.activeRecipes.addAll(activeRecipes);
+    }
+
+    public List<String> getActiveRecipes() {
+        return activeRecipes;
     }
 
     public void activeStyle(String... styles) {
@@ -157,10 +175,6 @@ public class RewriteExtension {
 
     public List<String> getActiveStyles() {
         return activeStyles;
-    }
-
-    public List<String> getActiveRecipes() {
-        return activeRecipes;
     }
 
     public Properties getVersionProps() {

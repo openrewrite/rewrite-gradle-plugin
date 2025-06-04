@@ -42,10 +42,7 @@ import org.openrewrite.binary.Binary;
 import org.openrewrite.config.Environment;
 import org.openrewrite.config.RecipeDescriptor;
 import org.openrewrite.config.YamlResourceLoader;
-import org.openrewrite.gradle.GradleParser;
-import org.openrewrite.gradle.GradleProjectParser;
-import org.openrewrite.gradle.RewriteExtension;
-import org.openrewrite.gradle.SanitizedMarkerPrinter;
+import org.openrewrite.gradle.*;
 import org.openrewrite.gradle.marker.GradleProject;
 import org.openrewrite.gradle.marker.GradleProjectBuilder;
 import org.openrewrite.gradle.marker.GradleSettings;
@@ -294,6 +291,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     @Override
     public void dryRun(Path reportPath, boolean dumpGcActivity, Consumer<Throwable> onError) {
+        LicenseVerifier.verifyAllLicensesAccepted(environment(), extension.getAcceptedLicenses());
         ParsingExecutionContextView ctx = view(new InMemoryExecutionContext(onError));
         if (dumpGcActivity) {
             SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
@@ -416,6 +414,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     @Override
     public void run(Consumer<Throwable> onError) {
+        LicenseVerifier.verifyAllLicensesAccepted(environment(), extension.getAcceptedLicenses());
         ExecutionContext ctx = new InMemoryExecutionContext(onError);
         run(listResults(ctx), ctx);
     }
