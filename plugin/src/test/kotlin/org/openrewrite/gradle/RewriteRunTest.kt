@@ -938,8 +938,8 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(aText).isEqualTo(expected)
     }
 
-    @Test
     @DisabledIf("lessThanGradle6_1")
+    @Test
     fun groovySourceGetsTypesFromJavaSource(@TempDir projectDir: File) {
         gradleProject(projectDir) {
             rewriteYaml(
