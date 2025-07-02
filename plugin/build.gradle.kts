@@ -37,7 +37,7 @@ repositories {
         }
 
         maven {
-            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
+            url = uri("https://central.sonatype.com/repository/maven-snapshots")
         }
     }
 
@@ -121,7 +121,7 @@ dependencies {
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
     compileOnly("com.google.guava:guava:latest.release")
 
-    testImplementation(platform("org.junit:junit-bom:latest.release"))
+    testImplementation(platform("org.junit:junit-bom:5.+"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testImplementation("org.openrewrite.tools:jgit:latest.release")

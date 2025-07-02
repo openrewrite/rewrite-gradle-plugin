@@ -54,7 +54,7 @@ pluginManagement {
     repositories {
         // ...
         maven {
-            url = uri("https://oss.sonatype.org/content/repositories/snapshots/")
+            url = uri("https://central.sonatype.com/repository/maven-snapshots/")
         }
         // ...
         // you'll likely also need this if you don't have a pluginManagement section already:
