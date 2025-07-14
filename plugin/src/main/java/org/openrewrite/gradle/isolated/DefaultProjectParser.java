@@ -655,11 +655,11 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension") ||
                 subproject.getExtensions()
-                           .findByName("kotlin") != null && subproject.getExtensions()
-                           .getByName("kotlin")
-                           .getClass()
-                           .getCanonicalName()
-                           .startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
+                        .findByName("kotlin") != null && subproject.getExtensions()
+                        .getByName("kotlin")
+                        .getClass()
+                        .getCanonicalName()
+                        .startsWith("org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension")) {
                 sourceFileStream = sourceFileStream.concat(parseMultiplatformKotlinProject(
                         subproject,
                         exclusions,
@@ -719,8 +719,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(nonProjectResources, nonProjectResources.size());
 
-            progressBar.setMax(sourceFileStream.size());
-            return sourceFileStream.map(addProvenance(projectProvenance)).peek(it -> progressBar.step());
+            return sourceFileStream.map(addProvenance(projectProvenance));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -1123,7 +1122,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         // if there is a gradle.lockfile or buildscript-gradle.lockfile parse it as plain text
         // Can be renamed according to https://docs.gradle.org/current/userguide/dependency_locking.html#sec:configuring-the-per-project-lock-file-name-and-location
         File lockfile = subproject.file("gradle.lockfile");
-        if(lockfile.exists()) {
+        if (lockfile.exists()) {
             sourceFiles = Stream.concat(sourceFiles,
                     PlainTextParser.builder().build()
                             .parse(singletonList(lockfile.toPath()), baseDir, ctx)
@@ -1131,7 +1130,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             );
         }
         File buildscriptLockfile = subproject.file("buildscript-gradle.lockfile");
-        if(buildscriptLockfile.exists()) {
+        if (buildscriptLockfile.exists()) {
             sourceFiles = Stream.concat(sourceFiles,
                     PlainTextParser.builder().build()
                             .parse(singletonList(buildscriptLockfile.toPath()), baseDir, ctx)
