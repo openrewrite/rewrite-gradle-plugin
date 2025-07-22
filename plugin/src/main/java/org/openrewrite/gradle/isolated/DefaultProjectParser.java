@@ -1380,9 +1380,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             failedValidations.forEach(failedValidation -> logger.error("Recipe validation error in {}: {}", failedValidation.getProperty(), failedValidation.getMessage(), failedValidation.getException()));
             if (extension.getFailOnInvalidActiveRecipes()) {
                 throw new RuntimeException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
-            } else {
-                logger.error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
             }
+            logger.error("Recipe validation errors detected as part of one or more activeRecipe(s). Execution will continue regardless.");
         }
 
         org.openrewrite.java.style.Autodetect.Detector javaDetector = org.openrewrite.java.style.Autodetect.detector();
@@ -1504,11 +1503,11 @@ public class DefaultProjectParser implements GradleProjectParser {
         return sourceSets.stream().sorted(Comparator.comparingInt(sourceSet -> {
             if ("main".equals(sourceSet.getName())) {
                 return 0;
-            } else if ("test".equals(sourceSet.getName())) {
-                return 1;
-            } else {
-                return 2;
             }
+            if ("test".equals(sourceSet.getName())) {
+                return 1;
+            }
+            return 2;
         })).collect(toList());
     }
 

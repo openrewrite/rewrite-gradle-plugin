@@ -132,14 +132,14 @@ public class RewritePlugin implements Plugin<Project> {
             Set<String> sourceDirs = new HashSet<>();
             project.afterEvaluate(unused -> sourceSets.stream()
                     .sorted(Comparator.comparingInt(sourceSet -> {
-                        if ("main".equals(sourceSet.getName())) {
-                            return 0;
-                        } else if ("test".equals(sourceSet.getName())) {
-                            return 1;
-                        } else {
-                            return 2;
-                        }
-                    })).forEach(sourceSet -> {
+                if ("main".equals(sourceSet.getName())) {
+                    return 0;
+                }
+                if ("test".equals(sourceSet.getName())) {
+                    return 1;
+                }
+                return 2;
+            })).forEach(sourceSet -> {
                         for (File file : sourceSet.getAllJava().getSourceDirectories().getFiles()) {
                             if (!sourceDirs.add(file.getAbsolutePath())) {
                                 TaskProvider<Task> compileTask = project.getTasks().named(sourceSet.getCompileJavaTaskName());

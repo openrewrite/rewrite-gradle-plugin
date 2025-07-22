@@ -142,7 +142,8 @@ public class DelegatingProjectParser implements GradleProjectParser {
                     resourcePath = resourcePath.substring(0, indexOfBang);
                 }
                 return new URI(resourcePath).toURL();
-            } else if (resourcePath.startsWith("file:")) {
+            }
+            if (resourcePath.startsWith("file:")) {
                 return new URI(resourcePath.substring(0, resourcePath.lastIndexOf("/main/") + 6)).toURL();
             }
             // This code path only gets taken when running the tests against older versions of Gradle
@@ -165,9 +166,8 @@ public class DelegatingProjectParser implements GradleProjectParser {
         } catch (InvocationTargetException e) {
             if (e.getTargetException() instanceof RuntimeException) {
                 throw (RuntimeException) e.getTargetException();
-            } else {
-                throw new RuntimeException(e.getTargetException());
             }
+            throw new RuntimeException(e.getTargetException());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
