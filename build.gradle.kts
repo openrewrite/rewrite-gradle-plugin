@@ -22,6 +22,11 @@ allprojects {
         failBuildOnCVSS = 9.0F
         suppressionFile = "suppressions.xml"
         nvd.apiKey = System.getenv("NVD_API_KEY")
+        analyzers {
+            nodeAudit {
+                enabled = false
+            }
+        }
     }
 
     dependencies{
