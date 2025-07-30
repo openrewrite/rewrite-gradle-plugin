@@ -46,8 +46,10 @@ import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.*;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 class AndroidProjectParser {
     private static final Logger logger = Logging.getLogger(DefaultProjectParser.class);
@@ -99,14 +101,14 @@ class AndroidProjectParser {
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
                         .filter(path -> !alreadyParsed.contains(path))
-                        .collect(Collectors.toSet());
+                        .collect(toSet());
 
                 List<Path> javaPaths = javaAndKotlinPaths.stream()
                         .filter(path -> path.toString().endsWith(".java"))
-                        .collect(Collectors.toList());
+                        .collect(toList());
                 List<Path> kotlinPaths = javaAndKotlinPaths.stream()
                         .filter(path -> path.toString().endsWith(".kt"))
-                        .collect(Collectors.toList());
+                        .collect(toList());
 
                 JavaTypeCache javaTypeCache = new JavaTypeCache();
 
@@ -168,7 +170,7 @@ class AndroidProjectParser {
                                 omniParser.acceptedPaths(baseDir, resourcesDir)
                                         .stream()
                                         .filter(path -> !alreadyParsed.contains(path))
-                                        .collect(Collectors.toSet());
+                                        .collect(toSet());
                         sourceSetSourceFiles = Stream.concat(
                                 sourceSetSourceFiles,
                                 omniParser.parse(accepted, baseDir, ctx)

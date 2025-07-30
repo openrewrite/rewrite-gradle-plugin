@@ -23,7 +23,9 @@ import org.gradle.api.logging.Logging;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.Collectors;
+
+import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toSet;
 
 class AndroidProjectVariant {
     private static final Logger logger = Logging.getLogger(AndroidProjectVariant.class);
@@ -62,15 +64,15 @@ class AndroidProjectVariant {
     }
 
     Set<Path> getJavaDirectories(String sourceSetName) {
-        return javaSourceSets.computeIfAbsent(sourceSetName, key -> Collections.emptySet());
+        return javaSourceSets.computeIfAbsent(sourceSetName, key -> emptySet());
     }
 
     Set<Path> getKotlinDirectories(String sourceSetName) {
-        return kotlinSourceSets.computeIfAbsent(sourceSetName, key -> Collections.emptySet());
+        return kotlinSourceSets.computeIfAbsent(sourceSetName, key -> emptySet());
     }
 
     Set<Path> getResourcesDirectories(String sourceSetName) {
-        return resourcesSourceSets.computeIfAbsent(sourceSetName, key -> Collections.emptySet());
+        return resourcesSourceSets.computeIfAbsent(sourceSetName, key -> emptySet());
     }
 
     Set<Path> getCompileClasspath() {
@@ -132,7 +134,7 @@ class AndroidProjectVariant {
     }
 
     private static void addSourceSets(Map<String, Set<Path>> sourceSets, String name, Collection<File> directories) {
-        sourceSets.put(name, directories.stream().map(File::toPath).collect(Collectors.toSet()));
+        sourceSets.put(name, directories.stream().map(File::toPath).collect(toSet()));
     }
 
     private static boolean hasMethod(BaseVariant baseVariant, String methodName, Class<?>... paramTypes) {

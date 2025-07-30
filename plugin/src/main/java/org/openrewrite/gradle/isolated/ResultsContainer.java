@@ -31,6 +31,8 @@ import java.util.*;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
+import static java.util.Collections.emptyList;
+
 public class ResultsContainer {
     final Path projectRoot;
     final RecipeRun recipeRun;
@@ -141,7 +143,7 @@ public class ResultsContainer {
             maybeEmptyDirectories.add(projectRoot.resolve(result.getBefore().getSourcePath()).getParent());
         }
         if (maybeEmptyDirectories.isEmpty()) {
-            return Collections.emptyList();
+            return emptyList();
         }
         List<Path> emptyDirectories = new ArrayList<>(maybeEmptyDirectories.size());
         for (Path maybeEmptyDirectory : maybeEmptyDirectories) {

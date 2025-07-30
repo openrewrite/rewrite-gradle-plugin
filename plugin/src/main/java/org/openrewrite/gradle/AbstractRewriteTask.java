@@ -26,10 +26,11 @@ import org.gradle.util.GradleVersion;
 import javax.inject.Inject;
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
+
+import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.toSet;
 
 public abstract class AbstractRewriteTask extends DefaultTask {
     protected Provider<Set<File>> resolvedDependencies;
@@ -81,11 +82,11 @@ public abstract class AbstractRewriteTask extends DefaultTask {
             }
             Set<File> deps = resolvedDependencies.getOrNull();
             if (deps == null) {
-                deps = Collections.emptySet();
+                deps = emptySet();
             }
             Set<Path> classpath = deps.stream()
                     .map(File::toPath)
-                    .collect(Collectors.toSet());
+                    .collect(toSet());
             gpp = new DelegatingProjectParser(getProject(), extension, classpath);
         }
         //noinspection unchecked

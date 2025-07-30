@@ -89,7 +89,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.Collections.*;
@@ -765,7 +764,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     .map(Path::toAbsolutePath)
                     .map(Path::normalize)
                     .distinct()
-                    .collect(Collectors.toList());
+                    .collect(toList());
 
             List<Path> javaPaths = unparsedSources.stream()
                     .filter(path -> !alreadyParsed.contains(path))

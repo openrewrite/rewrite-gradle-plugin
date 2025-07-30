@@ -31,7 +31,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
 
 public class DelegatingProjectParser implements GradleProjectParser {
     @Nullable
@@ -51,7 +52,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
                             throw new RuntimeException(e);
                         }
                     })
-                    .collect(Collectors.toList());
+                    .collect(toList());
 
             @SuppressWarnings("ConstantConditions")
             URL currentJar = jarContainingResource(getClass()
