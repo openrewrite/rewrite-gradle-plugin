@@ -1083,7 +1083,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     String name = dirFromRoot.toString();
                     if (subproject.getLayout().getBuildDirectory().getAsFile().get().toPath().equals(dir) ||
                         name.startsWith(".") // Skip .gradle, .idea, .moderne, etc.
-                        || name.equals("out") // IntelliJ standard output directory
+                        || "out".equals(name) // IntelliJ standard output directory
                         || subproject.getSubprojects().stream()
                                 .anyMatch(sp -> dir.equals(sp.getProjectDir().toPath())) ||
                         subproject.getGradle().getIncludedBuilds().stream()
@@ -1368,7 +1368,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     protected ResultsContainer listResults(ExecutionContext ctx) {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
-        if (recipe.getName().equals("org.openrewrite.Recipe$Noop")) {
+        if ("org.openrewrite.Recipe$Noop".equals(recipe.getName())) {
             logger.warn("No recipes were activated. Activate a recipe with rewrite.activeRecipe(\"com.fully.qualified.RecipeClassName\") in your build file, or on the command line with -DactiveRecipe=com.fully.qualified.RecipeClassName");
             return new ResultsContainer(baseDir, null);
         }
