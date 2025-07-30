@@ -25,6 +25,7 @@ allprojects {
         analyzers {
             nodeAudit {
                 enabled = false
+                yarnEnabled = false
             }
         }
     }
