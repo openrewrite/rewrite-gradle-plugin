@@ -297,7 +297,7 @@ public class RewriteExtension {
                     "**/*.ksh",
                     "**/*.lock",
                     "**/lombok.config",
-                    "**/Makefile",
+                    "**/[mM]akefile",
                     "**/*.md",
                     "**/*.mf",
                     "**/META-INF/services/**",
