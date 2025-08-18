@@ -23,6 +23,7 @@ import org.gradle.api.DomainObjectSet;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.jspecify.annotations.Nullable;
 import org.openrewrite.ExecutionContext;
 import org.openrewrite.SourceFile;
 import org.openrewrite.Tree;
@@ -31,6 +32,7 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
+import org.openrewrite.jgit.lib.Repository;
 import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.polyglot.OmniParser;
 import org.openrewrite.polyglot.ProgressBar;
@@ -54,11 +56,13 @@ import static java.util.stream.Collectors.toSet;
 class AndroidProjectParser {
     private static final Logger logger = Logging.getLogger(DefaultProjectParser.class);
     private final Path baseDir;
+    private final @Nullable Repository repository;
     private final RewriteExtension rewriteExtension;
     private final List<NamedStyles> styles;
 
-    AndroidProjectParser(Path baseDir, RewriteExtension rewriteExtension, List<NamedStyles> styles) {
+    AndroidProjectParser(Path baseDir, @Nullable Repository repository, RewriteExtension rewriteExtension, List<NamedStyles> styles) {
         this.baseDir = baseDir;
+        this.repository = repository;
         this.rewriteExtension = rewriteExtension;
         this.styles = styles;
     }
@@ -280,7 +284,7 @@ class AndroidProjectParser {
                 .typeCache(javaTypeCache)
                 .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
                 .build()).map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
-            if (DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath()
+            if (DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath()
                     .startsWith(buildDir)) {
                 return null;
             }
@@ -304,7 +308,7 @@ class AndroidProjectParser {
                 .typeCache(javaTypeCache)
                 .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
                 .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
-            if (DefaultProjectParser.isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath()
+            if (DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath()
                     .startsWith(buildDir)) {
                 return null;
             }
