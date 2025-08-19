@@ -1356,6 +1356,17 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     static boolean isExcluded(@Nullable Repository repository, Collection<PathMatcher> exclusions, Path path) {
+        for (PathMatcher excluded : exclusions) {
+            if (excluded.matches(path)) {
+                return true;
+            }
+        }
+        // PathMather will not evaluate the path "build.gradle" to be matched by the pattern "**/build.gradle"
+        // This is counter-intuitive for most users and would otherwise require separate exclusions for files at the root and files in subdirectories
+        if (!path.isAbsolute() && !path.startsWith(File.separator)) {
+            return isExcluded(repository, exclusions, Paths.get("/" + path));
+        }
+
         if (repository != null) {
             String repoRelativePath = PathUtils.separatorsToUnix(path.toString());
             if (repoRelativePath.isEmpty()) {
@@ -1381,16 +1392,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
-        }
-        for (PathMatcher excluded : exclusions) {
-            if (excluded.matches(path)) {
-                return true;
-            }
-        }
-        // PathMather will not evaluate the path "build.gradle" to be matched by the pattern "**/build.gradle"
-        // This is counter-intuitive for most users and would otherwise require separate exclusions for files at the root and files in subdirectories
-        if (!path.isAbsolute() && !path.startsWith(File.separator)) {
-            return isExcluded(repository, exclusions, Paths.get("/" + path));
         }
         return false;
     }
