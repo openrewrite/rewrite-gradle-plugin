@@ -72,7 +72,7 @@ configurations.all {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(25))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
@@ -99,6 +99,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-core")
     "rewriteDependencies"("org.openrewrite:rewrite-hcl")
     "rewriteDependencies"("org.openrewrite:rewrite-java")
+    "rewriteDependencies"("org.openrewrite:rewrite-java-25")
     "rewriteDependencies"("org.openrewrite:rewrite-java-21")
     "rewriteDependencies"("org.openrewrite:rewrite-java-17")
     "rewriteDependencies"("org.openrewrite:rewrite-java-11")
