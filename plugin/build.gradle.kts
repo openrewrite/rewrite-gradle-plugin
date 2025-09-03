@@ -113,7 +113,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite:rewrite-groovy")
     "rewriteDependencies"("org.openrewrite:rewrite-gradle")
     "rewriteDependencies"("org.openrewrite:rewrite-polyglot:$latest")
-    "rewriteDependencies"("org.openrewrite.gradle.tooling:model:$latest")
+    "rewriteDependencies"("org.openrewrite.gradle.tooling:model")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
