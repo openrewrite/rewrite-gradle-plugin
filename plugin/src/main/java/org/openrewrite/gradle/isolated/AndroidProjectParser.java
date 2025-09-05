@@ -43,6 +43,7 @@ import org.openrewrite.tree.ParsingExecutionContextView;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
@@ -52,6 +53,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
+import static org.openrewrite.tree.ParsingExecutionContextView.view;
 
 class AndroidProjectParser {
     private static final Logger logger = Logging.getLogger(DefaultProjectParser.class);
@@ -70,7 +72,6 @@ class AndroidProjectParser {
     SourceFileStream parseProjectSourceSets(Project project,
                                             ProgressBar progressBar,
                                             Path buildDir,
-                                            Charset sourceCharset,
                                             Set<Path> alreadyParsed,
                                             Collection<PathMatcher> exclusions,
                                             ExecutionContext ctx,
@@ -81,7 +82,7 @@ class AndroidProjectParser {
 
         for (AndroidProjectVariant variant : findAndroidProjectVariants(project)) {
             JavaVersion javaVersion = getJavaVersion(project);
-            final Charset javaSourceCharset = getSourceFileEncoding(project, sourceCharset);
+            final Charset javaSourceCharset = getSourceFileEncoding(project);
 
             for (String sourceSetName : variant.getSourceSetNames()) {
                 Stream<SourceFile> sourceSetSourceFiles = Stream.of();
@@ -155,7 +156,6 @@ class AndroidProjectParser {
                             ctx,
                             buildDir,
                             exclusions,
-                            javaSourceCharset,
                             javaVersion,
                             dependencyPaths,
                             javaTypeCache);
@@ -253,7 +253,7 @@ class AndroidProjectParser {
                 targetCompatibility);
     }
 
-    Charset getSourceFileEncoding(Project project, Charset defaultCharset) {
+    Charset getSourceFileEncoding(Project project) {
         Object extension = project.getExtensions().findByName("android");
         if (extension instanceof BaseExtension) {
             try {
@@ -265,7 +265,7 @@ class AndroidProjectParser {
                 logger.warn("Unable to determine Java source file encoding", e);
             }
         }
-        return defaultCharset;
+        return StandardCharsets.UTF_8; // Android defaults to UTF-8
     }
 
     private Stream<SourceFile> parseJavaFiles(List<Path> javaPaths,
@@ -276,43 +276,50 @@ class AndroidProjectParser {
                                               JavaVersion javaVersion,
                                               Set<Path> dependencyPaths,
                                               JavaTypeCache javaTypeCache) {
-        ParsingExecutionContextView.view(ctx).setCharset(javaSourceCharset);
-
         return Stream.of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
-                .classpath(dependencyPaths)
-                .styles(styles)
-                .typeCache(javaTypeCache)
-                .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
-                .build()).map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
-            if (DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath()
-                    .startsWith(buildDir)) {
-                return null;
-            }
-            return cu;
-        }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                        .classpath(dependencyPaths)
+                        .styles(styles)
+                        .typeCache(javaTypeCache)
+                        .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
+                        .build())
+                .map(Supplier::get)
+                .flatMap(jp -> {
+                    view(ctx).setCharset(javaSourceCharset);
+                    return jp.parse(javaPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
+                })
+                .map(cu -> {
+                    if (DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath()
+                            .startsWith(buildDir)) {
+                        return null;
+                    }
+                    return cu;
+                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 
     private Stream<SourceFile> parseKotlinFiles(List<Path> kotlinPaths,
                                                 ExecutionContext ctx,
                                                 Path buildDir,
                                                 Collection<PathMatcher> exclusions,
-                                                Charset javaSourceCharset,
                                                 JavaVersion javaVersion,
                                                 Set<Path> dependencyPaths,
                                                 JavaTypeCache javaTypeCache) {
-        ParsingExecutionContextView.view(ctx).setCharset(javaSourceCharset);
-
         return Stream.of((Supplier<KotlinParser>) () -> KotlinParser.builder()
-                .classpath(dependencyPaths)
-                .styles(styles)
-                .typeCache(javaTypeCache)
-                .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
-                .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
-            if (DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath()
-                    .startsWith(buildDir)) {
-                return null;
-            }
-            return cu;
-        }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                        .classpath(dependencyPaths)
+                        .styles(styles)
+                        .typeCache(javaTypeCache)
+                        .logCompilationWarningsAndErrors(rewriteExtension.getLogCompilationWarningsAndErrors())
+                        .build())
+                .map(Supplier::get)
+                .flatMap(kp -> {
+                    view(ctx).setCharset(StandardCharsets.UTF_8); // Kotlin requires UTF-8
+                    return kp.parse(kotlinPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
+                })
+                .map(cu -> {
+                    if (DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath()
+                            .startsWith(buildDir)) {
+                        return null;
+                    }
+                    return cu;
+                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 }

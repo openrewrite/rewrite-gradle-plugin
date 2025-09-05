@@ -21,6 +21,7 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.initialization.Settings;
@@ -31,6 +32,7 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.compile.CompileOptions;
+import org.gradle.api.tasks.compile.GroovyCompile;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.invocation.DefaultGradle;
@@ -686,8 +688,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                         ctx));
             }
 
-            Charset sourceCharset = Charset.forName(System.getProperty("file.encoding", "UTF-8"));
-
             Path buildDirPath = baseDir.relativize(subproject.getLayout()
                     .getBuildDirectory()
                     .get()
@@ -700,7 +700,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                         subproject,
                         progressBar,
                         buildDirPath,
-                        sourceCharset,
                         alreadyParsed,
                         exclusions,
                         ctx);
@@ -709,7 +708,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                         subproject,
                         progressBar,
                         buildDirPath,
-                        sourceCharset,
                         alreadyParsed,
                         exclusions,
                         ctx);
@@ -747,7 +745,6 @@ public class DefaultProjectParser implements GradleProjectParser {
     private SourceFileStream parseGradleProjectSourceSets(Project subproject,
                                                           ProgressBar progressBar,
                                                           Path buildDir,
-                                                          Charset sourceCharset,
                                                           Set<Path> alreadyParsed,
                                                           Collection<PathMatcher> exclusions,
                                                           ExecutionContext ctx) {
@@ -763,8 +760,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaCompile javaCompileTask = (JavaCompile) subproject.getTasks()
                     .getByName(sourceSet.getCompileJavaTaskName());
             JavaVersion javaVersion = getJavaVersion(javaCompileTask);
-
-            final Charset javaSourceCharset = getSourceFileEncoding(javaCompileTask, sourceCharset);
 
             List<Path> unparsedSources = sourceSet.getAllSource()
                     .getSourceDirectories()
@@ -818,7 +813,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         ctx,
                         buildDir,
                         exclusions,
-                        javaSourceCharset,
+                        getSourceFileEncoding(javaCompileTask.getOptions()),
                         javaVersion,
                         dependencyPaths,
                         javaTypeCache);
@@ -845,7 +840,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                             ctx,
                             buildDir,
                             exclusions,
-                            javaSourceCharset,
                             javaVersion,
                             dependencyPaths,
                             javaTypeCache);
@@ -873,11 +867,18 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                     alreadyParsed.addAll(groovyPaths);
 
+                    GroovyCompile groovyCompileTask = (GroovyCompile) subproject.getTasks()
+                            .getByName(sourceSet.getCompileTaskName("groovy"));
                     Stream<SourceFile> cus = Stream.of((Supplier<GroovyParser>) () -> GroovyParser.builder()
                             .classpath(dependenciesWithBuildDirs)
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(false)
-                            .build()).map(Supplier::get).flatMap(gp -> gp.parse(groovyPaths, baseDir, ctx)).map(cu -> {
+                            .build())
+                            .map(Supplier::get)
+                            .flatMap(gp -> {
+                                view(ctx).setCharset(getSourceFileEncoding(groovyCompileTask.getOptions()));
+                                return gp.parse(groovyPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
+                            }).map(cu -> {
                         if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
                             return null;
                         }
@@ -923,7 +924,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             Project subproject,
             ProgressBar progressBar,
             Path buildDir,
-            Charset sourceCharset,
             Set<Path> alreadyParsed,
             Collection<PathMatcher> exclusions,
             ExecutionContext ctx) {
@@ -931,7 +931,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 subproject,
                 progressBar,
                 buildDir,
-                sourceCharset,
                 alreadyParsed,
                 exclusions,
                 ctx,
@@ -947,14 +946,17 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaVersion javaVersion,
             Set<Path> dependencyPaths,
             JavaTypeCache javaTypeCache) {
-        view(ctx).setCharset(javaSourceCharset);
-
         return Stream.of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
                         .classpath(dependencyPaths)
                         .typeCache(javaTypeCache)
                         .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                         .build())
-                .map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
+                .map(Supplier::get)
+                .flatMap(jp -> {
+                    view(ctx).setCharset(javaSourceCharset);
+                    return jp.parse(javaPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
+                })
+                .map(cu -> {
                     if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
                         return null;
                     }
@@ -966,22 +968,25 @@ public class DefaultProjectParser implements GradleProjectParser {
                                                 ExecutionContext ctx,
                                                 Path buildDir,
                                                 Collection<PathMatcher> exclusions,
-                                                Charset javaSourceCharset,
                                                 JavaVersion javaVersion,
                                                 Set<Path> dependencyPaths,
                                                 JavaTypeCache javaTypeCache) {
-        view(ctx).setCharset(javaSourceCharset);
-
         return Stream.of((Supplier<KotlinParser>) () -> KotlinParser.builder()
-                .classpath(dependencyPaths)
-                .typeCache(javaTypeCache)
-                .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
-            if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                return null;
-            }
-            return cu;
-        }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                        .classpath(dependencyPaths)
+                        .typeCache(javaTypeCache)
+                        .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                        .build())
+                .map(Supplier::get)
+                .flatMap(kp -> {
+                    view(ctx).setCharset(StandardCharsets.UTF_8); // Kotlin requires UTF-8
+                    return kp.parse(kotlinPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
+                })
+                .map(cu -> {
+                    if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
+                        return null;
+                    }
+                    return cu;
+                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 
     private GradleParser gradleParser() {
@@ -1576,13 +1581,10 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     }
 
-    private Charset getSourceFileEncoding(@Nullable JavaCompile javaCompileTask,
-                                          Charset defaultCharset) {
-        String sourceEncoding = null;
-        if (javaCompileTask != null) {
-            CompileOptions compileOptions = javaCompileTask.getOptions();
-            sourceEncoding = compileOptions.getEncoding();
+    private Charset getSourceFileEncoding(@Nullable CompileOptions compileOptions) {
+        if (compileOptions != null && compileOptions.getEncoding() != null) {
+            return Charset.forName(compileOptions.getEncoding());
         }
-        return Optional.ofNullable(sourceEncoding).map(Charset::forName).orElse(defaultCharset);
+        return Charset.defaultCharset();
     }
 }
