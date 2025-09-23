@@ -22,7 +22,7 @@ import org.gradle.api.tasks.UntrackedTask;
 
 import javax.inject.Inject;
 
-@UntrackedTask(because = "Parallel execution not supported by `GradleProjectParser` in `DelegatingProjectParser`")
+@UntrackedTask(because = "Rewrite tasks must not run in parallel due to shared classloader")
 public class RewriteRunTask extends AbstractRewriteTask {
 
     private static final Logger logger = Logging.getLogger(RewriteRunTask.class);
