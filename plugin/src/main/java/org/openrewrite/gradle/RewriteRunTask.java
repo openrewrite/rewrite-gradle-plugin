@@ -18,9 +18,11 @@ package org.openrewrite.gradle;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.UntrackedTask;
 
 import javax.inject.Inject;
 
+@UntrackedTask(because = "Parallel execution not supported by `GradleProjectParser` in `DelegatingProjectParser`")
 public class RewriteRunTask extends AbstractRewriteTask {
 
     private static final Logger logger = Logging.getLogger(RewriteRunTask.class);
