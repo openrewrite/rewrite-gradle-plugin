@@ -22,6 +22,7 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.options.Option;
 import org.gradle.util.GradleVersion;
+import org.jspecify.annotations.Nullable;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -33,10 +34,10 @@ import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 public abstract class AbstractRewriteTask extends DefaultTask {
-    protected Provider<Set<File>> resolvedDependencies;
+    protected @Nullable Provider<Set<File>> resolvedDependencies;
     protected boolean dumpGcActivity;
-    protected GradleProjectParser gpp;
-    protected RewriteExtension extension;
+    protected @Nullable GradleProjectParser gpp;
+    protected @Nullable RewriteExtension extension;
 
     protected AbstractRewriteTask() {
         if (GradleVersion.current().compareTo(GradleVersion.version("7.4")) >= 0) {
@@ -101,10 +102,6 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     @Input
     public List<String> getActiveStyles() {
         return getProjectParser().getActiveStyles();
-    }
-
-    protected void shutdownRewrite() {
-        getProjectParser().shutdownRewrite();
     }
 
 }
