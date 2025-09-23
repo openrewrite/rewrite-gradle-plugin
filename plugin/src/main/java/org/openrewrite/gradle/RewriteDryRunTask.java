@@ -20,12 +20,10 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.api.tasks.UntrackedTask;
 
 import javax.inject.Inject;
 import java.nio.file.Path;
 
-@UntrackedTask(because = "Rewrite tasks must not run in parallel due to shared classloader")
 public class RewriteDryRunTask extends AbstractRewriteTask {
 
     private static final Logger logger = Logging.getLogger(RewriteDryRunTask.class);
