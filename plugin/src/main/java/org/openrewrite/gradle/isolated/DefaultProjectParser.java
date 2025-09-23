@@ -162,7 +162,10 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     static @Nullable Repository getRepository(Path rootDir) {
-        try (Git git = Git.open(rootDir.toFile())) {
+        try {
+            // Repository is closed in `shutdownRewrite()`
+            //noinspection resource
+            Git git = Git.open(rootDir.toFile());
             return git.getRepository();
         } catch (IOException e) {
             // no git
