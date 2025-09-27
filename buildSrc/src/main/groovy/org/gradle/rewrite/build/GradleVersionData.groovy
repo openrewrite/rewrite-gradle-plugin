@@ -1,7 +1,6 @@
 package org.gradle.rewrite.build
 
 import groovy.json.JsonSlurper
-import org.gradle.util.VersionNumber
 
 class GradleVersionData {
 
