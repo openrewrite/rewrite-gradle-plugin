@@ -40,10 +40,6 @@ public class RewriteClassLoader extends URLClassLoader {
     private static final List<String> PLUGIN_LOADED_PACKAGES = Arrays.asList("com.android");
     private final ClassLoader pluginClassLoader;
 
-    public RewriteClassLoader(Collection<URL> artifacts) {
-        this(artifacts, RewriteClassLoader.class.getClassLoader());
-    }
-
     public RewriteClassLoader(Collection<URL> artifacts, ClassLoader pluginClassLoader) {
         super(artifacts.toArray(new URL[0]), RewriteClassLoader.class.getClassLoader());
         this.pluginClassLoader = pluginClassLoader;
@@ -61,24 +57,26 @@ public class RewriteClassLoader extends URLClassLoader {
      * of Android Gradle plugin classes, we use the ClassLoader of the plugin.
      */
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        Class<?> foundClass = findLoadedClass(name);
-        if (foundClass == null) {
-            try {
-                if (shouldBeParentLoaded(name)) {
+        synchronized (getClassLoadingLock(name)) {
+            Class<?> foundClass = findLoadedClass(name);
+            if (foundClass == null) {
+                try {
+                    if (shouldBeParentLoaded(name)) {
+                        foundClass = super.loadClass(name, resolve);
+                    } else if (shouldBePluginLoaded(name)) {
+                        foundClass = Class.forName(name, resolve, pluginClassLoader);
+                    } else {
+                        foundClass = findClass(name);
+                    }
+                } catch (ClassNotFoundException e) {
                     foundClass = super.loadClass(name, resolve);
-                } else if (shouldBePluginLoaded(name)) {
-                    foundClass = Class.forName(name, resolve, pluginClassLoader);
-                } else {
-                    foundClass = findClass(name);
                 }
-            } catch (ClassNotFoundException e) {
-                foundClass = super.loadClass(name, resolve);
             }
+            if (resolve) {
+                resolveClass(foundClass);
+            }
+            return foundClass;
         }
-        if (resolve) {
-            resolveClass(foundClass);
-        }
-        return foundClass;
     }
 
     protected boolean shouldBeParentLoaded(String name) {

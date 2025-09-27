@@ -21,6 +21,7 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.initialization.Settings;
@@ -31,6 +32,7 @@ import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.compile.CompileOptions;
+import org.gradle.api.tasks.compile.GroovyCompile;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.invocation.DefaultGradle;
@@ -61,6 +63,13 @@ import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.java.tree.J;
+import org.openrewrite.jgit.api.Git;
+import org.openrewrite.jgit.lib.FileMode;
+import org.openrewrite.jgit.lib.Repository;
+import org.openrewrite.jgit.treewalk.FileTreeIterator;
+import org.openrewrite.jgit.treewalk.TreeWalk;
+import org.openrewrite.jgit.treewalk.WorkingTreeIterator;
+import org.openrewrite.jgit.treewalk.filter.PathFilterGroup;
 import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
@@ -108,6 +117,9 @@ public class DefaultProjectParser implements GradleProjectParser {
     private final List<Marker> sharedProvenance;
 
     @Nullable
+    protected final Repository repository;
+
+    @Nullable
     private List<NamedStyles> styles;
 
     @Nullable
@@ -118,6 +130,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     public DefaultProjectParser(Project project, RewriteExtension extension) {
         this.baseDir = repositoryRoot(project);
+        this.repository = getRepository(baseDir);
         this.extension = extension;
         this.project = project;
 
@@ -146,6 +159,18 @@ public class DefaultProjectParser implements GradleProjectParser {
             return buildRoot;
         }
         return maybeBaseDir;
+    }
+
+    static @Nullable Repository getRepository(Path rootDir) {
+        try {
+            // Repository is closed in `shutdownRewrite()`
+            //noinspection resource
+            Git git = Git.open(rootDir.toFile());
+            return git.getRepository();
+        } catch (IOException e) {
+            // no git
+            return null;
+        }
     }
 
     private static final Map<Path, GitProvenance> REPO_ROOT_TO_PROVENANCE = new HashMap<>();
@@ -184,7 +209,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     private AndroidProjectParser getAndroidProjectParser() {
         if (androidProjectParser == null) {
-            androidProjectParser = new AndroidProjectParser(baseDir, extension, getStyles());
+            androidProjectParser = new AndroidProjectParser(baseDir, repository, extension, getStyles());
         }
         return androidProjectParser;
     }
@@ -643,7 +668,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             Collection<PathMatcher> exclusions = extension.getExclusions().stream()
                     .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
                     .collect(toList());
-            if (isExcluded(exclusions, baseDir.relativize(subproject.getProjectDir().toPath()))) {
+            if (isExcluded(repository, exclusions, baseDir.relativize(subproject.getProjectDir().toPath()))) {
                 logger.lifecycle("Skipping project {} because it is excluded", subproject.getPath());
                 return Stream.empty();
             }
@@ -666,8 +691,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                         ctx));
             }
 
-            Charset sourceCharset = Charset.forName(System.getProperty("file.encoding", "UTF-8"));
-
             Path buildDirPath = baseDir.relativize(subproject.getLayout()
                     .getBuildDirectory()
                     .get()
@@ -680,7 +703,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                         subproject,
                         progressBar,
                         buildDirPath,
-                        sourceCharset,
                         alreadyParsed,
                         exclusions,
                         ctx);
@@ -689,7 +711,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                         subproject,
                         progressBar,
                         buildDirPath,
-                        sourceCharset,
                         alreadyParsed,
                         exclusions,
                         ctx);
@@ -727,7 +748,6 @@ public class DefaultProjectParser implements GradleProjectParser {
     private SourceFileStream parseGradleProjectSourceSets(Project subproject,
                                                           ProgressBar progressBar,
                                                           Path buildDir,
-                                                          Charset sourceCharset,
                                                           Set<Path> alreadyParsed,
                                                           Collection<PathMatcher> exclusions,
                                                           ExecutionContext ctx) {
@@ -743,8 +763,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaCompile javaCompileTask = (JavaCompile) subproject.getTasks()
                     .getByName(sourceSet.getCompileJavaTaskName());
             JavaVersion javaVersion = getJavaVersion(javaCompileTask);
-
-            final Charset javaSourceCharset = getSourceFileEncoding(javaCompileTask, sourceCharset);
 
             List<Path> unparsedSources = sourceSet.getAllSource()
                     .getSourceDirectories()
@@ -798,7 +816,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         ctx,
                         buildDir,
                         exclusions,
-                        javaSourceCharset,
+                        getSourceFileEncoding(javaCompileTask.getOptions()),
                         javaVersion,
                         dependencyPaths,
                         javaTypeCache);
@@ -825,7 +843,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                             ctx,
                             buildDir,
                             exclusions,
-                            javaSourceCharset,
                             javaVersion,
                             dependencyPaths,
                             javaTypeCache);
@@ -853,12 +870,19 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                     alreadyParsed.addAll(groovyPaths);
 
+                    GroovyCompile groovyCompileTask = (GroovyCompile) subproject.getTasks()
+                            .getByName(sourceSet.getCompileTaskName("groovy"));
                     Stream<SourceFile> cus = Stream.of((Supplier<GroovyParser>) () -> GroovyParser.builder()
                             .classpath(dependenciesWithBuildDirs)
                             .typeCache(javaTypeCache)
                             .logCompilationWarningsAndErrors(false)
-                            .build()).map(Supplier::get).flatMap(gp -> gp.parse(groovyPaths, baseDir, ctx)).map(cu -> {
-                        if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
+                            .build())
+                            .map(Supplier::get)
+                            .flatMap(gp -> {
+                                view(ctx).setCharset(getSourceFileEncoding(groovyCompileTask.getOptions()));
+                                return gp.parse(groovyPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
+                            }).map(cu -> {
+                        if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
                             return null;
                         }
                         return cu;
@@ -903,7 +927,6 @@ public class DefaultProjectParser implements GradleProjectParser {
             Project subproject,
             ProgressBar progressBar,
             Path buildDir,
-            Charset sourceCharset,
             Set<Path> alreadyParsed,
             Collection<PathMatcher> exclusions,
             ExecutionContext ctx) {
@@ -911,7 +934,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 subproject,
                 progressBar,
                 buildDir,
-                sourceCharset,
                 alreadyParsed,
                 exclusions,
                 ctx,
@@ -927,15 +949,18 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaVersion javaVersion,
             Set<Path> dependencyPaths,
             JavaTypeCache javaTypeCache) {
-        view(ctx).setCharset(javaSourceCharset);
-
         return Stream.of((Supplier<JavaParser>) () -> JavaParser.fromJavaVersion()
                         .classpath(dependencyPaths)
                         .typeCache(javaTypeCache)
                         .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
                         .build())
-                .map(Supplier::get).flatMap(jp -> jp.parse(javaPaths, baseDir, ctx)).map(cu -> {
-                    if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
+                .map(Supplier::get)
+                .flatMap(jp -> {
+                    view(ctx).setCharset(javaSourceCharset);
+                    return jp.parse(javaPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
+                })
+                .map(cu -> {
+                    if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
                         return null;
                     }
                     return cu;
@@ -946,22 +971,25 @@ public class DefaultProjectParser implements GradleProjectParser {
                                                 ExecutionContext ctx,
                                                 Path buildDir,
                                                 Collection<PathMatcher> exclusions,
-                                                Charset javaSourceCharset,
                                                 JavaVersion javaVersion,
                                                 Set<Path> dependencyPaths,
                                                 JavaTypeCache javaTypeCache) {
-        view(ctx).setCharset(javaSourceCharset);
-
         return Stream.of((Supplier<KotlinParser>) () -> KotlinParser.builder()
-                .classpath(dependencyPaths)
-                .typeCache(javaTypeCache)
-                .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
-                .build()).map(Supplier::get).flatMap(kp -> kp.parse(kotlinPaths, baseDir, ctx)).map(cu -> {
-            if (isExcluded(exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                return null;
-            }
-            return cu;
-        }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                        .classpath(dependencyPaths)
+                        .typeCache(javaTypeCache)
+                        .logCompilationWarningsAndErrors(extension.getLogCompilationWarningsAndErrors())
+                        .build())
+                .map(Supplier::get)
+                .flatMap(kp -> {
+                    view(ctx).setCharset(StandardCharsets.UTF_8); // Kotlin requires UTF-8
+                    return kp.parse(kotlinPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
+                })
+                .map(cu -> {
+                    if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
+                        return null;
+                    }
+                    return cu;
+                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 
     private GradleParser gradleParser() {
@@ -1017,7 +1045,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         File buildGradleFile = subproject.getBuildscript().getSourceFile();
         if (buildGradleFile != null) {
             Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
-            if (!isExcluded(exclusions, buildScriptPath) && buildGradleFile.exists()) {
+            if (!isExcluded(repository, exclusions, buildScriptPath) && buildGradleFile.exists()) {
                 gradleParser = gradleParser();
                 sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
                 gradleFileCount++;
@@ -1031,7 +1059,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             File settingsGradleFile = determineGradleSettingsFile(subproject);
             if (settingsGradleFile != null) {
                 Path settingsPath = baseDir.relativize(settingsGradleFile.toPath());
-                if (!isExcluded(exclusions, settingsPath)) {
+                if (!isExcluded(repository, exclusions, settingsPath)) {
                     GradleSettings gs = null;
                     if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0) {
                         gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
@@ -1060,7 +1088,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         File gradlePropertiesFile = subproject.file("gradle.properties");
         if (gradlePropertiesFile.exists()) {
             Path gradlePropertiesPath = baseDir.relativize(gradlePropertiesFile.toPath());
-            if (!isExcluded(exclusions, gradlePropertiesPath)) {
+            if (!isExcluded(repository, exclusions, gradlePropertiesPath)) {
                 final GradleProject finalGradleProject = gradleProject;
                 sourceFiles = Stream.concat(
                         sourceFiles,
@@ -1087,7 +1115,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .anyMatch(sp -> dir.equals(sp.getProjectDir().toPath())) ||
                         subproject.getGradle().getIncludedBuilds().stream()
                                 .anyMatch(ib -> dir.equals(ib.getProjectDir().toPath())) ||
-                        isExcluded(exclusions, baseDir.relativize(dir))) {
+                        isExcluded(repository, exclusions, baseDir.relativize(dir))) {
                         return FileVisitResult.SKIP_SUBTREE;
                     }
 
@@ -1096,7 +1124,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    if ((file.toString().endsWith(".gradle") || file.toString().endsWith(".gradle.kts")) && !alreadyParsed.contains(file) && !isExcluded(exclusions, baseDir.relativize(file))) {
+                    if ((file.toString().endsWith(".gradle") || file.toString().endsWith(".gradle.kts")) && !alreadyParsed.contains(file) && !isExcluded(repository, exclusions, baseDir.relativize(file))) {
                         freeStandingScripts.add(file);
                     }
                     return FileVisitResult.CONTINUE;
@@ -1170,7 +1198,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     .map(project::file)
                     .filter(File::exists)
                     .map(File::toPath)
-                    .filter(it -> !isExcluded(exclusions, it))
+                    .filter(it -> !isExcluded(repository, exclusions, it))
                     .filter(omniParser::accept)
                     .collect(toList());
             sourceFiles = omniParser.parse(gradleWrapperFiles, baseDir, ctx);
@@ -1304,7 +1332,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Stream<SourceFile> cus = kp.parse(kotlinPaths, baseDir, ctx);
                     alreadyParsed.addAll(kotlinPaths);
                     cus = cus.map(cu -> {
-                        if (isExcluded(exclusions, cu.getSourcePath()) ||
+                        if (isExcluded(repository, exclusions, cu.getSourcePath()) ||
                             cu.getSourcePath().startsWith(buildDirPath)) {
                             return null;
                         }
@@ -1335,7 +1363,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         return source;
     }
 
-    static boolean isExcluded(Collection<PathMatcher> exclusions, Path path) {
+    static boolean isExcluded(@Nullable Repository repository, Collection<PathMatcher> exclusions, Path path) {
         for (PathMatcher excluded : exclusions) {
             if (excluded.matches(path)) {
                 return true;
@@ -1344,7 +1372,34 @@ public class DefaultProjectParser implements GradleProjectParser {
         // PathMather will not evaluate the path "build.gradle" to be matched by the pattern "**/build.gradle"
         // This is counter-intuitive for most users and would otherwise require separate exclusions for files at the root and files in subdirectories
         if (!path.isAbsolute() && !path.startsWith(File.separator)) {
-            return isExcluded(exclusions, Paths.get("/" + path));
+            return isExcluded(repository, exclusions, Paths.get("/" + path));
+        }
+
+        if (repository != null) {
+            String repoRelativePath = PathUtils.separatorsToUnix(path.toString());
+            if (repoRelativePath.isEmpty() || "/".equals(repoRelativePath)) {
+                return false;
+            }
+
+            try (TreeWalk walk = new TreeWalk(repository)) {
+                walk.addTree(new FileTreeIterator(repository));
+                walk.setFilter(PathFilterGroup.createFromStrings(repoRelativePath));
+                while (walk.next()) {
+                    WorkingTreeIterator workingTreeIterator = walk.getTree(0, WorkingTreeIterator.class);
+                    if (walk.getPathString().equals(repoRelativePath)) {
+                        return workingTreeIterator.isEntryIgnored();
+                    }
+                    if (workingTreeIterator.getEntryFileMode().equals(FileMode.TREE)) {
+                        if (workingTreeIterator.isEntryIgnored()) {
+                            return true;
+                        } else {
+                            walk.enterSubtree();
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         }
         return false;
     }
@@ -1419,6 +1474,9 @@ public class DefaultProjectParser implements GradleProjectParser {
     public void shutdownRewrite() {
         REPO_ROOT_TO_PROVENANCE.clear();
         GradleProjectBuilder.clearCaches();
+        if (repository != null) {
+            repository.close();
+        }
     }
 
     private UnaryOperator<SourceFile> applyAutodetected(
@@ -1526,13 +1584,10 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     }
 
-    private Charset getSourceFileEncoding(@Nullable JavaCompile javaCompileTask,
-                                          Charset defaultCharset) {
-        String sourceEncoding = null;
-        if (javaCompileTask != null) {
-            CompileOptions compileOptions = javaCompileTask.getOptions();
-            sourceEncoding = compileOptions.getEncoding();
+    private Charset getSourceFileEncoding(@Nullable CompileOptions compileOptions) {
+        if (compileOptions != null && compileOptions.getEncoding() != null) {
+            return Charset.forName(compileOptions.getEncoding());
         }
-        return Optional.ofNullable(sourceEncoding).map(Charset::forName).orElse(defaultCharset);
+        return Charset.defaultCharset();
     }
 }
