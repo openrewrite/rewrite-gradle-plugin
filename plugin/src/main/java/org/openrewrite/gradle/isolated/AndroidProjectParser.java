@@ -38,7 +38,6 @@ import org.openrewrite.polyglot.OmniParser;
 import org.openrewrite.polyglot.ProgressBar;
 import org.openrewrite.polyglot.SourceFileStream;
 import org.openrewrite.style.NamedStyles;
-import org.openrewrite.tree.ParsingExecutionContextView;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

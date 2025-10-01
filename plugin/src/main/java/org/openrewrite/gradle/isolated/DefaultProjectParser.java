@@ -21,7 +21,6 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
-import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.SourceDirectorySet;
 import org.gradle.api.initialization.Settings;
@@ -1392,9 +1391,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                     if (workingTreeIterator.getEntryFileMode().equals(FileMode.TREE)) {
                         if (workingTreeIterator.isEntryIgnored()) {
                             return true;
-                        } else {
-                            walk.enterSubtree();
                         }
+                        walk.enterSubtree();
                     }
                 }
             } catch (IOException e) {
