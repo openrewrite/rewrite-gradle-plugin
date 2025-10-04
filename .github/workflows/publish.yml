@@ -22,11 +22,15 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          develocity-access-key: ${{ env.GRADLE_ENTERPRISE_ACCESS_KEY }}
+
       - name: publish-candidate
         if: contains(github.ref, '-rc.')
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: |
+        run: |
+          ./gradlew \
             -Preleasing
             -Prelease.disableGitChecks=true
             -Prelease.useLastTag=true
@@ -37,9 +41,8 @@ jobs:
 
       - name: publish-release
         if: (!contains(github.ref, '-rc.'))
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: |
+        run: |
+          ./gradlew \
             -Preleasing
             -Prelease.disableGitChecks=true
             -Prelease.useLastTag=true
