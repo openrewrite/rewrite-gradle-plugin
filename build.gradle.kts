@@ -1,6 +1,6 @@
 plugins {
-    id("nebula.release") version "17.1.0"
-    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
+    id("nebula.release") version "20.1.0"
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
     id("org.owasp.dependencycheck") version "latest.release" apply false
     id("nebula.maven-resolved-dependencies") version "18.4.0" apply false
     id("nebula.maven-apache-license") version "18.4.0" apply false

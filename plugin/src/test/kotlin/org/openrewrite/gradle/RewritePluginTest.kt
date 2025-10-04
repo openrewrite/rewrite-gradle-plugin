@@ -18,9 +18,9 @@ package org.openrewrite.gradle
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
+import org.openrewrite.gradle.condition.EnabledForGradleRange
 import java.io.File
 
 interface RewritePluginTest: GradleRunnerTest {
@@ -29,7 +29,7 @@ interface RewritePluginTest: GradleRunnerTest {
 
     // The configuration cache works on Gradle 6.6+, but rewrite-gradle-plugin uses notCompatibleWithConfigurationCache,
     // which is only available on Gradle 7.4+.
-    @DisabledIf("lessThanGradle7_4")
+    @EnabledForGradleRange(min = "7.4")
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
     @Test
     fun `task is compatible with the configuration cache`(
