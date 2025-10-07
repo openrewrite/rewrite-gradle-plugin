@@ -27,9 +27,9 @@ import org.gradle.api.initialization.Settings;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.GroovyPlugin;
-import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.compile.CompileOptions;
 import org.gradle.api.tasks.compile.GroovyCompile;
 import org.gradle.api.tasks.compile.JavaCompile;
@@ -85,6 +85,7 @@ import org.openrewrite.tree.ParsingExecutionContextView;
 import org.openrewrite.xml.tree.Xml;
 
 import java.io.*;
+import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -1549,10 +1550,18 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         } else {
             //Using the older javaConvention because we need to support older versions of gradle.
-            @SuppressWarnings("deprecation")
-            JavaPluginConvention javaConvention = project.getConvention().findPlugin(JavaPluginConvention.class);
-            if (javaConvention != null) {
-                sourceSets = new ArrayList<>(javaConvention.getSourceSets());
+            try {
+                Method getConventionMethod = Project.class.getDeclaredMethod("getConvention");
+                Class<?> conventionClass = Class.forName("org.gradle.api.plugins.Convention");
+                Method findPluginMethod = conventionClass.getDeclaredMethod("findPlugin", Class.class);
+                Class<?> javaPluginConventionClass = Class.forName("org.gradle.api.plugins.JavaPluginConvention");
+                Method getSourceSetsMethod = javaPluginConventionClass.getDeclaredMethod("getSourceSets");
+                Object javaConvention = findPluginMethod.invoke(getConventionMethod.invoke(project), javaPluginConventionClass);
+                if (javaConvention != null) {
+                    sourceSets = new ArrayList<>((SourceSetContainer) getSourceSetsMethod.invoke(javaConvention));
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }
         return sourceSets.stream().sorted(Comparator.comparingInt(sourceSet -> {

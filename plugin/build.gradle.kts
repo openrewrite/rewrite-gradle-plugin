@@ -1,13 +1,11 @@
 @file:Suppress("UnstableApiUsage")
 
 import nl.javadude.gradle.plugins.license.LicenseExtension
-import org.gradle.rewrite.build.GradleVersionData
-import org.gradle.rewrite.build.GradleVersionsCommandLineArgumentProvider
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.9.0"
+    id("org.jetbrains.kotlin.jvm") version "2.2.0"
     id("com.gradle.plugin-publish") version "1.1.0"
     id("com.github.hierynomus.license") version "0.16.1"
     id("nebula.maven-apache-license")
@@ -142,15 +140,7 @@ dependencies {
 
 project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))
 
-tasks.register<Test>("testGradleReleases") {
-    jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getReleasedVersions))
-}
-
-tasks.register<Test>("testGradleNightlies") {
-    jvmArgumentProviders.add(GradleVersionsCommandLineArgumentProvider(GradleVersionData::getNightlyVersions))
-}
-
-tasks.withType<Test> {
+tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     // Remove this once we've fixed https://github.com/openrewrite/rewrite-gradle-plugin/issues/132
     setForkEvery(1)
@@ -195,16 +185,29 @@ tasks.named<Test>("test") {
     )
 }
 
+val testJvmTestSuite = testing.suites.named<JvmTestSuite>("test")
 val testGradle4 = tasks.register<Test>("testGradle4") {
     systemProperty("org.openrewrite.test.gradleVersion", "4.10")
     systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
+    testClassesDirs = files(testJvmTestSuite.map { it.sources.output.classesDirs })
+    classpath = files(testJvmTestSuite.map { it.sources.runtimeClasspath})
     // Gradle 4 predates support for Java 11
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(8))
     })
 }
+val testGradle8 = tasks.register<Test>("testGradle8") {
+    systemProperty("org.openrewrite.test.gradleVersion", "8.14.3")
+    systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
+    testClassesDirs = files(testJvmTestSuite.map { it.sources.output.classesDirs })
+    classpath = files(testJvmTestSuite.map { it.sources.runtimeClasspath})
+    // Gradle 8 predates support for Java 25
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    })
+}
 tasks.named("check").configure {
-    dependsOn(testGradle4)
+    dependsOn(testGradle4, testGradle8)
 }
 
 configure<LicenseExtension> {

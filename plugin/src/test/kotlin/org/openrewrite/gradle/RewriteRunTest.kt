@@ -26,6 +26,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.*
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
+import org.openrewrite.gradle.condition.DisabledForGradleRange
+import org.openrewrite.gradle.condition.EnabledForGradleRange
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
@@ -35,6 +37,7 @@ class RewriteRunTest : RewritePluginTest {
 
     override fun taskName(): String = "rewriteRun"
 
+    @DisabledForGradleRange(min = "9.0")
     @Test
     fun `rewrite is isolated from conflicting versions of jackson on the classpath`(
         @TempDir projectDir: File
@@ -168,7 +171,7 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(sourceFileAfter.readText()).isEqualTo(expected)
     }
 
-    @DisabledIf("lessThanGradle6_8")
+    @EnabledForGradleRange(min = "6.8")
     @Test
     fun `rewriteRun will alter the ISO-8859-1 encoded source file according to the provided active recipe`(
         @TempDir projectDir: File
@@ -709,7 +712,7 @@ class RewriteRunTest : RewritePluginTest {
     }
 
 
-    @DisabledIf("lessThanGradle6_8")
+    @EnabledForGradleRange(min = "6.8")
     @Test
     fun dependencyRepositoriesDeclaredInSettings(
         @TempDir projectDir: File
@@ -938,7 +941,7 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(aText).isEqualTo(expected)
     }
 
-    @DisabledIf("lessThanGradle6_1")
+    @EnabledForGradleRange(min = "6.1")
     @Test
     fun groovySourceGetsTypesFromJavaSource(@TempDir projectDir: File) {
         gradleProject(projectDir) {
@@ -1021,14 +1024,70 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(bFile.readText()).isEqualTo(bExpected)
     }
 
-    @DisabledIf("lessThanGradle6_1")
+    @EnabledForGradleRange(min = "9.0")
+    @Test
+    fun kotlinSourceGradle9(@TempDir projectDir: File) {
+        gradleProject(projectDir) {
+            buildGradle(
+                """
+                plugins {
+                    id("org.jetbrains.kotlin.jvm") version("2.2.0")
+                    id("org.openrewrite.rewrite")
+                }
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
+                    }
+                }
+                rewrite {
+                    activeRecipe("org.openrewrite.test.FindString")
+                }
+            """
+            )
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.FindString
+                displayName: Find kotlin strings
+                description: Finds kotlin strings.
+                recipeList:
+                  - org.openrewrite.java.search.FindTypes:
+                      fullyQualifiedTypeName: kotlin.String
+            """
+            )
+            sourceSet("main") {
+                kotlin(
+                    """
+                    package com.foo
+
+                    class A {
+                        fun foo(s: String): String {
+                            return s
+                        }
+                    }
+                """
+                )
+            }
+        }
+
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        val aFile = projectDir.resolve("src/main/kotlin/com/foo/A.kt")
+        assertThat(aFile.readText().contains("/*~~>*/")).isTrue
+    }
+
+    @EnabledForGradleRange(min = "6.1", max = "8.14.3")
     @Test
     fun kotlinSource(@TempDir projectDir: File) {
         gradleProject(projectDir) {
             buildGradle(
                 """
                 plugins {
-                    id("org.jetbrains.kotlin.jvm") version("1.8.0")
+                    id("org.jetbrains.kotlin.jvm") version("1.9.20")
                     id("org.openrewrite.rewrite")
                 }
                 repositories {
@@ -1458,7 +1517,7 @@ class RewriteRunTest : RewritePluginTest {
 
     // The configuration cache works on Gradle 6.6+, but rewrite-gradle-plugin uses notCompatibleWithConfigurationCache,
     // which is only available on Gradle 7.4+.
-    @DisabledIf("lessThanGradle7_4")
+    @EnabledForGradleRange(min = "7.4")
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
     @Test
     fun `rewriteRun is compatible with the configuration cache`(
@@ -1485,7 +1544,7 @@ class RewriteRunTest : RewritePluginTest {
         assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 
-    @DisabledIf("lessThanGradle7_4")
+    @EnabledForGradleRange(min = "7.4")
     @Test
     fun `JavaVersion marker is added to files in java resources directories`(
         @TempDir projectDir: File,
@@ -1513,7 +1572,9 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                sourceCompatibility = JavaVersion.VERSION_17
+                java {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                }
 
                 repositories {
                     mavenLocal()

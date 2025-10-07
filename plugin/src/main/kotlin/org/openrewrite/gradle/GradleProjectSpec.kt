@@ -93,7 +93,32 @@ class GradleProjectSpec(
         if (settingsGradle == null) {
             val gradleVersionString = System.getProperty("org.openrewrite.test.gradleVersion", "8.0")
             val gradleVersion = GradleVersion.version(gradleVersionString)
-            if (gradleVersion > GradleVersion.version("5.0")) {
+            if (gradleVersion >= GradleVersion.version("9.0")) {
+                lines.add(
+                    """
+                 pluginManagement {
+                    repositories {
+                        gradlePluginPortal()
+                        mavenLocal()
+                        mavenCentral()
+                        google()
+                    }
+                }
+
+                dependencyResolutionManagement {
+                    repositories {
+                        gradlePluginPortal()
+                        google()
+                        mavenLocal()
+                        mavenCentral()
+                        maven {
+                            url = uri("https://central.sonatype.com/repository/maven-snapshots")
+                        }
+                    }
+                }
+            """.trimIndent()
+                )
+            } else if (gradleVersion > GradleVersion.version("5.0")) {
                 lines.add(
                     """
                  pluginManagement {

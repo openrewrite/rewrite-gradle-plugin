@@ -25,7 +25,6 @@ import org.gradle.api.attributes.*;
 import org.gradle.api.attributes.java.TargetJvmEnvironment;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaBasePlugin;
-import org.gradle.api.plugins.JavaPluginConvention;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
@@ -35,6 +34,7 @@ import org.gradle.api.tasks.TaskProvider;
 import org.jspecify.annotations.Nullable;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.*;
 
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
@@ -116,9 +116,16 @@ public class RewritePlugin implements Plugin<Project> {
                 sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
             } else {
                 //Using the older javaConvention because we need to support older versions of gradle.
-                @SuppressWarnings("deprecation")
-                JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
-                sourceSets = javaConvention.getSourceSets();
+                try {
+                    Method getConventionMethod = Project.class.getDeclaredMethod("getConvention");
+                    Class<?> conventionClass = Class.forName("org.gradle.api.plugins.Convention");
+                    Method getPluginMethod = conventionClass.getDeclaredMethod("findPlugin", Class.class);
+                    Class<?> javaPluginConventionClass = Class.forName("org.gradle.api.plugins.JavaPluginConvention");
+                    Method getSourceSetsMethod = javaPluginConventionClass.getDeclaredMethod("getSourceSets");
+                    sourceSets = (SourceSetContainer) getSourceSetsMethod.invoke(getPluginMethod.invoke(getConventionMethod.invoke(project), javaPluginConventionClass));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
             sourceSets.all(sourceSet -> {
                 // This is intended to ensure that any Groovy/Kotlin/etc. and dependent project sources are available

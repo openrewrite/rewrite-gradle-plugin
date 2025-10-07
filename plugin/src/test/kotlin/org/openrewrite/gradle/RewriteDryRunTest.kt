@@ -18,12 +18,12 @@ package org.openrewrite.gradle
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.DisabledIf
-import org.junit.jupiter.api.condition.EnabledIf
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.openrewrite.Issue
+import org.openrewrite.gradle.condition.EnabledForGradleRange
 import java.io.File
 
 @Suppress("GroovyUnusedAssignment")
@@ -136,16 +136,15 @@ class RewriteDryRunTest : RewritePluginTest {
         assertThat(File(projectDir, "build/reports/rewrite/rewrite.patch").exists()).isTrue
     }
 
-    @DisabledIf("lessThanGradle6_1")
+    @EnabledForGradleRange(min = "6.1")
     @Test
     fun multiplatform() {
         gradleProject(projectDir) {
             buildGradle(
                 """
                 plugins {
-                    id("java")
                     id("org.openrewrite.rewrite")
-                    id("org.jetbrains.kotlin.multiplatform") version "1.8.0"
+                    id("org.jetbrains.kotlin.multiplatform") version "2.2.0"
                 }
                 group = "org.example"
                 version = "1.0-SNAPSHOT"
@@ -159,10 +158,8 @@ class RewriteDryRunTest : RewritePluginTest {
                 }
 
                 kotlin {
-                    jvm {
-                        jvmToolchain(8)
-                        withJava()
-                    }
+                    jvmToolchain(8)
+                    jvm()
 
                     sourceSets {
                         commonMain {
@@ -214,7 +211,7 @@ class RewriteDryRunTest : RewritePluginTest {
 
     // The configuration cache works on Gradle 6.6+, but rewrite-gradle-plugin uses notCompatibleWithConfigurationCache,
     // which is only available on Gradle 7.4+.
-    @DisabledIf("lessThanGradle7_4")
+    @EnabledForGradleRange(min = "7.4")
     @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
     @Test
     fun `rewriteDryRun is compatible with the configuration cache`() {
@@ -240,13 +237,65 @@ class RewriteDryRunTest : RewritePluginTest {
         assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = ["8.6.0", "7.0.4", "4.2.2"])
-    fun `rewriteDryRun is compatible with AGP version 4 and over`(pluginVersion: String) {
-        if (lessThanGradle6_1()) {
-            // @DisabledIf doesn't seem to work with @ParameterizedTest
-            return
+    @EnabledForGradleRange(min = "6.1")
+    @Test
+    fun `rewriteDryRun is compatible with AGP version 8 and over`() {
+        gradleProject(projectDir) {
+            buildGradle(
+                """
+                plugins {
+                    id("com.android.application") version "8.6.0"
+                    id("org.openrewrite.rewrite")
+                }
+
+                group = "org.example"
+                version = "1.0-SNAPSHOT"
+
+                android {
+                    namespace = "example"
+                    compileSdkVersion 30
+                }
+
+                dependencies {
+                    implementation("com.google.guava:guava:33.3.0-android")
+                }
+                """
+            )
+            sourceSet("main") {
+                java(
+                    """
+                    import java.util.List;
+                    import java.util.Collections;
+
+                    class HelloWorld {
+                        HelloWorld() {
+                            super();
+                        }
+                    }
+                    """
+                )
+            }
         }
+        val result = runGradle(projectDir, taskName(), "-DactiveRecipe=org.openrewrite.java.OrderImports")
+        val rewriteDryRunResult = result.task(":${taskName()}")!!
+
+        assertThat(rewriteDryRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+        val patchFile = File(projectDir, "build/reports/rewrite/rewrite.patch")
+        assertThat(patchFile).exists()
+        assertThat(patchFile.readText().trim())
+            .containsOnlyOnce(
+                """
+                -import java.util.List;
+                 import java.util.Collections;
+                +import java.util.List;
+                """.trimIndent()
+            )
+    }
+
+    @EnabledForGradleRange(min = "6.1", max = "8.14.3")
+    @ParameterizedTest
+    @ValueSource(strings = ["7.0.4", "4.2.2"])
+    fun `rewriteDryRun is compatible with AGP version 4 and over`(pluginVersion: String) {
         gradleProject(projectDir) {
             buildGradle(
                 """
@@ -297,10 +346,10 @@ class RewriteDryRunTest : RewritePluginTest {
                 +import java.util.List;
                 """.trimIndent()
             )
-
     }
 
-    @EnabledIf("isAgp3CompatibleGradleVersion")
+    @EnabledIfEnvironmentVariable(named = "ANDROID_HOME", matches = ".*")
+    @EnabledForGradleRange(min = "5.0", max = "7.6.4")
     @Test
     fun `rewriteDryRun is compatible with AGP version 3`() {
         gradleProject(projectDir) {
