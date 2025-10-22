@@ -43,13 +43,12 @@ abstract class AbstractGradleRangeCondition<A extends Annotation> extends Boolea
         GradleVersion max = maxGradle.isEmpty() ? null : GradleVersion.version(maxGradle);
 
         // Users must provide at least one of min and max versions.
-        Preconditions.condition(min != null || max != null, () -> String.format(
-                "@%s's minimum or maximum value must be configured",
+        Preconditions.condition(min != null || max != null, () -> "@%s's minimum or maximum value must be configured".formatted(
                 this.annotationName));
 
         // Finally, we need to validate the effective minimum and maximum values.
         Preconditions.condition(min == null || max == null || min.compareTo(max) <= 0,
-                () -> String.format("@%s's minimum value [%s] must be less than or equal to its maximum value [%s]",
+                () -> "@%s's minimum value [%s] must be less than or equal to its maximum value [%s]".formatted(
                         this.annotationName, min == null ? null : min.getVersion(), max == null ? null : max.getVersion()));
 
         return (min == null || min.compareTo(current) <= 0) && (max == null || max.compareTo(current) >= 0);
