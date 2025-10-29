@@ -126,6 +126,7 @@ dependencies {
     testImplementation("org.openrewrite.tools:jgit:latest.release")
     testImplementation("org.openrewrite:rewrite-test")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.assertj:assertj-core:3.+")
 
     modules {
