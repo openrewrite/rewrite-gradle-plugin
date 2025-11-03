@@ -95,7 +95,7 @@ configurations.named("compileOnly").configure {
 dependencies {
     "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:$latest"))
     "rewriteDependencies"("org.openrewrite:rewrite-core")
-    "rewriteDependencies"("org.openrewrite:rewrite-docker")
+//    "rewriteDependencies"("org.openrewrite:rewrite-docker")
     "rewriteDependencies"("org.openrewrite:rewrite-hcl")
     "rewriteDependencies"("org.openrewrite:rewrite-java")
     "rewriteDependencies"("org.openrewrite:rewrite-java-25")

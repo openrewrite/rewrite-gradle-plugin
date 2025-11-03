@@ -197,7 +197,7 @@ public class RewritePlugin implements Plugin<Project> {
         String rewriteVersion = extension.getRewriteVersion();
         return Arrays.asList(
                 deps.create("org.openrewrite:rewrite-core:" + rewriteVersion),
-                deps.create("org.openrewrite:rewrite-docker:" + rewriteVersion),
+//                deps.create("org.openrewrite:rewrite-docker:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-groovy:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-gradle:" + rewriteVersion),
                 deps.create("org.openrewrite:rewrite-hcl:" + rewriteVersion),
