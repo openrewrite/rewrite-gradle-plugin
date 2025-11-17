@@ -16,8 +16,8 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.Project;
+import org.jspecify.annotations.Nullable;
 
-import javax.annotation.Nullable;
 import javax.inject.Provider;
 import java.io.File;
 import java.io.IOException;
@@ -97,7 +97,7 @@ public class RewriteExtension {
      * Will prefer to return an explicitly configured checkstyle configuration file location.
      * If none has been specified, will attempt to auto-detect an appropriate file.
      */
-    public @org.jspecify.annotations.Nullable @Nullable File getCheckstyleConfigFile() {
+    public @Nullable File getCheckstyleConfigFile() {
         if (checkstyleConfigFile == null && checkstyleConfigProvider != null) {
             try {
                 return checkstyleConfigProvider.get();
