@@ -63,11 +63,13 @@ import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.jgit.api.Git;
-import org.openrewrite.jgit.lib.FileMode;
-import org.openrewrite.jgit.lib.Repository;
+import org.openrewrite.jgit.lib.*;
+import org.openrewrite.jgit.revwalk.RevCommit;
+import org.openrewrite.jgit.revwalk.RevWalk;
 import org.openrewrite.jgit.treewalk.FileTreeIterator;
 import org.openrewrite.jgit.treewalk.TreeWalk;
 import org.openrewrite.jgit.treewalk.WorkingTreeIterator;
+import org.openrewrite.jgit.treewalk.filter.PathFilter;
 import org.openrewrite.jgit.treewalk.filter.PathFilterGroup;
 import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
@@ -739,7 +741,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             SourceFileStream nonProjectResources = parseNonProjectResources(subproject, alreadyParsed, ctx);
             sourceFileStream = sourceFileStream.concat(nonProjectResources, nonProjectResources.size());
 
-            return sourceFileStream.map(addProvenance(projectProvenance));
+            return sourceFileStream.map(addProvenance(projectProvenance))
+                    .map(addGitObjectId());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -1511,6 +1514,35 @@ public class DefaultProjectParser implements GradleProjectParser {
         };
     }
 
+    private <T extends SourceFile> UnaryOperator<T> addGitObjectId() {
+        return s -> {
+            if (repository == null) {
+                return s;
+            }
+
+            try {
+                ObjectId head = repository.resolve("HEAD");
+                if (head == null) {
+                    return s;
+                }
+
+                try (RevWalk revWalk = new RevWalk(repository);
+                     TreeWalk treeWalk = new TreeWalk(repository)) {
+                    RevCommit commit = revWalk.parseCommit(head);
+                    treeWalk.addTree(commit.getTree());
+                    treeWalk.setRecursive(true);
+                    treeWalk.setFilter(PathFilter.create(PathUtils.separatorsToUnix(s.getSourcePath().toString())));
+
+                    if (treeWalk.next()) {
+                        return s.withMarkers(s.getMarkers().add(new GitObject(randomId(), treeWalk.getObjectId(0).name())));
+                    }
+                    return s;
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        };
+    }
 
     protected void logRecipesThatMadeChanges(Result result) {
         String indent = "    ";
