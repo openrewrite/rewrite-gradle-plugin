@@ -39,8 +39,6 @@ jobs:
         run: ./gradlew ${{ env.GRADLE_SWITCHES }} build
       - name: publish-snapshots
         if: github.event_name != 'pull_request'
-        uses: gradle/actions/setup-gradle@v5
-      - name: snapshot
         run: ./gradlew ${{ env.GRADLE_SWITCHES }} snapshot :plugin:publishPluginMavenPublicationToSonatypeRepository -x test -x publishPlugins
         env:
           ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.SONATYPE_USERNAME }}
