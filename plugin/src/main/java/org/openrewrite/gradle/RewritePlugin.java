@@ -26,6 +26,7 @@ import org.gradle.api.attributes.java.TargetJvmEnvironment;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaBasePlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.plugins.JvmEcosystemPlugin;
 import org.gradle.api.plugins.quality.CheckstyleExtension;
 import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.provider.Provider;
@@ -98,6 +99,11 @@ public class RewritePlugin implements Plugin<Project> {
     private static void configureProject(Project project, RewriteExtension extension, TaskProvider<RewriteDryRunTask> rewriteDryRun, TaskProvider<RewriteRunTask> rewriteRun) {
         // DomainObjectCollection.all() accepts a function to be applied to both existing and subsequently added members of the collection
         // Do not replace all() with any form of collection iteration which does not share this important property
+        try {
+            project.getPluginManager().apply(JvmEcosystemPlugin.class);
+        } catch (NoClassDefFoundError e) {
+            // Gradle version is too old to have the JvmEcosystemPlugin, that's OK
+        }
         project.getPlugins().all(plugin -> {
             if (plugin instanceof CheckstylePlugin) {
                 // A multi-project build could hypothetically have different checkstyle configuration per-project
@@ -139,14 +145,14 @@ public class RewritePlugin implements Plugin<Project> {
             Set<String> sourceDirs = new HashSet<>();
             project.afterEvaluate(unused -> sourceSets.stream()
                     .sorted(Comparator.comparingInt(sourceSet -> {
-                if ("main".equals(sourceSet.getName())) {
-                    return 0;
-                }
-                if ("test".equals(sourceSet.getName())) {
-                    return 1;
-                }
-                return 2;
-            })).forEach(sourceSet -> {
+                        if ("main".equals(sourceSet.getName())) {
+                            return 0;
+                        }
+                        if ("test".equals(sourceSet.getName())) {
+                            return 1;
+                        }
+                        return 2;
+                    })).forEach(sourceSet -> {
                         for (File file : sourceSet.getAllJava().getSourceDirectories().getFiles()) {
                             if (!sourceDirs.add(file.getAbsolutePath())) {
                                 TaskProvider<Task> compileTask = project.getTasks().named(sourceSet.getCompileJavaTaskName());
