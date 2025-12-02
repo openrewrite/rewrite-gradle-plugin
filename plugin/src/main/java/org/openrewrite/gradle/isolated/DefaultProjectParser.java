@@ -63,7 +63,9 @@ import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.jgit.api.Git;
-import org.openrewrite.jgit.lib.*;
+import org.openrewrite.jgit.lib.FileMode;
+import org.openrewrite.jgit.lib.ObjectId;
+import org.openrewrite.jgit.lib.Repository;
 import org.openrewrite.jgit.revwalk.RevCommit;
 import org.openrewrite.jgit.revwalk.RevWalk;
 import org.openrewrite.jgit.treewalk.FileTreeIterator;
@@ -742,7 +744,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             sourceFileStream = sourceFileStream.concat(nonProjectResources, nonProjectResources.size());
 
             return sourceFileStream.map(addProvenance(projectProvenance))
-                    .map(addGitObjectId());
+                    .map(addGitTreeEntryInformation());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -1514,7 +1516,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         };
     }
 
-    private <T extends SourceFile> UnaryOperator<T> addGitObjectId() {
+    private <T extends SourceFile> UnaryOperator<T> addGitTreeEntryInformation() {
         return s -> {
             if (repository == null) {
                 return s;
@@ -1534,7 +1536,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     treeWalk.setFilter(PathFilter.create(PathUtils.separatorsToUnix(s.getSourcePath().toString())));
 
                     if (treeWalk.next()) {
-                        return s.withMarkers(s.getMarkers().add(new GitObject(randomId(), treeWalk.getObjectId(0).name())));
+                        return s.withMarkers(s.getMarkers().add(new GitTreeEntry(randomId(), treeWalk.getObjectId(0).name(), new org.openrewrite.marker.FileMode(treeWalk.getRawMode(0)))));
                     }
                     return s;
                 }
