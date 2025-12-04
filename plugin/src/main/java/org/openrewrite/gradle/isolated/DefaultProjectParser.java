@@ -1536,7 +1536,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     treeWalk.setFilter(PathFilter.create(PathUtils.separatorsToUnix(s.getSourcePath().toString())));
 
                     if (treeWalk.next()) {
-                        return s.withMarkers(s.getMarkers().add(new GitTreeEntry(randomId(), treeWalk.getObjectId(0).name(), new org.openrewrite.marker.FileMode(treeWalk.getRawMode(0)))));
+                        return s.withMarkers(s.getMarkers().add(new GitTreeEntry(randomId(), treeWalk.getObjectId(0).name(), treeWalk.getRawMode(0))));
                     }
                     return s;
                 }
