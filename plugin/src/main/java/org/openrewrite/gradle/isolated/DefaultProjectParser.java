@@ -1435,7 +1435,12 @@ public class DefaultProjectParser implements GradleProjectParser {
         List<Validated.Invalid<Object>> failedValidations = validated.stream().map(Validated::failures)
                 .flatMap(Collection::stream).collect(toList());
         if (!failedValidations.isEmpty()) {
-            failedValidations.forEach(failedValidation -> logger.error("Recipe validation error in {}: {}", failedValidation.getProperty(), failedValidation.getMessage(), failedValidation.getException()));
+            failedValidations.forEach(failedValidation -> logger.error(
+                    "Recipe validation error in {} for property {}: {}",
+                    recipe.getName(),
+                    failedValidation.getProperty(),
+                    failedValidation.getMessage(),
+                    failedValidation.getException()));
             if (extension.getFailOnInvalidActiveRecipes()) {
                 throw new RuntimeException("Recipe validation errors detected as part of one or more activeRecipe(s). Please check error logs.");
             }
