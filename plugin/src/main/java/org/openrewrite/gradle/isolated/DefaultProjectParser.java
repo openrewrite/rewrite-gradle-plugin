@@ -1615,19 +1615,13 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private JavaVersion getJavaVersion(@Nullable JavaCompile javaCompileTask) {
-        String sourceCompatibility = "";
-        String targetCompatibility = "";
-        if (javaCompileTask != null) {
-            sourceCompatibility = javaCompileTask.getSourceCompatibility();
-            targetCompatibility = javaCompileTask.getTargetCompatibility();
-        }
+        Optional<JavaCompile> maybeTask = Optional.ofNullable(javaCompileTask);
         return new JavaVersion(
                 randomId(),
                 System.getProperty("java.runtime.version"),
                 System.getProperty("java.vm.vendor"),
-                sourceCompatibility,
-                targetCompatibility);
-
+                maybeTask.map(JavaCompile::getSourceCompatibility).orElse(""),
+                maybeTask.map(JavaCompile::getTargetCompatibility).orElse(""));
     }
 
     private Charset getSourceFileEncoding(@Nullable CompileOptions compileOptions) {
