@@ -1041,7 +1041,9 @@ public class DefaultProjectParser implements GradleProjectParser {
             Collection<PathMatcher> exclusions,
             Set<Path> alreadyParsed,
             ExecutionContext ctx) {
-        Stream<SourceFile> sourceFiles = Stream.empty();
+        // Eagerly evaluate parsed gradle files so that parse errors are caught per-file,
+        // rather than propagating up during lazy stream evaluation (see #424)
+        List<SourceFile> sourceFiles = new ArrayList<>();
         int gradleFileCount = 0;
 
         // build.gradle
@@ -1052,9 +1054,14 @@ public class DefaultProjectParser implements GradleProjectParser {
             Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
             if (!isExcluded(repository, exclusions, buildScriptPath) && buildGradleFile.exists()) {
                 gradleParser = gradleParser();
-                sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
+                try {
+                    sourceFiles.addAll(gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx)
+                            .map(sourceFile -> (SourceFile) sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
+                            .collect(toList()));
+                } catch (Exception e) {
+                    logger.warn("Failed to parse {}", buildGradleFile, e);
+                }
                 gradleFileCount++;
-                sourceFiles = sourceFiles.map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)));
                 alreadyParsed.add(buildGradleFile.toPath());
             }
         }
@@ -1073,16 +1080,19 @@ public class DefaultProjectParser implements GradleProjectParser {
                     if (gradleParser == null) {
                         gradleParser = gradleParser();
                     }
-                    sourceFiles = Stream.concat(
-                            sourceFiles,
-                            gradleParser
-                                    .parse(singleton(settingsGradleFile.toPath()), baseDir, ctx)
-                                    .map(sourceFile -> {
-                                        if (finalGs == null) {
-                                            return sourceFile;
-                                        }
-                                        return sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
-                                    }));
+                    try {
+                        sourceFiles.addAll(gradleParser
+                                .parse(singleton(settingsGradleFile.toPath()), baseDir, ctx)
+                                .map(sourceFile -> {
+                                    if (finalGs == null) {
+                                        return sourceFile;
+                                    }
+                                    return (SourceFile) sourceFile.withMarkers(sourceFile.getMarkers().add(finalGs));
+                                })
+                                .collect(toList()));
+                    } catch (Exception e) {
+                        logger.warn("Failed to parse {}", settingsGradleFile, e);
+                    }
                     gradleFileCount++;
                 }
                 alreadyParsed.add(settingsGradleFile.toPath());
@@ -1095,11 +1105,14 @@ public class DefaultProjectParser implements GradleProjectParser {
             Path gradlePropertiesPath = baseDir.relativize(gradlePropertiesFile.toPath());
             if (!isExcluded(repository, exclusions, gradlePropertiesPath)) {
                 final GradleProject finalGradleProject = gradleProject;
-                sourceFiles = Stream.concat(
-                        sourceFiles,
-                        new PropertiesParser()
-                                .parse(singleton(gradlePropertiesFile.toPath()), baseDir, ctx)
-                                .map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(finalGradleProject))));
+                try {
+                    sourceFiles.addAll(new PropertiesParser()
+                            .parse(singleton(gradlePropertiesFile.toPath()), baseDir, ctx)
+                            .map(sourceFile -> (SourceFile) sourceFile.withMarkers(sourceFile.getMarkers().add(finalGradleProject)))
+                            .collect(toList()));
+                } catch (Exception e) {
+                    logger.warn("Failed to parse {}", gradlePropertiesFile, e);
+                }
                 gradleFileCount++;
             }
             alreadyParsed.add(gradlePropertiesFile.toPath());
@@ -1139,11 +1152,13 @@ public class DefaultProjectParser implements GradleProjectParser {
                 if (gradleParser == null) {
                     gradleParser = gradleParser();
                 }
-                sourceFiles = Stream.concat(
-                        sourceFiles,
-                        gradleParser.parse(freeStandingScripts, baseDir, ctx)
-                                .map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
-                );
+                try {
+                    sourceFiles.addAll(gradleParser.parse(freeStandingScripts, baseDir, ctx)
+                            .map(sourceFile -> (SourceFile) sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
+                            .collect(toList()));
+                } catch (Exception e) {
+                    logger.warn("Failed to parse freestanding Gradle scripts in {}", subproject.getPath(), e);
+                }
                 alreadyParsed.addAll(freeStandingScripts);
                 gradleFileCount += freeStandingScripts.size();
             }
@@ -1155,23 +1170,29 @@ public class DefaultProjectParser implements GradleProjectParser {
         // Can be renamed according to https://docs.gradle.org/current/userguide/dependency_locking.html#sec:configuring-the-per-project-lock-file-name-and-location
         File lockfile = subproject.file("gradle.lockfile");
         if (lockfile.exists()) {
-            sourceFiles = Stream.concat(sourceFiles,
-                    PlainTextParser.builder().build()
-                            .parse(singletonList(lockfile.toPath()), baseDir, ctx)
-                            .map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
-            );
+            try {
+                sourceFiles.addAll(PlainTextParser.builder().build()
+                        .parse(singletonList(lockfile.toPath()), baseDir, ctx)
+                        .map(sourceFile -> (SourceFile) sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
+                        .collect(toList()));
+            } catch (Exception e) {
+                logger.warn("Failed to parse {}", lockfile, e);
+            }
         }
         File buildscriptLockfile = subproject.file("buildscript-gradle.lockfile");
         if (buildscriptLockfile.exists()) {
-            sourceFiles = Stream.concat(sourceFiles,
-                    PlainTextParser.builder().build()
-                            .parse(singletonList(buildscriptLockfile.toPath()), baseDir, ctx)
-                            .map(sourceFile -> sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
-            );
+            try {
+                sourceFiles.addAll(PlainTextParser.builder().build()
+                        .parse(singletonList(buildscriptLockfile.toPath()), baseDir, ctx)
+                        .map(sourceFile -> (SourceFile) sourceFile.withMarkers(sourceFile.getMarkers().add(gradleProject)))
+                        .collect(toList()));
+            } catch (Exception e) {
+                logger.warn("Failed to parse {}", buildscriptLockfile, e);
+            }
         }
 
         return SourceFileStream.build("", s -> {
-        }).concat(sourceFiles, gradleFileCount);
+        }).concat(sourceFiles.stream(), gradleFileCount);
     }
 
     private @Nullable File determineGradleSettingsFile(Project rootProject) {
