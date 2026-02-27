@@ -1486,6 +1486,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         stylesByType.put(K.CompilationUnit.class, kotlinDetector.build());
         stylesByType.put(Xml.Document.class, xmlDetector.build());
         sourceFiles = ListUtils.map(sourceFiles, applyAutodetected(stylesByType));
+        sourceFiles = ListUtils.map(sourceFiles, applyConfiguredStyles());
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
         RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
@@ -1521,14 +1522,21 @@ public class DefaultProjectParser implements GradleProjectParser {
         };
     }
 
+    private <T extends SourceFile> UnaryOperator<T> applyConfiguredStyles() {
+        return s -> {
+            Markers m = s.getMarkers();
+            for (NamedStyles style : getStyles()) {
+                m = m.addIfAbsent(style);
+            }
+            return s.withMarkers(m);
+        };
+    }
+
     private <T extends SourceFile> UnaryOperator<T> addProvenance(List<Marker> projectProvenance) {
         return s -> {
             Markers m = s.getMarkers();
             for (Marker marker : projectProvenance) {
                 m = m.addIfAbsent(marker);
-            }
-            for (NamedStyles style : getStyles()) {
-                m = m.addIfAbsent(style);
             }
             return s.withMarkers(m);
         };

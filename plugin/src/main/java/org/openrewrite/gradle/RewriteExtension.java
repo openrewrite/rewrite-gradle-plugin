@@ -151,8 +151,8 @@ public class RewriteExtension {
     }
 
     public void setActiveStyles(List<String> activeStyles) {
-        this.activeRecipes.clear();
-        this.activeRecipes.addAll(activeStyles);
+        this.activeStyles.clear();
+        this.activeStyles.addAll(activeStyles);
     }
 
     public List<String> getActiveStyles() {
