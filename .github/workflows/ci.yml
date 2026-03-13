@@ -45,3 +45,17 @@ jobs:
           ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.SONATYPE_TOKEN }}
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.OSSRH_SIGNING_KEY }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.OSSRH_SIGNING_PASSWORD }}
+
+  notify:
+    if: (failure() || cancelled()) && github.event_name == 'schedule' && (github.repository_owner == 'openrewrite' || github.repository_owner == 'moderneinc')
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Slack notify on failure
+        uses: slackapi/slack-github-action@v2
+        continue-on-error: true
+        with:
+          webhook: ${{ secrets.OPS_GITHUB_ACTIONS_WEBHOOK }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "❌ CI run failed for `${{ github.repository }}` - <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>"
