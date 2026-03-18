@@ -16,9 +16,8 @@
 package org.openrewrite.gradle.isolated;
 
 import com.android.build.gradle.BaseExtension;
-import com.android.build.gradle.LibraryExtension;
+import com.android.build.gradle.TestedExtension;
 import com.android.build.gradle.api.BaseVariant;
-import com.android.build.gradle.internal.dsl.BaseAppModuleExtension;
 import org.gradle.api.DomainObjectSet;
 import org.gradle.api.Project;
 import org.gradle.api.logging.Logger;
@@ -207,21 +206,35 @@ class AndroidProjectParser {
     private List<AndroidProjectVariant> findAndroidProjectVariants(Project project) {
         List<AndroidProjectVariant> variants = new ArrayList<>();
         Object extension = project.getExtensions().findByName("android");
-        if (extension instanceof BaseAppModuleExtension) {
-            BaseAppModuleExtension appExtension = (BaseAppModuleExtension) extension;
-            addProjectVariant(variants, appExtension.getApplicationVariants());
-            addProjectVariant(variants, appExtension.getTestVariants());
-            addProjectVariant(variants, appExtension.getUnitTestVariants());
-        } else if (extension instanceof LibraryExtension) {
-            LibraryExtension libraryExtension = (LibraryExtension) extension;
-            addProjectVariant(variants, libraryExtension.getLibraryVariants());
-            addProjectVariant(variants, libraryExtension.getTestVariants());
-            addProjectVariant(variants, libraryExtension.getUnitTestVariants());
-        } else if (extension != null) {
-            throw new UnsupportedOperationException("Unhandled android extension type: " + extension.getClass());
+        if (extension == null) {
+            return variants;
         }
-
+        if (!(extension instanceof TestedExtension)) {
+            logger.warn("Unrecognized android extension type: {}. Android sources will not be parsed.",
+                    extension.getClass());
+            return variants;
+        }
+        TestedExtension testedExtension = (TestedExtension) extension;
+        addModuleVariants(variants, extension);
+        addProjectVariant(variants, testedExtension.getTestVariants());
+        addProjectVariant(variants, testedExtension.getUnitTestVariants());
         return variants;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addModuleVariants(List<AndroidProjectVariant> variants, Object extension) {
+        for (String methodName : new String[]{"getApplicationVariants", "getLibraryVariants"}) {
+            try {
+                DomainObjectSet<? extends BaseVariant> moduleVariants =
+                        (DomainObjectSet<? extends BaseVariant>) extension.getClass()
+                                .getMethod(methodName).invoke(extension);
+                addProjectVariant(variants, moduleVariants);
+                return;
+            } catch (NoSuchMethodException ignored) {
+            } catch (Exception e) {
+                logger.warn("Unable to invoke {} on {}", methodName, extension.getClass(), e);
+            }
+        }
     }
 
     private void addProjectVariant(List<AndroidProjectVariant> projectVariants,
