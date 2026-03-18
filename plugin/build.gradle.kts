@@ -130,6 +130,7 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.assertj:assertj-core:3.+")
+    testImplementation("com.android.tools.build:gradle:7.0.4")
 
     modules {
         module("com.google.guava:listenablefuture") {
