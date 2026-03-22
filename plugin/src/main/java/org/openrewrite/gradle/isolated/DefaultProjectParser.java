@@ -1468,14 +1468,15 @@ public class DefaultProjectParser implements GradleProjectParser {
         sourceFiles = ListUtils.map(sourceFiles, applyConfiguredStyles());
 
         logger.lifecycle("All sources parsed, running active recipes: {}", String.join(", ", getActiveRecipes()));
-        RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
 
         if (extension.isExportDatatables()) {
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss-SSS"));
             Path datatableDirectoryPath = project.getLayout().getBuildDirectory().dir("reports/rewrite/datatables/" + timestamp).get().getAsFile().toPath();
             logger.info(String.format("Printing available datatables to: %s", datatableDirectoryPath));
-            recipeRun.exportDatatablesToCsv(datatableDirectoryPath, ctx);
+            DataTableExecutionContextView.view(ctx).setDataTableStore(new CsvDataTableStore(datatableDirectoryPath));
         }
+
+        RecipeRun recipeRun = recipe.run(new InMemoryLargeSourceSet(sourceFiles), ctx);
 
         return new ResultsContainer(baseDir, recipeRun);
     }
