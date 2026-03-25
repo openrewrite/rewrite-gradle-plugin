@@ -503,9 +503,12 @@ public class DefaultProjectParser implements GradleProjectParser {
                     for (Result result : results.deleted) {
                         assert result.getBefore() != null;
                         Path originalLocation = results.getProjectRoot().resolve(result.getBefore().getSourcePath());
-                        boolean deleteSucceeded = originalLocation.toFile().delete();
-                        if (!deleteSucceeded) {
-                            throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
+                        File originalFile = originalLocation.toFile();
+                        if (originalFile.exists()) {
+                            boolean deleteSucceeded = originalFile.delete();
+                            if (!deleteSucceeded) {
+                                throw new IOException("Unable to delete file " + originalLocation.toAbsolutePath());
+                            }
                         }
                     }
                     for (Result result : results.moved) {
