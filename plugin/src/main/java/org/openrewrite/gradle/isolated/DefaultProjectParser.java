@@ -148,6 +148,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                 .collect(toList());
     }
 
+    protected JavaTypeCache createTypeCache() {
+        return new JavaTypeCache();
+    }
+
     /**
      * Attempt to determine the root of the git repository for the given project.
      * Many Gradle builds co-locate the build root with the git repository root, but that is not required.
@@ -767,7 +771,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             Stream<SourceFile> sourceSetSourceFiles = Stream.of();
             int sourceSetSize = 0;
 
-            JavaTypeCache javaTypeCache = new JavaTypeCache();
+            JavaTypeCache javaTypeCache = createTypeCache();
             JavaCompile javaCompileTask = (JavaCompile) subproject.getTasks()
                     .getByName(sourceSet.getCompileJavaTaskName());
             JavaVersion javaVersion = getJavaVersion(javaCompileTask);
@@ -1026,7 +1030,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 .map(File::toPath)
                 .collect(toList());
 
-        JavaTypeCache typeCache = new JavaTypeCache();
+        JavaTypeCache typeCache = createTypeCache();
         return GradleParser.builder()
                 .groovyParser(GroovyParser.builder()
                         .typeCache(typeCache)
@@ -1330,7 +1334,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .collect(toList());
 
                 if (!kotlinPaths.isEmpty()) {
-                    JavaTypeCache javaTypeCache = new JavaTypeCache();
+                    JavaTypeCache javaTypeCache = createTypeCache();
                     KotlinParser kp = KotlinParser.builder()
                             .classpath(dependencyPaths)
                             .typeCache(javaTypeCache)
