@@ -91,6 +91,9 @@ val rewriteDependencies = configurations.create("rewriteDependencies")
 configurations.named("compileOnly").configure {
     extendsFrom(rewriteDependencies)
 }
+configurations.named("testRuntimeOnly").configure {
+    extendsFrom(rewriteDependencies)
+}
 
 dependencies {
     "rewriteDependencies"(platform("org.openrewrite:rewrite-bom:$latest"))
