@@ -52,6 +52,7 @@ import org.openrewrite.gradle.marker.GradleProjectBuilder;
 import org.openrewrite.gradle.marker.GradleSettings;
 import org.openrewrite.gradle.marker.GradleSettingsBuilder;
 import org.openrewrite.groovy.GroovyParser;
+import org.openrewrite.internal.GitIgnore;
 import org.openrewrite.internal.InMemoryLargeSourceSet;
 import org.openrewrite.internal.ListUtils;
 import org.openrewrite.internal.StringUtils;
@@ -63,16 +64,12 @@ import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.jgit.api.Git;
-import org.openrewrite.jgit.lib.FileMode;
 import org.openrewrite.jgit.lib.ObjectId;
 import org.openrewrite.jgit.lib.Repository;
 import org.openrewrite.jgit.revwalk.RevCommit;
 import org.openrewrite.jgit.revwalk.RevWalk;
-import org.openrewrite.jgit.treewalk.FileTreeIterator;
 import org.openrewrite.jgit.treewalk.TreeWalk;
-import org.openrewrite.jgit.treewalk.WorkingTreeIterator;
 import org.openrewrite.jgit.treewalk.filter.PathFilter;
-import org.openrewrite.jgit.treewalk.filter.PathFilterGroup;
 import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
@@ -1381,36 +1378,19 @@ public class DefaultProjectParser implements GradleProjectParser {
                 return true;
             }
         }
-        // PathMather will not evaluate the path "build.gradle" to be matched by the pattern "**/build.gradle"
+        // PathMatcher will not evaluate the path "build.gradle" to be matched by the pattern "**/build.gradle"
         // This is counter-intuitive for most users and would otherwise require separate exclusions for files at the root and files in subdirectories
         if (!path.isAbsolute() && !path.startsWith(File.separator)) {
-            return isExcluded(repository, exclusions, Paths.get("/" + path));
+            Path prefixed = Paths.get("/" + path);
+            for (PathMatcher excluded : exclusions) {
+                if (excluded.matches(prefixed)) {
+                    return true;
+                }
+            }
         }
 
         if (repository != null) {
-            String repoRelativePath = PathUtils.separatorsToUnix(path.toString());
-            if (repoRelativePath.isEmpty() || "/".equals(repoRelativePath)) {
-                return false;
-            }
-
-            try (TreeWalk walk = new TreeWalk(repository)) {
-                walk.addTree(new FileTreeIterator(repository));
-                walk.setFilter(PathFilterGroup.createFromStrings(repoRelativePath));
-                while (walk.next()) {
-                    WorkingTreeIterator workingTreeIterator = walk.getTree(0, WorkingTreeIterator.class);
-                    if (walk.getPathString().equals(repoRelativePath)) {
-                        return workingTreeIterator.isEntryIgnored();
-                    }
-                    if (workingTreeIterator.getEntryFileMode().equals(FileMode.TREE)) {
-                        if (workingTreeIterator.isEntryIgnored()) {
-                            return true;
-                        }
-                        walk.enterSubtree();
-                    }
-                }
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+            return GitIgnore.isIgnoredAndUntracked(repository, path);
         }
         return false;
     }
