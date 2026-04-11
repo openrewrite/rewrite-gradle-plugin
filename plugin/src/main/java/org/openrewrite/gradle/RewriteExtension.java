@@ -27,14 +27,39 @@ import java.util.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
 
+/**
+ * DSL extension for configuring the OpenRewrite Gradle plugin.
+ * <p>
+ * Configured via the {@code rewrite} block in a Gradle build script:
+ * <pre>
+ * rewrite {
+ *     activeRecipe("org.openrewrite.java.format.AutoFormat")
+ *     exclusion("src/generated/**")
+ * }
+ * </pre>
+ */
 @SuppressWarnings("unused")
 public class RewriteExtension {
 
+    /**
+     * Fully qualified class names of recipes to activate.
+     * Recipes will only run when explicitly activated here or in a rewrite.yml file.
+     */
     private final List<String> activeRecipes = new ArrayList<>();
+
+    /**
+     * Fully qualified class names of styles to activate.
+     * Styles will only be applied when explicitly activated here or in a rewrite.yml file.
+     */
     private final List<String> activeStyles = new ArrayList<>();
     private boolean configFileSetDeliberately;
 
     protected final Project project;
+
+    /**
+     * Path to the OpenRewrite YAML configuration file.
+     * Defaults to {@code rewrite.yml} in the project directory.
+     */
     private File configFile;
 
     @Nullable
@@ -43,34 +68,82 @@ public class RewriteExtension {
     @Nullable
     private Provider<Map<String, Object>> checkstylePropertiesProvider;
 
+    /**
+     * Optional path to a Checkstyle configuration file. When set, OpenRewrite will use it
+     * to inform Java code style decisions. If not set explicitly, the plugin will attempt
+     * to auto-detect a Checkstyle configuration from the Checkstyle Gradle plugin.
+     */
     @Nullable
     private File checkstyleConfigFile;
+
+    /**
+     * Whether to parse Gradle build scripts ({@code build.gradle}) as part of the source set.
+     * Defaults to {@code true}.
+     */
     private boolean enableExperimentalGradleBuildScriptParsing = true;
+
+    /**
+     * Whether to export data tables to {@code <build directory>/reports/rewrite/datatables/<timestamp>}.
+     * Defaults to {@code false}.
+     */
     private boolean exportDatatables;
+
+    /**
+     * Glob patterns for files to exclude from processing.
+     * For example: {@code "src/generated/**"}.
+     */
     private final List<String> exclusions = new ArrayList<>();
+
+    /**
+     * Glob patterns for files that should be parsed as plain text.
+     * Defaults to a comprehensive list including {@code **&#47;*.md}, {@code **&#47;*.sql}, {@code **&#47;*.txt}, and others.
+     * Exclusions take precedence over plain text masks.
+     */
     private final List<String> plainTextMasks = new ArrayList<>();
 
+    /**
+     * Maximum file size in megabytes. Source files larger than this threshold are skipped during parsing.
+     * Defaults to {@code 10}.
+     */
     private int sizeThresholdMb = 10;
 
+    /**
+     * Override the version of rewrite core libraries to be used.
+     * When {@code null}, the version bundled with the plugin is used.
+     */
     @Nullable
     private String rewriteVersion;
 
     @Nullable
     private Properties versionProps;
 
+    /**
+     * Whether to log Java compilation warnings and errors encountered during parsing.
+     * Defaults to {@code false}.
+     */
     private boolean logCompilationWarningsAndErrors;
 
     /**
      * Whether to throw an exception if an activeRecipe fails configuration validation.
      * This may happen if the activeRecipe is improperly configured, or any downstream recipes are improperly configured.
      * <p>
-     * For the time, this default is "false" to prevent one improperly recipe from failing the build.
+     * For the time, this default is "false" to prevent one improperly configured recipe from failing the build.
      * In the future, this default may be changed to "true" to be more restrictive.
      */
     private boolean failOnInvalidActiveRecipes;
 
+    /**
+     * Whether {@code rewriteDryRun} should fail the build when it detects that changes would be made.
+     * Useful in CI to enforce that all recipes have already been applied.
+     * Defaults to {@code false}.
+     */
     private boolean failOnDryRunResults;
 
+    /**
+     * Whether to throw an exception when source file parsing fails.
+     * Can also be enabled via the project property {@code -Prewrite.throwOnParseFailures}.
+     * Defaults to {@code false}.
+     */
     private boolean throwOnParseFailures;
 
     @SuppressWarnings("unused")
