@@ -19,7 +19,10 @@ gradlePlugin {
         create("rewrite") {
             id = "org.openrewrite.rewrite"
             displayName = "Rewrite"
-            description = "Automatically eliminate technical debt. Apply OpenRewrite recipes to refactor, migrate, and fix source code across Java, Kotlin, Gradle, XML, YAML, properties, and more."
+            description = "Automatically eliminate technical debt. " +
+                    "Apply OpenRewrite recipes to refactor, migrate, and fix source code across Java, Kotlin, Gradle, XML, YAML, properties, and more. " +
+                    "Provides rewriteRun (apply recipes), rewriteDryRun (preview changes as a patch file), and rewriteDiscover (list available recipes) tasks. " +
+                    "Configure active recipes and styles through the rewrite DSL or a rewrite.yml file."
             implementationClass = "org.openrewrite.gradle.RewritePlugin"
             tags.set(listOf("rewrite", "refactoring", "remediation", "security", "migration", "java", "checkstyle"))
         }
