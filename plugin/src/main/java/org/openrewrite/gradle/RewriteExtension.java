@@ -102,7 +102,7 @@ public class RewriteExtension {
     private final List<String> plainTextMasks = new ArrayList<>();
 
     /**
-     * Maximum file size in megabytes. Non-Java source files larger than this threshold are skipped during parsing.
+     * Maximum file size in megabytes. Source files larger than this threshold are skipped during parsing.
      * Defaults to {@code 10}.
      */
     private int sizeThresholdMb = 10;
