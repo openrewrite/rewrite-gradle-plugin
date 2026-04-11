@@ -19,7 +19,7 @@ gradlePlugin {
         create("rewrite") {
             id = "org.openrewrite.rewrite"
             displayName = "Rewrite"
-            description = "Automatically eliminate technical debt"
+            description = "Automatically eliminate technical debt. Apply OpenRewrite recipes to refactor, migrate, and fix source code across Java, Kotlin, Gradle, XML, YAML, properties, and more."
             implementationClass = "org.openrewrite.gradle.RewritePlugin"
             tags.set(listOf("rewrite", "refactoring", "remediation", "security", "migration", "java", "checkstyle"))
         }

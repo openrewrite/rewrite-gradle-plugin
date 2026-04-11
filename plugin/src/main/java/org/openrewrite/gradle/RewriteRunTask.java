@@ -28,7 +28,7 @@ public class RewriteRunTask extends AbstractRewriteTask {
     @Inject
     public RewriteRunTask() {
         setGroup("rewrite");
-        setDescription("Apply the active refactoring recipes");
+        setDescription("Apply the active refactoring recipes. Source files will be modified in place.");
     }
 
     @TaskAction

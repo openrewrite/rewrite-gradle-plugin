@@ -24,7 +24,7 @@ public class RewriteDiscoverTask extends AbstractRewriteTask {
     @Inject
     public RewriteDiscoverTask() {
         setGroup("rewrite");
-        setDescription("Lists all available recipes and their visitors");
+        setDescription("Lists all available recipes, their visitors, and active recipes configured in the rewrite DSL or rewrite.yml");
     }
 
     @TaskAction
