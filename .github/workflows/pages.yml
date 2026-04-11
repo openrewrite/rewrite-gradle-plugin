@@ -1,0 +1,57 @@
+---
+name: Deploy plugin docs to Pages
+
+on:
+  push:
+    tags:
+      - v*
+  workflow_dispatch: {}
+  workflow_run:
+    workflows: ["publish"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  pages:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+        with:
+          develocity-access-key: ${{ env.GRADLE_ENTERPRISE_ACCESS_KEY }}
+
+      - name: Generate documentation
+        run: ./gradlew :plugin:test --tests "org.openrewrite.gradle.DocumentationSyncTest" :plugin:javadoc
+
+      - name: Assemble site
+        run: |
+          mkdir -p site/apidocs
+          cp docs/plugin-reference.md site/index.md
+          cp -r plugin/build/docs/javadoc/* site/apidocs/
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - uses: actions/deploy-pages@v5

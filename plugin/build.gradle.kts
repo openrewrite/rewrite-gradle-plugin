@@ -218,6 +218,15 @@ tasks.named("check").configure {
     dependsOn(testGradle4, testGradle8)
 }
 
+tasks.withType<Javadoc>().configureEach {
+    title = "OpenRewrite Gradle Plugin API"
+    (options as StandardJavadocDocletOptions).apply {
+        addStringOption("Xdoclint:none", "-quiet")
+        links("https://docs.gradle.org/current/javadoc/")
+        links("https://docs.oracle.com/en/java/javase/17/docs/api/")
+    }
+}
+
 configure<LicenseExtension> {
     ext.set("year", Calendar.getInstance().get(Calendar.YEAR))
     skipExistingHeaders = true
