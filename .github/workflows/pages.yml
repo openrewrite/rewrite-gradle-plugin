@@ -47,7 +47,8 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p site/apidocs
-          cp docs/plugin-reference.md site/index.md
+          sudo apt-get install -y pandoc
+          pandoc docs/plugin-reference.md -s --metadata title="OpenRewrite Gradle Plugin Reference" -o site/index.html
           cp -r plugin/build/docs/javadoc/* site/apidocs/
 
       - uses: actions/configure-pages@v6
