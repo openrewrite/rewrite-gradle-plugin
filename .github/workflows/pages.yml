@@ -48,7 +48,8 @@ jobs:
         run: |
           mkdir -p site/apidocs
           sudo apt-get install -y pandoc
-          pandoc docs/plugin-reference.md -s --metadata title="OpenRewrite Gradle Plugin Reference" -o site/index.html
+          pandoc docs/plugin-reference.md -s --metadata title="OpenRewrite Gradle Plugin Reference" --css style.css -o site/index.html
+          cp docs/style.css site/
           cp -r plugin/build/docs/javadoc/* site/apidocs/
 
       - uses: actions/configure-pages@v6
