@@ -1302,6 +1302,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .invoke(sourceSet);
                 Configuration implementation = subproject.getConfigurations().getByName(implementationName);
                 Configuration rewriteImplementation = subproject.getConfigurations().maybeCreate("rewrite" + implementationName);
+                rewriteImplementation.setCanBeConsumed(false);
+                rewriteImplementation.setCanBeResolved(true);
                 if (!rewriteImplementation.getExtendsFrom().contains(implementation)) {
                     rewriteImplementation.extendsFrom(implementation);
                 }
@@ -1318,6 +1320,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                 String compileName = (String) sourceSet.getClass().getMethod("getCompileOnlyConfigurationName").invoke(sourceSet);
                 Configuration compileOnly = subproject.getConfigurations().getByName(compileName);
                 Configuration rewriteCompileOnly = subproject.getConfigurations().maybeCreate("rewrite" + compileName);
+                rewriteCompileOnly.setCanBeConsumed(false);
                 rewriteCompileOnly.setCanBeResolved(true);
                 rewriteCompileOnly.extendsFrom(compileOnly);
 
