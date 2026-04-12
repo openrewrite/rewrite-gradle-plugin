@@ -37,9 +37,11 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     protected @Nullable GradleProjectParser gpp;
     protected @Nullable RewriteExtension extension;
     private final ConfigurableFileCollection resolvedDependencies;
+    private final ConfigurableFileCollection projectClasspath;
 
     protected AbstractRewriteTask() {
         resolvedDependencies = getProject().files();
+        projectClasspath = getProject().files();
         if (GradleVersion.current().compareTo(GradleVersion.version("7.4")) >= 0) {
             notCompatibleWithConfigurationCache("org.openrewrite.rewrite needs to parse the whole project");
         }
@@ -54,6 +56,17 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     @Classpath
     public ConfigurableFileCollection getResolvedDependencies() {
         return resolvedDependencies;
+    }
+
+    /**
+     * The project's compile and runtime classpaths, declared as an input so that Gradle
+     * knows to build dependent project jars before running rewrite tasks.
+     * This is separate from {@link #getResolvedDependencies()} to avoid polluting the
+     * rewrite recipe classpath with project dependencies.
+     */
+    @Classpath
+    public ConfigurableFileCollection getProjectClasspath() {
+        return projectClasspath;
     }
 
     @Option(description = "Dump GC activity related to parsing.", option = "dumpGcActivity")

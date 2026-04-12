@@ -129,8 +129,18 @@ public class RewritePlugin implements Plugin<Project> {
             sourceSets.all(sourceSet -> {
                 // This is intended to ensure that any Groovy/Kotlin/etc. and dependent project sources are available
                 TaskProvider<Task> compileTask = project.getTasks().named(sourceSet.getCompileJavaTaskName());
-                rewriteRun.configure(task -> task.dependsOn(compileTask));
-                rewriteDryRun.configure(task -> task.dependsOn(compileTask));
+                rewriteRun.configure(task -> {
+                    task.dependsOn(compileTask);
+                    // Declare source set classpaths as inputs so Gradle knows to build
+                    // dependent project jars before running the rewrite task
+                    task.getProjectClasspath().from(sourceSet.getCompileClasspath());
+                    task.getProjectClasspath().from(sourceSet.getRuntimeClasspath());
+                });
+                rewriteDryRun.configure(task -> {
+                    task.dependsOn(compileTask);
+                    task.getProjectClasspath().from(sourceSet.getCompileClasspath());
+                    task.getProjectClasspath().from(sourceSet.getRuntimeClasspath());
+                });
             });
 
             // Detect SourceSets which overlap other sourceSets and disable the compilation task of the overlapping
