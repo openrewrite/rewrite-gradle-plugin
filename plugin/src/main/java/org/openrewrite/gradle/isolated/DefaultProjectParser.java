@@ -773,9 +773,12 @@ public class DefaultProjectParser implements GradleProjectParser {
                     .getByName(sourceSet.getCompileJavaTaskName());
             JavaVersion javaVersion = getJavaVersion(javaCompileTask);
 
+            Path absoluteBuildDir = subproject.getLayout().getBuildDirectory()
+                    .get().getAsFile().toPath().toAbsolutePath().normalize();
             List<Path> unparsedSources = sourceSet.getAllSource()
                     .getSourceDirectories()
                     .filter(File::exists)
+                    .filter(dir -> !dir.toPath().toAbsolutePath().normalize().startsWith(absoluteBuildDir))
                     .filter(dir -> !alreadyParsed.contains(dir.toPath()))
                     .getFiles()
                     .stream()
@@ -823,8 +826,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                 Stream<SourceFile> parsedJavaFiles = parseJavaFiles(
                         javaPaths,
                         ctx,
-                        buildDir,
-                        exclusions,
                         getSourceFileEncoding(javaCompileTask.getOptions()),
                         javaVersion,
                         dependencyPaths,
@@ -839,10 +840,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
 
             if (subproject.getPlugins().hasPlugin("org.jetbrains.kotlin.jvm")) {
-                String excludedProtosPath = subproject.getProjectDir().getPath() + "/protos/build/generated";
                 List<Path> kotlinPaths = unparsedSources.stream()
                         .filter(it -> it.toString().endsWith(".kt"))
-                        .filter(it -> !it.toString().startsWith(excludedProtosPath))
                         .collect(toList());
 
                 if (!kotlinPaths.isEmpty()) {
@@ -850,8 +849,6 @@ public class DefaultProjectParser implements GradleProjectParser {
                     Stream<SourceFile> parsedKotlinFiles = parseKotlinFiles(
                             kotlinPaths,
                             ctx,
-                            buildDir,
-                            exclusions,
                             javaVersion,
                             dependencyPaths,
                             javaTypeCache);
@@ -890,12 +887,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                             .flatMap(gp -> {
                                 view(ctx).setCharset(getSourceFileEncoding(groovyCompileTask.getOptions()));
                                 return gp.parse(groovyPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
-                            }).map(cu -> {
-                        if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                            return null;
-                        }
-                        return cu;
-                    }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                            }).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
                     sourceSetSourceFiles = Stream.concat(sourceSetSourceFiles, cus);
                     sourceSetSize += groovyPaths.size();
                     logger.info(
@@ -921,7 +913,10 @@ public class DefaultProjectParser implements GradleProjectParser {
 
             JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths);
             sourceFileStream = sourceFileStream.concat(
-                    sourceSetSourceFiles.map(addProvenance(sourceSetProvenance)),
+                    sourceSetSourceFiles
+                            .filter(cu -> !isExcluded(repository, exclusions, cu.getSourcePath()) &&
+                                    !cu.getSourcePath().startsWith(buildDir))
+                            .map(addProvenance(sourceSetProvenance)),
                     sourceSetSize);
             // Some source sets get misconfigured to have the same directories as other source sets
             // Prevent files which appear in multiple source sets from being parsed more than once
@@ -952,8 +947,6 @@ public class DefaultProjectParser implements GradleProjectParser {
     private Stream<SourceFile> parseJavaFiles(
             List<Path> javaPaths,
             ExecutionContext ctx,
-            Path buildDir,
-            Collection<PathMatcher> exclusions,
             Charset javaSourceCharset,
             JavaVersion javaVersion,
             Set<Path> dependencyPaths,
@@ -968,18 +961,11 @@ public class DefaultProjectParser implements GradleProjectParser {
                     view(ctx).setCharset(javaSourceCharset);
                     return jp.parse(javaPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
                 })
-                .map(cu -> {
-                    if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                        return null;
-                    }
-                    return cu;
-                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 
     private Stream<SourceFile> parseKotlinFiles(List<Path> kotlinPaths,
                                                 ExecutionContext ctx,
-                                                Path buildDir,
-                                                Collection<PathMatcher> exclusions,
                                                 JavaVersion javaVersion,
                                                 Set<Path> dependencyPaths,
                                                 JavaTypeCache javaTypeCache) {
@@ -993,12 +979,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     view(ctx).setCharset(StandardCharsets.UTF_8); // Kotlin requires UTF-8
                     return kp.parse(kotlinPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
                 })
-                .map(cu -> {
-                    if (isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath().startsWith(buildDir)) {
-                        return null;
-                    }
-                    return cu;
-                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 
     private GradleParser gradleParser() {
@@ -1343,16 +1324,13 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                     Stream<SourceFile> cus = kp.parse(kotlinPaths, baseDir, ctx);
                     alreadyParsed.addAll(kotlinPaths);
-                    cus = cus.map(cu -> {
-                        if (isExcluded(repository, exclusions, cu.getSourcePath()) ||
-                            cu.getSourcePath().startsWith(buildDirPath)) {
-                            return null;
-                        }
-                        return cu;
-                    }).filter(Objects::nonNull);
                     JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths);
 
-                    sourceFileStream = sourceFileStream.concat(cus.map(addProvenance(sourceSetProvenance)), kotlinPaths.size());
+                    sourceFileStream = sourceFileStream.concat(
+                            cus.filter(cu -> !isExcluded(repository, exclusions, cu.getSourcePath()) &&
+                                    !cu.getSourcePath().startsWith(buildDirPath))
+                                    .map(addProvenance(sourceSetProvenance)),
+                            kotlinPaths.size());
                     logger.info("Scanned {} Kotlin sources in {}/{}", kotlinPaths.size(), subproject.getPath(), kotlinDirectorySet.getName());
                 }
             } catch (Exception e) {

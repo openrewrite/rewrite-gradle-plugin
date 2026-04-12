@@ -136,8 +136,6 @@ class AndroidProjectParser {
                     alreadyParsed.addAll(javaPaths);
                     Stream<SourceFile> parsedJavaFiles = parseJavaFiles(javaPaths,
                             ctx,
-                            buildDir,
-                            exclusions,
                             javaSourceCharset,
                             javaVersion,
                             dependencyPaths,
@@ -152,8 +150,6 @@ class AndroidProjectParser {
                     alreadyParsed.addAll(kotlinPaths);
                     Stream<SourceFile> parsedKotlinFiles = parseKotlinFiles(kotlinPaths,
                             ctx,
-                            buildDir,
-                            exclusions,
                             javaVersion,
                             dependencyPaths,
                             javaTypeCache);
@@ -183,8 +179,11 @@ class AndroidProjectParser {
                 }
 
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths);
-                sourceFileStream = sourceFileStream.concat(sourceSetSourceFiles.map(DefaultProjectParser.addProvenance(
-                                sourceSetProvenance)),
+                sourceFileStream = sourceFileStream.concat(
+                        sourceSetSourceFiles
+                                .filter(cu -> !DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) &&
+                                        !cu.getSourcePath().startsWith(buildDir))
+                                .map(DefaultProjectParser.addProvenance(sourceSetProvenance)),
                         sourceSetSize);
             }
         }
@@ -282,8 +281,6 @@ class AndroidProjectParser {
 
     private Stream<SourceFile> parseJavaFiles(List<Path> javaPaths,
                                               ExecutionContext ctx,
-                                              Path buildDir,
-                                              Collection<PathMatcher> exclusions,
                                               Charset javaSourceCharset,
                                               JavaVersion javaVersion,
                                               Set<Path> dependencyPaths,
@@ -299,19 +296,11 @@ class AndroidProjectParser {
                     view(ctx).setCharset(javaSourceCharset);
                     return jp.parse(javaPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
                 })
-                .map(cu -> {
-                    if (DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath()
-                            .startsWith(buildDir)) {
-                        return null;
-                    }
-                    return cu;
-                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 
     private Stream<SourceFile> parseKotlinFiles(List<Path> kotlinPaths,
                                                 ExecutionContext ctx,
-                                                Path buildDir,
-                                                Collection<PathMatcher> exclusions,
                                                 JavaVersion javaVersion,
                                                 Set<Path> dependencyPaths,
                                                 JavaTypeCache javaTypeCache) {
@@ -326,12 +315,6 @@ class AndroidProjectParser {
                     view(ctx).setCharset(StandardCharsets.UTF_8); // Kotlin requires UTF-8
                     return kp.parse(kotlinPaths, baseDir, ctx).onClose(() -> view(ctx).setCharset(null));
                 })
-                .map(cu -> {
-                    if (DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) || cu.getSourcePath()
-                            .startsWith(buildDir)) {
-                        return null;
-                    }
-                    return cu;
-                }).filter(Objects::nonNull).map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
+                .map(it -> it.withMarkers(it.getMarkers().add(javaVersion)));
     }
 }
