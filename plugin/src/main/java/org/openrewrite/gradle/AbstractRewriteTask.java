@@ -36,8 +36,10 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     protected boolean dumpGcActivity;
     protected @Nullable GradleProjectParser gpp;
     protected @Nullable RewriteExtension extension;
+    private final ConfigurableFileCollection resolvedDependencies;
 
     protected AbstractRewriteTask() {
+        resolvedDependencies = getProject().files();
         if (GradleVersion.current().compareTo(GradleVersion.version("7.4")) >= 0) {
             notCompatibleWithConfigurationCache("org.openrewrite.rewrite needs to parse the whole project");
         }
@@ -50,7 +52,9 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     }
 
     @Classpath
-    public abstract ConfigurableFileCollection getResolvedDependencies();
+    public ConfigurableFileCollection getResolvedDependencies() {
+        return resolvedDependencies;
+    }
 
     @Option(description = "Dump GC activity related to parsing.", option = "dumpGcActivity")
     public void setDumpGcActivity(boolean dumpGcActivity) {
