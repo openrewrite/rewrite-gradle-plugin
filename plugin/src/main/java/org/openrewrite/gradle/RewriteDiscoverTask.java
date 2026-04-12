@@ -19,7 +19,7 @@ import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
 
-public class RewriteDiscoverTask extends AbstractRewriteTask {
+public abstract class RewriteDiscoverTask extends AbstractRewriteTask {
 
     @Inject
     public RewriteDiscoverTask() {

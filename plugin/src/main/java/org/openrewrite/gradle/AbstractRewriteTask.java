@@ -16,8 +16,9 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.ProjectLayout;
-import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.options.Option;
@@ -25,16 +26,13 @@ import org.gradle.util.GradleVersion;
 import org.jspecify.annotations.Nullable;
 
 import javax.inject.Inject;
-import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
-import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 public abstract class AbstractRewriteTask extends DefaultTask {
-    protected @Nullable Provider<Set<File>> resolvedDependencies;
     protected boolean dumpGcActivity;
     protected @Nullable GradleProjectParser gpp;
     protected @Nullable RewriteExtension extension;
@@ -51,11 +49,8 @@ public abstract class AbstractRewriteTask extends DefaultTask {
         return (T) this;
     }
 
-    public <T extends AbstractRewriteTask> T setResolvedDependencies(Provider<Set<File>> resolvedDependencies) {
-        this.resolvedDependencies = resolvedDependencies;
-        //noinspection unchecked
-        return (T) this;
-    }
+    @Classpath
+    public abstract ConfigurableFileCollection getResolvedDependencies();
 
     @Option(description = "Dump GC activity related to parsing.", option = "dumpGcActivity")
     public void setDumpGcActivity(boolean dumpGcActivity) {
@@ -78,15 +73,8 @@ public abstract class AbstractRewriteTask extends DefaultTask {
             if (extension == null) {
                 throw new IllegalArgumentException("Must configure extension");
             }
-            if (resolvedDependencies == null) {
-                throw new IllegalArgumentException("Must configure resolvedDependencies");
-            }
-            Set<File> deps = resolvedDependencies.getOrNull();
-            if (deps == null) {
-                deps = emptySet();
-            }
-            Set<Path> classpath = deps.stream()
-                    .map(File::toPath)
+            Set<Path> classpath = getResolvedDependencies().getFiles().stream()
+                    .map(java.io.File::toPath)
                     .collect(toSet());
             gpp = new DelegatingProjectParser(getProject(), extension, classpath);
         }
