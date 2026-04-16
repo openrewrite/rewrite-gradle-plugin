@@ -35,6 +35,7 @@ import org.gradle.api.tasks.TaskProvider;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
 import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE;
@@ -65,7 +66,7 @@ public class RewritePlugin implements Plugin<Project> {
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
         rewriteConf.setCanBeConsumed(false);
 
-        java.util.concurrent.Callable<Configuration> detachedConf = () -> createDetachedConfiguration(project, extension, rewriteConf);
+        Callable<Configuration> detachedConf = () -> createDetachedConfiguration(project, extension, rewriteConf);
 
         TaskProvider<RewriteRunTask> rewriteRun = project.getTasks().register("rewriteRun", RewriteRunTask.class, task -> {
             task.setExtension(extension);
