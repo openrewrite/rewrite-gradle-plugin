@@ -66,7 +66,17 @@ public class RewritePlugin implements Plugin<Project> {
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
         rewriteConf.setCanBeConsumed(false);
 
-        Callable<Configuration> detachedConf = () -> createDetachedConfiguration(project, extension, rewriteConf);
+        Callable<Configuration> detachedConf = new Callable<Configuration>() {
+            private Configuration cached;
+
+            @Override
+            public Configuration call() {
+                if (cached == null) {
+                    cached = createDetachedConfiguration(project, extension, rewriteConf);
+                }
+                return cached;
+            }
+        };
 
         TaskProvider<RewriteRunTask> rewriteRun = project.getTasks().register("rewriteRun", RewriteRunTask.class, task -> {
             task.setExtension(extension);
@@ -130,18 +140,12 @@ public class RewritePlugin implements Plugin<Project> {
             sourceSets.all(sourceSet -> {
                 // This is intended to ensure that any Groovy/Kotlin/etc. and dependent project sources are available
                 TaskProvider<Task> compileTask = project.getTasks().named(sourceSet.getCompileJavaTaskName());
-                rewriteRun.configure(task -> {
-                    task.dependsOn(compileTask);
-                    // Declare source set classpaths as inputs so Gradle knows to build
-                    // dependent project jars before running the rewrite task
-                    task.getProjectClasspath().from(sourceSet.getCompileClasspath());
-                    task.getProjectClasspath().from(sourceSet.getRuntimeClasspath());
-                });
-                rewriteDryRun.configure(task -> {
-                    task.dependsOn(compileTask);
-                    task.getProjectClasspath().from(sourceSet.getCompileClasspath());
-                    task.getProjectClasspath().from(sourceSet.getRuntimeClasspath());
-                });
+                for (TaskProvider<? extends AbstractRewriteTask> taskProvider : Arrays.asList(rewriteRun, rewriteDryRun)) {
+                    taskProvider.configure(task -> {
+                        task.dependsOn(compileTask);
+                        task.getProjectClasspath().from(sourceSet.getRuntimeClasspath());
+                    });
+                }
             });
 
             // Detect SourceSets which overlap other sourceSets and disable the compilation task of the overlapping

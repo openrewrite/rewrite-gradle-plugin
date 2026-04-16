@@ -26,6 +26,7 @@ import org.gradle.util.GradleVersion;
 import org.jspecify.annotations.Nullable;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
@@ -59,7 +60,7 @@ public abstract class AbstractRewriteTask extends DefaultTask {
     }
 
     /**
-     * The project's compile and runtime classpaths, declared as an input so that Gradle
+     * The project's runtime classpaths, declared as an input so that Gradle
      * knows to build dependent project jars before running rewrite tasks.
      * This is separate from {@link #getResolvedDependencies()} to avoid polluting the
      * rewrite recipe classpath with project dependencies.
@@ -91,7 +92,7 @@ public abstract class AbstractRewriteTask extends DefaultTask {
                 throw new IllegalArgumentException("Must configure extension");
             }
             Set<Path> classpath = getResolvedDependencies().getFiles().stream()
-                    .map(java.io.File::toPath)
+                    .map(File::toPath)
                     .collect(toSet());
             gpp = new DelegatingProjectParser(getProject(), extension, classpath);
         }
