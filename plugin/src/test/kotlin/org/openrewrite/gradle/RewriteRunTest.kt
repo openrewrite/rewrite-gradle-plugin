@@ -1041,6 +1041,9 @@ class RewriteRunTest : RewritePluginTest {
                        url = uri("https://central.sonatype.com/repository/maven-snapshots")
                     }
                 }
+                kotlin {
+                    jvmToolchain(21)
+                }
                 rewrite {
                     activeRecipe("org.openrewrite.test.FindString")
                 }

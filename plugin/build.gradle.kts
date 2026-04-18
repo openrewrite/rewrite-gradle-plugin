@@ -214,8 +214,17 @@ val testGradle8 = tasks.register<Test>("testGradle8") {
         languageVersion.set(JavaLanguageVersion.of(21))
     })
 }
+val testGradle9 = tasks.register<Test>("testGradle9") {
+    systemProperty("org.openrewrite.test.gradleVersion", "9.4.1")
+    systemProperty("jarLocationForTest", tasks.named<Jar>("jar").get().archiveFile.get().asFile.absolutePath)
+    testClassesDirs = files(testJvmTestSuite.map { it.sources.output.classesDirs })
+    classpath = files(testJvmTestSuite.map { it.sources.runtimeClasspath})
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(25))
+    })
+}
 tasks.named("check").configure {
-    dependsOn(testGradle4, testGradle8)
+    dependsOn(testGradle4, testGradle8, testGradle9)
 }
 
 tasks.withType<Javadoc>().configureEach {
