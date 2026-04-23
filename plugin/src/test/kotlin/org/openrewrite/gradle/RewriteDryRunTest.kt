@@ -348,6 +348,43 @@ class RewriteDryRunTest : RewritePluginTest {
             )
     }
 
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/441")
+    @Test
+    fun `throwOnParseFailures fails the build when parsing fails`() {
+        gradleProject(projectDir) {
+            buildGradle(
+                """
+                plugins {
+                    id("org.openrewrite.rewrite")
+                }
+
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
+                    }
+                }
+
+                rewrite {
+                    activeRecipe("org.openrewrite.FindSourceFiles")
+                    throwOnParseFailures = true
+                }
+                """
+            )
+            textFile(
+                "broken.yml",
+                """
+                key: value
+                  - invalid indentation
+                    foo: [unclosed
+                """.trimIndent()
+            )
+        }
+        val result = runGradleAndFail(projectDir, taskName())
+        assertThat(result.output).contains("Fix the parse failures or set throwOnParseFailures to false to continue")
+    }
+
     @EnabledIfEnvironmentVariable(named = "ANDROID_HOME", matches = ".*")
     @EnabledForGradleRange(min = "5.0", max = "7.6.4")
     @Test
