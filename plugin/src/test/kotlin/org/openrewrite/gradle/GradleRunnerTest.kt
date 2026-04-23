@@ -25,6 +25,14 @@ val gradleVersion: String? = System.getProperty("org.openrewrite.test.gradleVers
 interface GradleRunnerTest {
 
     fun runGradle(testDir: File, vararg args: String): BuildResult {
+        return gradleRunner(testDir, *args).build()
+    }
+
+    fun runGradleAndFail(testDir: File, vararg args: String): BuildResult {
+        return gradleRunner(testDir, *args).buildAndFail()
+    }
+
+    private fun gradleRunner(testDir: File, vararg args: String): GradleRunner {
         return GradleRunner.create()
             .withDebug(ManagementFactory.getRuntimeMXBean().inputArguments.toString().indexOf("-agentlib:jdwp") > 0)
             .withProjectDir(testDir)
@@ -36,6 +44,5 @@ interface GradleRunnerTest {
             .withArguments(*args, "--info", "--stacktrace")
             .withPluginClasspath()
             .forwardOutput()
-            .build()
     }
 }

@@ -1428,6 +1428,9 @@ public class DefaultProjectParser implements GradleProjectParser {
                 })
                 .peek(xmlDetector::sample)
                 .collect(toList());
+        if (extension.getThrowOnParseFailures() && firstWarningLogged.get()) {
+            throw new RuntimeException("There were problems parsing some source files, run with --info to see full stack traces. Fix the parse failures or set throwOnParseFailures to false to continue.");
+        }
         Map<Class<? extends SourceFile>, NamedStyles> stylesByType = new HashMap<>();
         stylesByType.put(J.CompilationUnit.class, javaDetector.build());
         stylesByType.put(K.CompilationUnit.class, kotlinDetector.build());
