@@ -74,6 +74,9 @@ import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.kotlin.tree.K;
 import org.openrewrite.marker.*;
 import org.openrewrite.marker.ci.BuildEnvironment;
+import org.openrewrite.maven.MavenExecutionContextView;
+import org.openrewrite.maven.cache.InMemoryMavenPomCache;
+import org.openrewrite.maven.cache.MavenPomCache;
 import org.openrewrite.polyglot.*;
 import org.openrewrite.properties.PropertiesParser;
 import org.openrewrite.quark.Quark;
@@ -111,6 +114,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     private static final String LOG_INDENT_INCREMENT = "    ";
 
     private static final Logger logger = Logging.getLogger(DefaultProjectParser.class);
+    private static @Nullable MavenPomCache pomCache;
     private final AtomicBoolean firstWarningLogged = new AtomicBoolean(false);
     protected final Path baseDir;
     protected final RewriteExtension extension;
@@ -1392,6 +1396,9 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     protected ResultsContainer listResults(ExecutionContext ctx) {
+        if (extension.getPomCacheEnabled()) {
+            MavenExecutionContextView.view(ctx).setPomCache(getPomCache(extension.getPomCacheDirectory()));
+        }
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
         if ("org.openrewrite.Recipe$Noop".equals(recipe.getName())) {
@@ -1459,6 +1466,16 @@ public class DefaultProjectParser implements GradleProjectParser {
         if (repository != null) {
             repository.close();
         }
+    }
+
+    private static synchronized MavenPomCache getPomCache(@Nullable String pomCacheDirectory) {
+        if (pomCache == null) {
+            pomCache = new MavenPomCacheBuilder(logger).build(pomCacheDirectory);
+        }
+        if (pomCache == null) {
+            pomCache = new InMemoryMavenPomCache();
+        }
+        return pomCache;
     }
 
     private UnaryOperator<SourceFile> applyAutodetected(

@@ -787,6 +787,64 @@ class RewriteRunTest : RewritePluginTest {
     }
 
     @Test
+    fun pomCacheEnabledPersistsToConfiguredDirectory(@TempDir projectDir: File) {
+        val cacheDir = projectDir.resolve("rewrite-cache").absolutePath.replace("\\", "\\\\")
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.UpgradeJacksonCore
+                displayName: Upgrade jackson-core
+                description: Upgrade jackson-core.
+                recipeList:
+                  - org.openrewrite.gradle.UpgradeDependencyVersion:
+                      groupId: com.fasterxml.jackson.core
+                      artifactId: jackson-core
+                      newVersion: 2.16.0
+            """
+            )
+            buildGradle(
+                """
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
+                    }
+                }
+
+                dependencies {
+                    implementation("com.fasterxml.jackson.core:jackson-core:2.15.1")
+                }
+
+                rewrite {
+                    pomCacheEnabled = true
+                    pomCacheDirectory = "$cacheDir"
+                    activeRecipe("org.openrewrite.test.UpgradeJacksonCore")
+                }
+            """
+            )
+        }
+
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        assertThat(projectDir.resolve("build.gradle").readText())
+            .contains("com.fasterxml.jackson.core:jackson-core:2.16.0")
+
+        // RocksdbMavenPomCache writes its database under a `.rewrite-cache` subdirectory
+        val rocksDir = projectDir.resolve("rewrite-cache").resolve(".rewrite-cache")
+        assertThat(rocksDir).exists().isDirectory()
+        assertThat(rocksDir.list()).isNotEmpty()
+    }
+
+    @Test
     fun mergeConfiguredAndAutodetectedStyles(@TempDir projectDir: File) {
         gradleProject(projectDir) {
             propertiesFile("gradle.properties", "systemProp.rewrite.activeStyles=org.openrewrite.testStyle")
