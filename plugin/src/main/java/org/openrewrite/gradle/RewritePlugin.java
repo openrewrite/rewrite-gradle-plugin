@@ -225,7 +225,8 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("org.openrewrite:rewrite-polyglot:" + extension.getRewritePolyglotVersion()),
                 deps.create("org.openrewrite.gradle.tooling:model:" + extension.getRewriteGradleModelVersion()),
                 deps.create("com.fasterxml.jackson.module:jackson-module-kotlin:" + extension.getJacksonModuleKotlinVersion()),
-                deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion())
+                deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion()),
+                deps.create("org.rocksdb:rocksdbjni:" + extension.getRocksdbJniVersion())
         );
     }
 }

@@ -146,6 +146,20 @@ public class RewriteExtension {
      */
     private boolean throwOnParseFailures;
 
+    /**
+     * Whether to cache resolved Maven POMs to a RocksDB-backed on-disk cache to speed up subsequent recipe runs.
+     * When {@code true} (the default), a two-layer cache is used: an in-memory L1 cache backed by a RocksDB L2 cache.
+     * When {@code false}, only an in-memory cache is used.
+     */
+    private boolean pomCacheEnabled = true;
+
+    /**
+     * Directory in which to store the RocksDB-backed Maven POM cache.
+     * When {@code null} (the default), the cache is stored under {@code ~/.rewrite-cache}.
+     */
+    @Nullable
+    private String pomCacheDirectory;
+
     @SuppressWarnings("unused")
     public RewriteExtension(Project project) {
         this.project = project;
@@ -409,6 +423,10 @@ public class RewriteExtension {
         return getVersionProps().getProperty("com.fasterxml.jackson.module:jackson-module-kotlin");
     }
 
+    public String getRocksdbJniVersion() {
+        return getVersionProps().getProperty("org.rocksdb:rocksdbjni");
+    }
+
     public boolean getThrowOnParseFailures() {
         if (project.getProperties().containsKey("rewrite.throwOnParseFailures")) {
             return true;
@@ -418,5 +436,21 @@ public class RewriteExtension {
 
     public void setThrowOnParseFailures(boolean throwOnParseFailures) {
         this.throwOnParseFailures = throwOnParseFailures;
+    }
+
+    public boolean getPomCacheEnabled() {
+        return pomCacheEnabled;
+    }
+
+    public void setPomCacheEnabled(boolean pomCacheEnabled) {
+        this.pomCacheEnabled = pomCacheEnabled;
+    }
+
+    public @Nullable String getPomCacheDirectory() {
+        return pomCacheDirectory;
+    }
+
+    public void setPomCacheDirectory(@Nullable String pomCacheDirectory) {
+        this.pomCacheDirectory = pomCacheDirectory;
     }
 }
