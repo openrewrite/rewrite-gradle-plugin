@@ -16,8 +16,9 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.ProjectLayout;
-import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.options.Option;
@@ -30,16 +31,18 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
-import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
 public abstract class AbstractRewriteTask extends DefaultTask {
-    protected @Nullable Provider<Set<File>> resolvedDependencies;
     protected boolean dumpGcActivity;
     protected @Nullable GradleProjectParser gpp;
     protected @Nullable RewriteExtension extension;
+    private final ConfigurableFileCollection resolvedDependencies;
+    private final ConfigurableFileCollection projectClasspath;
 
     protected AbstractRewriteTask() {
+        resolvedDependencies = getProject().files();
+        projectClasspath = getProject().files();
         if (GradleVersion.current().compareTo(GradleVersion.version("7.4")) >= 0) {
             notCompatibleWithConfigurationCache("org.openrewrite.rewrite needs to parse the whole project");
         }
@@ -51,10 +54,20 @@ public abstract class AbstractRewriteTask extends DefaultTask {
         return (T) this;
     }
 
-    public <T extends AbstractRewriteTask> T setResolvedDependencies(Provider<Set<File>> resolvedDependencies) {
-        this.resolvedDependencies = resolvedDependencies;
-        //noinspection unchecked
-        return (T) this;
+    @Classpath
+    public ConfigurableFileCollection getResolvedDependencies() {
+        return resolvedDependencies;
+    }
+
+    /**
+     * The project's runtime classpaths, declared as an input so that Gradle
+     * knows to build dependent project jars before running rewrite tasks.
+     * This is separate from {@link #getResolvedDependencies()} to avoid polluting the
+     * rewrite recipe classpath with project dependencies.
+     */
+    @Classpath
+    public ConfigurableFileCollection getProjectClasspath() {
+        return projectClasspath;
     }
 
     @Option(description = "Dump GC activity related to parsing.", option = "dumpGcActivity")
@@ -78,14 +91,7 @@ public abstract class AbstractRewriteTask extends DefaultTask {
             if (extension == null) {
                 throw new IllegalArgumentException("Must configure extension");
             }
-            if (resolvedDependencies == null) {
-                throw new IllegalArgumentException("Must configure resolvedDependencies");
-            }
-            Set<File> deps = resolvedDependencies.getOrNull();
-            if (deps == null) {
-                deps = emptySet();
-            }
-            Set<Path> classpath = deps.stream()
+            Set<Path> classpath = getResolvedDependencies().getFiles().stream()
                     .map(File::toPath)
                     .collect(toSet());
             gpp = new DelegatingProjectParser(getProject(), extension, classpath);
