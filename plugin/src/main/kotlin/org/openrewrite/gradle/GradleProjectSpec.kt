@@ -161,6 +161,10 @@ class GradleProjectSpec(
             File(dir, "build.gradle").writeText(groovyBuildScript!!)
         }
 
+        File(dir, "gradle.properties").writeText(
+            "org.gradle.jvmargs=-Xmx1g -XX:MaxMetaspaceSize=1g\n"
+        )
+
         for (otherGradleScript in otherGradleScripts) {
             File(dir, otherGradleScript.key).writeText(otherGradleScript.value)
         }
