@@ -104,6 +104,7 @@ dependencies {
 //    "rewriteDependencies"("org.openrewrite:rewrite-docker")
     "rewriteDependencies"("org.openrewrite:rewrite-hcl")
     "rewriteDependencies"("org.openrewrite:rewrite-java")
+    "rewriteDependencies"("org.openrewrite:rewrite-java-next")
     "rewriteDependencies"("org.openrewrite:rewrite-java-25")
     "rewriteDependencies"("org.openrewrite:rewrite-java-21")
     "rewriteDependencies"("org.openrewrite:rewrite-java-17")
