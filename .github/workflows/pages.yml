@@ -2,9 +2,6 @@
 name: Deploy plugin docs to Pages
 
 on:
-  push:
-    tags:
-      - v*
   workflow_dispatch: {}
   workflow_run:
     workflows: ["publish"]
@@ -46,8 +43,8 @@ jobs:
 
       - name: Assemble site
         run: |
-          cp docs/plugin-reference.md site/index.md
           mkdir -p site/apidocs
+          cp docs/plugin-reference.md site/index.md
           sudo apt-get install -y pandoc
           pandoc docs/plugin-reference.md -s --metadata title="OpenRewrite Gradle Plugin Reference" --css style.css -o site/index.html
           cp docs/style.css site/
