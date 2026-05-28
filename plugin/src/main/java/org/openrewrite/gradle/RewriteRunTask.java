@@ -18,9 +18,11 @@ package org.openrewrite.gradle;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 import javax.inject.Inject;
 
+@DisableCachingByDefault(because = "Rewrite tasks act on source files in place and are not safe to cache")
 public class RewriteRunTask extends AbstractRewriteTask {
 
     private static final Logger logger = Logging.getLogger(RewriteRunTask.class);
