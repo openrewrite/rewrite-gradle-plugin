@@ -16,9 +16,11 @@
 package org.openrewrite.gradle;
 
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 import javax.inject.Inject;
 
+@DisableCachingByDefault(because = "Rewrite tasks act on source files in place and are not safe to cache")
 public class RewriteDiscoverTask extends AbstractRewriteTask {
 
     @Inject

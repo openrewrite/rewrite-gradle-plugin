@@ -20,10 +20,12 @@ import org.gradle.api.logging.Logging;
 import org.gradle.api.specs.Specs;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 import javax.inject.Inject;
 import java.nio.file.Path;
 
+@DisableCachingByDefault(because = "Rewrite tasks act on source files in place and are not safe to cache")
 public class RewriteDryRunTask extends AbstractRewriteTask {
 
     private static final Logger logger = Logging.getLogger(RewriteDryRunTask.class);

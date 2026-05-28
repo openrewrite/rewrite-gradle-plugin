@@ -22,6 +22,7 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.options.Option;
 import org.gradle.util.GradleVersion;
+import org.gradle.work.DisableCachingByDefault;
 import org.jspecify.annotations.Nullable;
 
 import javax.inject.Inject;
@@ -33,6 +34,7 @@ import java.util.Set;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
 
+@DisableCachingByDefault(because = "Rewrite tasks act on source files in place and are not safe to cache")
 public abstract class AbstractRewriteTask extends DefaultTask {
     protected @Nullable Provider<Set<File>> resolvedDependencies;
     protected boolean dumpGcActivity;
