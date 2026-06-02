@@ -1621,15 +1621,18 @@ public class DefaultProjectParser implements GradleProjectParser {
         }
 
         // sourceCompatibility/targetCompatibility are empty when the build configures the Java version
-        // only through `options.release` or a Java toolchain. Fall back to those, and finally to the JVM
-        // running the build, so the JavaVersion marker reports a real version rather than -1.
+        // only through `options.release` or a Java toolchain. Fall back to whichever the project
+        // declares so the JavaVersion marker reflects the project's configuration. Only versions
+        // declared in the project are reported; nothing is inferred from the JVM running the build.
         if (isBlank(sourceCompatibility) || isBlank(targetCompatibility)) {
-            String resolved = resolveJavaVersion(subproject, javaCompileTask);
-            if (isBlank(sourceCompatibility)) {
-                sourceCompatibility = resolved;
-            }
-            if (isBlank(targetCompatibility)) {
-                targetCompatibility = resolved;
+            String declared = declaredJavaVersion(subproject, javaCompileTask);
+            if (declared != null) {
+                if (isBlank(sourceCompatibility)) {
+                    sourceCompatibility = declared;
+                }
+                if (isBlank(targetCompatibility)) {
+                    targetCompatibility = declared;
+                }
             }
         }
 
@@ -1645,23 +1648,28 @@ public class DefaultProjectParser implements GradleProjectParser {
         return value == null || value.trim().isEmpty();
     }
 
-    private static String resolveJavaVersion(Project subproject, @Nullable JavaCompile javaCompileTask) {
+    /**
+     * The Java version declared by the project through {@code options.release} or a Java toolchain,
+     * or {@code null} when the project declares neither. The JVM running the build is deliberately
+     * not consulted: only versions configured in the project are reported.
+     */
+    private static @Nullable String declaredJavaVersion(Project subproject, @Nullable JavaCompile javaCompileTask) {
         // `options.release` and the Java toolchain APIs are only available on Gradle 6.7+.
-        if (GradleVersion.current().compareTo(GradleVersion.version("6.7")) >= 0) {
-            if (javaCompileTask != null && javaCompileTask.getOptions().getRelease().isPresent()) {
-                return javaCompileTask.getOptions().getRelease().get().toString();
-            }
-            JavaPluginExtension javaExtension = subproject.getExtensions().findByType(JavaPluginExtension.class);
-            if (javaExtension != null) {
-                // getOrNull() reads the declared toolchain without triggering JDK provisioning.
-                JavaLanguageVersion languageVersion = javaExtension.getToolchain().getLanguageVersion().getOrNull();
-                if (languageVersion != null) {
-                    return Integer.toString(languageVersion.asInt());
-                }
+        if (GradleVersion.current().compareTo(GradleVersion.version("6.7")) < 0) {
+            return null;
+        }
+        if (javaCompileTask != null && javaCompileTask.getOptions().getRelease().isPresent()) {
+            return javaCompileTask.getOptions().getRelease().get().toString();
+        }
+        JavaPluginExtension javaExtension = subproject.getExtensions().findByType(JavaPluginExtension.class);
+        if (javaExtension != null) {
+            // getOrNull() reads the declared toolchain without triggering JDK provisioning.
+            JavaLanguageVersion languageVersion = javaExtension.getToolchain().getLanguageVersion().getOrNull();
+            if (languageVersion != null) {
+                return Integer.toString(languageVersion.asInt());
             }
         }
-        // Last resort: the JVM running the build, so the marker is never left blank (which parses to -1).
-        return System.getProperty("java.specification.version", "");
+        return null;
     }
 
     private Charset getSourceFileEncoding(@Nullable CompileOptions compileOptions) {
