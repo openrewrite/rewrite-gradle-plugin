@@ -257,6 +257,15 @@ class AndroidProjectParser {
                 logger.warn("Unable to determine Java source or target compatibility versions", e);
             }
         }
+        // Fall back to the JVM running the build when the Android compile options are unset, so the
+        // JavaVersion marker reports a real version rather than -1.
+        String runtimeVersion = System.getProperty("java.specification.version", "");
+        if (sourceCompatibility == null || sourceCompatibility.trim().isEmpty()) {
+            sourceCompatibility = runtimeVersion;
+        }
+        if (targetCompatibility == null || targetCompatibility.trim().isEmpty()) {
+            targetCompatibility = sourceCompatibility;
+        }
         return new JavaVersion(Tree.randomId(),
                 System.getProperty("java.runtime.version"),
                 System.getProperty("java.vm.vendor"),

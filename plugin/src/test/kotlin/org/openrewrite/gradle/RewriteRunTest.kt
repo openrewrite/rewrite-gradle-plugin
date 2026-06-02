@@ -1629,6 +1629,80 @@ class RewriteRunTest : RewritePluginTest {
         )
     }
 
+    @EnabledForGradleRange(min = "7.4")
+    @Test
+    fun `JavaVersion marker reflects the Java toolchain when source compatibility is unset`(
+        @TempDir projectDir: File,
+    ) {
+        // A build that configures the Java version only through a toolchain (no sourceCompatibility)
+        // must still produce a JavaVersion marker with a real major version, not -1. Pin the toolchain
+        // to the JVM running the build so no foreign JDK needs to be provisioned.
+        val major = Runtime.version().feature()
+        gradleProject(projectDir) {
+            rewriteYaml(
+                """
+                type: specs.openrewrite.org/v1beta/recipe
+                name: org.openrewrite.test.AddJavaApplicationProperty
+                displayName: Add a property if has java version
+                description: Add a property if has java version.
+                preconditions:
+                  - org.openrewrite.java.search.HasJavaVersion:
+                      version: $major.X
+                recipeList:
+                  - org.openrewrite.properties.AddProperty:
+                      property: has.java.version
+                      value: true
+            """
+            )
+            buildGradle(
+                """
+                plugins {
+                    id("java")
+                    id("org.openrewrite.rewrite")
+                }
+
+                java {
+                    toolchain {
+                        languageVersion = JavaLanguageVersion.of($major)
+                    }
+                }
+
+                repositories {
+                    mavenLocal()
+                    mavenCentral()
+                    maven {
+                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
+                    }
+                }
+
+                rewrite {
+                    activeRecipe("org.openrewrite.test.AddJavaApplicationProperty")
+                }
+            """
+            )
+            sourceSet("main") {
+                java(
+                    """
+                    package org.openrewrite.before;
+
+                    public class HelloWorld {
+                        public static void main(String[] args) {
+                            System.out.println("Hello world");
+                        }
+                    }
+                """
+                )
+                propertiesFile("application.properties", "")
+            }
+        }
+        val result = runGradle(projectDir, taskName())
+        val rewriteRunResult = result.task(":${taskName()}")!!
+        assertThat(rewriteRunResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
+
+        assertThat(File(projectDir, "src/main/resources/application.properties").readText())
+            .isEqualTo("has.java.version=true")
+    }
+
     @Test
     fun dependencyInScript(@TempDir projectDir: File) {
         gradleProject(projectDir) {

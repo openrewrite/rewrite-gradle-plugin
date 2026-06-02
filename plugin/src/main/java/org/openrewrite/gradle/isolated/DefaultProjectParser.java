@@ -35,6 +35,7 @@ import org.gradle.api.tasks.compile.GroovyCompile;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.invocation.DefaultGradle;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.util.GradleVersion;
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet;
 import org.jspecify.annotations.Nullable;
@@ -775,7 +776,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaTypeCache javaTypeCache = createTypeCache();
             JavaCompile javaCompileTask = (JavaCompile) subproject.getTasks()
                     .getByName(sourceSet.getCompileJavaTaskName());
-            JavaVersion javaVersion = getJavaVersion(javaCompileTask);
+            JavaVersion javaVersion = getJavaVersion(subproject, javaCompileTask);
 
             Path absoluteBuildDir = subproject.getLayout().getBuildDirectory()
                     .get().getAsFile().toPath().toAbsolutePath().normalize();
@@ -1611,20 +1612,56 @@ public class DefaultProjectParser implements GradleProjectParser {
         })).collect(toList());
     }
 
-    private JavaVersion getJavaVersion(@Nullable JavaCompile javaCompileTask) {
+    private JavaVersion getJavaVersion(Project subproject, @Nullable JavaCompile javaCompileTask) {
         String sourceCompatibility = "";
         String targetCompatibility = "";
         if (javaCompileTask != null) {
             sourceCompatibility = javaCompileTask.getSourceCompatibility();
             targetCompatibility = javaCompileTask.getTargetCompatibility();
         }
+
+        // sourceCompatibility/targetCompatibility are empty when the build configures the Java version
+        // only through `options.release` or a Java toolchain. Fall back to those, and finally to the JVM
+        // running the build, so the JavaVersion marker reports a real version rather than -1.
+        if (isBlank(sourceCompatibility) || isBlank(targetCompatibility)) {
+            String resolved = resolveJavaVersion(subproject, javaCompileTask);
+            if (isBlank(sourceCompatibility)) {
+                sourceCompatibility = resolved;
+            }
+            if (isBlank(targetCompatibility)) {
+                targetCompatibility = resolved;
+            }
+        }
+
         return new JavaVersion(
                 randomId(),
                 System.getProperty("java.runtime.version"),
                 System.getProperty("java.vm.vendor"),
                 sourceCompatibility,
                 targetCompatibility);
+    }
 
+    private static boolean isBlank(@Nullable String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private static String resolveJavaVersion(Project subproject, @Nullable JavaCompile javaCompileTask) {
+        // `options.release` and the Java toolchain APIs are only available on Gradle 6.7+.
+        if (GradleVersion.current().compareTo(GradleVersion.version("6.7")) >= 0) {
+            if (javaCompileTask != null && javaCompileTask.getOptions().getRelease().isPresent()) {
+                return javaCompileTask.getOptions().getRelease().get().toString();
+            }
+            JavaPluginExtension javaExtension = subproject.getExtensions().findByType(JavaPluginExtension.class);
+            if (javaExtension != null) {
+                // getOrNull() reads the declared toolchain without triggering JDK provisioning.
+                JavaLanguageVersion languageVersion = javaExtension.getToolchain().getLanguageVersion().getOrNull();
+                if (languageVersion != null) {
+                    return Integer.toString(languageVersion.asInt());
+                }
+            }
+        }
+        // Last resort: the JVM running the build, so the marker is never left blank (which parses to -1).
+        return System.getProperty("java.specification.version", "");
     }
 
     private Charset getSourceFileEncoding(@Nullable CompileOptions compileOptions) {
