@@ -35,6 +35,7 @@ import org.gradle.api.tasks.compile.GroovyCompile;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.invocation.DefaultGradle;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.util.GradleVersion;
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet;
 import org.jspecify.annotations.Nullable;
@@ -775,7 +776,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaTypeCache javaTypeCache = createTypeCache();
             JavaCompile javaCompileTask = (JavaCompile) subproject.getTasks()
                     .getByName(sourceSet.getCompileJavaTaskName());
-            JavaVersion javaVersion = getJavaVersion(javaCompileTask);
+            JavaVersion javaVersion = getJavaVersion(subproject, javaCompileTask);
 
             Path absoluteBuildDir = subproject.getLayout().getBuildDirectory()
                     .get().getAsFile().toPath().toAbsolutePath().normalize();
@@ -1611,20 +1612,64 @@ public class DefaultProjectParser implements GradleProjectParser {
         })).collect(toList());
     }
 
-    private JavaVersion getJavaVersion(@Nullable JavaCompile javaCompileTask) {
+    private JavaVersion getJavaVersion(Project subproject, @Nullable JavaCompile javaCompileTask) {
         String sourceCompatibility = "";
         String targetCompatibility = "";
         if (javaCompileTask != null) {
             sourceCompatibility = javaCompileTask.getSourceCompatibility();
             targetCompatibility = javaCompileTask.getTargetCompatibility();
         }
+
+        // sourceCompatibility/targetCompatibility are empty when the build configures the Java version
+        // only through `options.release` or a Java toolchain. Fall back to whichever the project
+        // declares so the JavaVersion marker reflects the project's configuration. Only versions
+        // declared in the project are reported; nothing is inferred from the JVM running the build.
+        if (isBlank(sourceCompatibility) || isBlank(targetCompatibility)) {
+            String declared = declaredJavaVersion(subproject, javaCompileTask);
+            if (declared != null) {
+                if (isBlank(sourceCompatibility)) {
+                    sourceCompatibility = declared;
+                }
+                if (isBlank(targetCompatibility)) {
+                    targetCompatibility = declared;
+                }
+            }
+        }
+
         return new JavaVersion(
                 randomId(),
                 System.getProperty("java.runtime.version"),
                 System.getProperty("java.vm.vendor"),
                 sourceCompatibility,
                 targetCompatibility);
+    }
 
+    private static boolean isBlank(@Nullable String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    /**
+     * The Java version declared by the project through {@code options.release} or a Java toolchain,
+     * or {@code null} when the project declares neither. The JVM running the build is deliberately
+     * not consulted: only versions configured in the project are reported.
+     */
+    private static @Nullable String declaredJavaVersion(Project subproject, @Nullable JavaCompile javaCompileTask) {
+        // `options.release` and the Java toolchain APIs are only available on Gradle 6.7+.
+        if (GradleVersion.current().compareTo(GradleVersion.version("6.7")) < 0) {
+            return null;
+        }
+        if (javaCompileTask != null && javaCompileTask.getOptions().getRelease().isPresent()) {
+            return javaCompileTask.getOptions().getRelease().get().toString();
+        }
+        JavaPluginExtension javaExtension = subproject.getExtensions().findByType(JavaPluginExtension.class);
+        if (javaExtension != null) {
+            // getOrNull() reads the declared toolchain without triggering JDK provisioning.
+            JavaLanguageVersion languageVersion = javaExtension.getToolchain().getLanguageVersion().getOrNull();
+            if (languageVersion != null) {
+                return Integer.toString(languageVersion.asInt());
+            }
+        }
+        return null;
     }
 
     private Charset getSourceFileEncoding(@Nullable CompileOptions compileOptions) {
