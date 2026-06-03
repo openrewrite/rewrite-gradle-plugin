@@ -39,10 +39,10 @@ repositories {
 
         maven {
             url = uri("https://central.sonatype.com/repository/maven-snapshots")
-            // Only OpenRewrite artifacts come from snapshots; keep third-party (Kotlin, Guava, …)
-            // resolution off this repo so an outage here can't break the whole build.
+            // Only serve snapshot versions from here; keep release resolution (Kotlin, Guava, …)
+            // off this repo so an outage here can't break the whole build.
             mavenContent {
-                includeGroupAndSubgroups("org.openrewrite")
+                snapshotsOnly()
             }
         }
     }
