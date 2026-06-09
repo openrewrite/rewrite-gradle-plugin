@@ -4,3 +4,5 @@ out/
 !*/src/**/build
 .gradle/
 .idea/
+
+.context/
