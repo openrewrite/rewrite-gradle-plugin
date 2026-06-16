@@ -25,6 +25,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
 import java.util.Collection;
 
 import static java.util.Collections.emptyList;
@@ -52,7 +53,7 @@ class DefaultProjectParserIsExcludedTest {
             git.add().addFilepattern(".gitignore").call();
             git.commit().setMessage("initial").call();
 
-            assertThat(DefaultProjectParser.isExcluded(repo, emptyList(), Path.of("generated.txt")))
+            assertThat(DefaultProjectParser.isExcluded(repo, emptyList(), Paths.get("generated.txt")))
                     .as("untracked gitignored file should be excluded")
                     .isTrue();
         }
@@ -71,7 +72,7 @@ class DefaultProjectParserIsExcludedTest {
             git.add().addFilepattern(".gitignore").call();
             git.commit().setMessage("add gitignore").call();
 
-            assertThat(DefaultProjectParser.isExcluded(repo, emptyList(), Path.of("tracked-ignored.txt")))
+            assertThat(DefaultProjectParser.isExcluded(repo, emptyList(), Paths.get("tracked-ignored.txt")))
                     .as("tracked gitignored file should NOT be excluded")
                     .isFalse();
         }
@@ -88,7 +89,7 @@ class DefaultProjectParserIsExcludedTest {
             git.add().addFilepattern(".gitignore").call();
             git.commit().setMessage("initial").call();
 
-            assertThat(DefaultProjectParser.isExcluded(repo, emptyList(), Path.of("build/output.txt")))
+            assertThat(DefaultProjectParser.isExcluded(repo, emptyList(), Paths.get("build/output.txt")))
                     .as("untracked file in gitignored directory should be excluded")
                     .isTrue();
         }
@@ -107,7 +108,7 @@ class DefaultProjectParserIsExcludedTest {
             git.add().addFilepattern(".gitignore").call();
             git.commit().setMessage("add gitignore").call();
 
-            assertThat(DefaultProjectParser.isExcluded(repo, emptyList(), Path.of("build/output.txt")))
+            assertThat(DefaultProjectParser.isExcluded(repo, emptyList(), Paths.get("build/output.txt")))
                     .as("tracked file in gitignored directory should NOT be excluded")
                     .isFalse();
         }
@@ -118,7 +119,7 @@ class DefaultProjectParserIsExcludedTest {
         Collection<PathMatcher> matchers = singletonList(
                 FileSystems.getDefault().getPathMatcher("glob:**/secret.properties"));
 
-        assertThat(DefaultProjectParser.isExcluded(null, matchers, Path.of("config/secret.properties")))
+        assertThat(DefaultProjectParser.isExcluded(null, matchers, Paths.get("config/secret.properties")))
                 .as("path matching exclusion pattern should be excluded")
                 .isTrue();
     }
@@ -128,7 +129,7 @@ class DefaultProjectParserIsExcludedTest {
         Collection<PathMatcher> matchers = singletonList(
                 FileSystems.getDefault().getPathMatcher("glob:**/secret.properties"));
 
-        assertThat(DefaultProjectParser.isExcluded(null, matchers, Path.of("config/application.properties")))
+        assertThat(DefaultProjectParser.isExcluded(null, matchers, Paths.get("config/application.properties")))
                 .as("path not matching exclusion pattern should not be excluded")
                 .isFalse();
     }
@@ -140,7 +141,7 @@ class DefaultProjectParserIsExcludedTest {
         Collection<PathMatcher> matchers = singletonList(
                 FileSystems.getDefault().getPathMatcher("glob:**/build.gradle"));
 
-        assertThat(DefaultProjectParser.isExcluded(null, matchers, Path.of("build.gradle")))
+        assertThat(DefaultProjectParser.isExcluded(null, matchers, Paths.get("build.gradle")))
                 .as("root-level file should match **/build.gradle via leading-slash prefixing")
                 .isTrue();
     }
@@ -152,7 +153,7 @@ class DefaultProjectParserIsExcludedTest {
         Collection<PathMatcher> matchers = singletonList(
                 FileSystems.getDefault().getPathMatcher("glob:**/build.gradle"));
 
-        assertThat(DefaultProjectParser.isExcluded(null, matchers, Path.of("/build.gradle")))
+        assertThat(DefaultProjectParser.isExcluded(null, matchers, Paths.get("/build.gradle")))
                 .as("root-level file with leading slash should match **/build.gradle directly")
                 .isTrue();
     }
@@ -163,7 +164,7 @@ class DefaultProjectParserIsExcludedTest {
         Collection<PathMatcher> matchers = singletonList(
                 FileSystems.getDefault().getPathMatcher("glob:**/build.gradle"));
 
-        assertThat(DefaultProjectParser.isExcluded(null, matchers, Path.of("module/build.gradle")))
+        assertThat(DefaultProjectParser.isExcluded(null, matchers, Paths.get("module/build.gradle")))
                 .as("subdirectory file should match **/build.gradle directly")
                 .isTrue();
     }
