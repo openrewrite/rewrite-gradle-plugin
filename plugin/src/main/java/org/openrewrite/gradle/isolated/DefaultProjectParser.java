@@ -529,7 +529,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         File afterParentDir = afterLocation.toFile().getParentFile();
                         // Rename the directory if its name case has been changed, e.g. camel case to lower case.
                         if (afterParentDir.exists() &&
-                            afterParentDir.getAbsolutePath().equalsIgnoreCase((originalParentDir.getAbsolutePath())) &&
+                            afterParentDir.getAbsolutePath().equalsIgnoreCase(originalParentDir.getAbsolutePath()) &&
                             !afterParentDir.getAbsolutePath().equals(originalParentDir.getAbsolutePath())) {
                             if (!originalParentDir.renameTo(afterParentDir)) {
                                 throw new RuntimeException("Unable to rename directory from " + originalParentDir.getAbsolutePath() + " To: " + afterParentDir.getAbsolutePath());
@@ -1645,7 +1645,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     private static boolean isBlank(@Nullable String value) {
-        return value == null || value.trim().isEmpty();
+        return StringUtils.isBlank(value);
     }
 
     /**

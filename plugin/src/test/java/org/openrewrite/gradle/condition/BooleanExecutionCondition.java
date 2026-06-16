@@ -45,8 +45,8 @@ abstract class BooleanExecutionCondition<A extends Annotation> implements Execut
 	@Override
 	public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
 		return findAnnotation(context.getElement(), this.annotationType) //
-				.map(annotation -> isEnabled(annotation) ? enabled(this.enabledReason)
-						: disabled(this.disabledReason, this.customDisabledReason.apply(annotation))) //
+				.map(annotation -> isEnabled(annotation) ? enabled(this.enabledReason) :
+						disabled(this.disabledReason, this.customDisabledReason.apply(annotation))) //
 				.orElseGet(this::enabledByDefault);
 	}
 

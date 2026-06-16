@@ -25,8 +25,8 @@ import java.io.File;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.util.Collection;
-import java.util.Collections;
 
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -103,7 +103,7 @@ class AndroidProjectParserTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private AndroidProjectParser createParser(Path tempDir, Project project) {
         RewriteExtension rewriteExtension = new RewriteExtension(project);
-        return new AndroidProjectParser(tempDir, null, rewriteExtension, Collections.emptyList());
+        return new AndroidProjectParser(tempDir, null, rewriteExtension, emptyList());
     }
 
     private Project createMockProject(Path tempDir, Object androidExtension) {
@@ -111,8 +111,8 @@ class AndroidProjectParserTest {
                 getClass().getClassLoader(),
                 new Class[]{ExtensionContainer.class},
                 (proxy, method, args) -> {
-                    if ("findByName".equals(method.getName()) && args != null
-                            && args.length == 1 && "android".equals(args[0])) {
+                    if ("findByName".equals(method.getName()) && args != null &&
+                            args.length == 1 && "android".equals(args[0])) {
                         return androidExtension;
                     }
                     return null;
