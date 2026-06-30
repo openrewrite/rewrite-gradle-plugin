@@ -806,6 +806,27 @@ public class DefaultProjectParser implements GradleProjectParser {
                     .filter(path -> path.toString().endsWith(".java"))
                     .collect(toList());
 
+            // Annotation-processor generated sources (e.g. MapStruct mapper implementations) live under the
+            // build directory and are skipped above; parse them too so recipes can read them.
+            Set<Path> generatedSourcePaths = new HashSet<>();
+            if (javaCompileTask.getOptions().getGeneratedSourceOutputDirectory().isPresent()) {
+                Path generatedDir = javaCompileTask.getOptions().getGeneratedSourceOutputDirectory()
+                        .get().getAsFile().toPath().toAbsolutePath().normalize();
+                if (Files.exists(generatedDir)) {
+                    try (Stream<Path> walk = Files.walk(generatedDir)) {
+                        walk.filter(Files::isRegularFile)
+                                .map(path -> path.toAbsolutePath().normalize())
+                                .filter(path -> path.toString().endsWith(".java") && !alreadyParsed.contains(path))
+                                .forEach(path -> {
+                                    javaPaths.add(path);
+                                    generatedSourcePaths.add(baseDir.relativize(path));
+                                });
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                }
+            }
+
             // The compilation classpath doesn't include the transitive dependencies
             // The runtime classpath doesn't include compile only dependencies, e.g.: lombok, servlet-api
             // So we use both together to get comprehensive type information
@@ -920,7 +941,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             sourceFileStream = sourceFileStream.concat(
                     sourceSetSourceFiles
                             .filter(cu -> !isExcluded(repository, exclusions, cu.getSourcePath()) &&
-                                    !cu.getSourcePath().startsWith(buildDir))
+                                    (generatedSourcePaths.contains(cu.getSourcePath()) ||
+                                            !cu.getSourcePath().startsWith(buildDir)))
                             .map(addProvenance(sourceSetProvenance)),
                     sourceSetSize);
             // Some source sets get misconfigured to have the same directories as other source sets
