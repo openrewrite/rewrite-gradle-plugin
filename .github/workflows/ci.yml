@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Slack notify on failure
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@v3
         continue-on-error: true
         with:
           webhook: ${{ secrets.OPS_GITHUB_ACTIONS_WEBHOOK }}
