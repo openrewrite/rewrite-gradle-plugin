@@ -9,7 +9,7 @@ plugins {
 
 develocity {
     val isCiServer = System.getenv("CI")?.equals("true") ?: false
-    server = "https://ge.openrewrite.org/"
+    server = "https://community.develocity.cloud/"
     val accessKey = System.getenv("GRADLE_ENTERPRISE_ACCESS_KEY")
     val authenticated = !accessKey.isNullOrBlank()
     buildCache {
