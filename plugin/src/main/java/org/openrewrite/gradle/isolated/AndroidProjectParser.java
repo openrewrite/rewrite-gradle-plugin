@@ -31,6 +31,7 @@ import org.openrewrite.java.JavaParser;
 import org.openrewrite.java.internal.JavaTypeCache;
 import org.openrewrite.java.marker.JavaSourceSet;
 import org.openrewrite.java.marker.JavaVersion;
+import org.openrewrite.jgit.dircache.DirCache;
 import org.openrewrite.jgit.lib.Repository;
 import org.openrewrite.kotlin.KotlinParser;
 import org.openrewrite.polyglot.OmniParser;
@@ -57,6 +58,8 @@ class AndroidProjectParser {
     private static final Logger logger = Logging.getLogger(DefaultProjectParser.class);
     private final Path baseDir;
     private final @Nullable Repository repository;
+    private @Nullable DirCache dirCache;
+    private boolean dirCacheInitialized;
     private final RewriteExtension rewriteExtension;
     private final List<NamedStyles> styles;
 
@@ -65,6 +68,20 @@ class AndroidProjectParser {
         this.repository = repository;
         this.rewriteExtension = rewriteExtension;
         this.styles = styles;
+    }
+
+    private @Nullable DirCache dirCache() {
+        if (!dirCacheInitialized) {
+            dirCacheInitialized = true;
+            if (repository != null) {
+                try {
+                    dirCache = repository.readDirCache();
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }
+        }
+        return dirCache;
     }
 
     SourceFileStream parseProjectSourceSets(Project project,
@@ -181,7 +198,7 @@ class AndroidProjectParser {
                 JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths);
                 sourceFileStream = sourceFileStream.concat(
                         sourceSetSourceFiles
-                                .filter(cu -> !DefaultProjectParser.isExcluded(repository, exclusions, cu.getSourcePath()) &&
+                                .filter(cu -> !DefaultProjectParser.isExcluded(repository, dirCache(), exclusions, cu.getSourcePath()) &&
                                         !cu.getSourcePath().startsWith(buildDir))
                                 .map(DefaultProjectParser.addProvenance(sourceSetProvenance)),
                         sourceSetSize);

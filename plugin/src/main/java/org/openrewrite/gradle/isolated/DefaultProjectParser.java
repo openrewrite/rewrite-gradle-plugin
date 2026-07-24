@@ -65,6 +65,7 @@ import org.openrewrite.java.marker.JavaVersion;
 import org.openrewrite.java.style.CheckstyleConfigLoader;
 import org.openrewrite.java.tree.J;
 import org.openrewrite.jgit.api.Git;
+import org.openrewrite.jgit.dircache.DirCache;
 import org.openrewrite.jgit.lib.ObjectId;
 import org.openrewrite.jgit.lib.Repository;
 import org.openrewrite.jgit.revwalk.RevCommit;
@@ -124,6 +125,10 @@ public class DefaultProjectParser implements GradleProjectParser {
 
     @Nullable
     protected final Repository repository;
+
+    @Nullable
+    private DirCache dirCache;
+    private boolean dirCacheInitialized;
 
     @Nullable
     private List<NamedStyles> styles;
@@ -681,7 +686,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             Collection<PathMatcher> exclusions = extension.getExclusions().stream()
                     .map(pattern -> subproject.getProjectDir().toPath().getFileSystem().getPathMatcher("glob:" + pattern))
                     .collect(toList());
-            if (isExcluded(repository, exclusions, baseDir.relativize(subproject.getProjectDir().toPath()))) {
+            if (isExcluded(repository, dirCache(), exclusions, baseDir.relativize(subproject.getProjectDir().toPath()))) {
                 logger.lifecycle("Skipping project {} because it is excluded", subproject.getPath());
                 return Stream.empty();
             }
@@ -919,7 +924,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSet.getName(), dependencyPaths);
             sourceFileStream = sourceFileStream.concat(
                     sourceSetSourceFiles
-                            .filter(cu -> !isExcluded(repository, exclusions, cu.getSourcePath()) &&
+                            .filter(cu -> !isExcluded(repository, dirCache(), exclusions, cu.getSourcePath()) &&
                                     !cu.getSourcePath().startsWith(buildDir))
                             .map(addProvenance(sourceSetProvenance)),
                     sourceSetSize);
@@ -1040,7 +1045,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         File buildGradleFile = subproject.getBuildscript().getSourceFile();
         if (buildGradleFile != null) {
             Path buildScriptPath = baseDir.relativize(buildGradleFile.toPath());
-            if (!isExcluded(repository, exclusions, buildScriptPath) && buildGradleFile.exists()) {
+            if (!isExcluded(repository, dirCache(), exclusions, buildScriptPath) && buildGradleFile.exists()) {
                 gradleParser = gradleParser();
                 sourceFiles = gradleParser.parse(singleton(buildGradleFile.toPath()), baseDir, ctx);
                 gradleFileCount++;
@@ -1054,7 +1059,7 @@ public class DefaultProjectParser implements GradleProjectParser {
             File settingsGradleFile = determineGradleSettingsFile(subproject);
             if (settingsGradleFile != null) {
                 Path settingsPath = baseDir.relativize(settingsGradleFile.toPath());
-                if (!isExcluded(repository, exclusions, settingsPath)) {
+                if (!isExcluded(repository, dirCache(), exclusions, settingsPath)) {
                     GradleSettings gs = null;
                     if (GradleVersion.current().compareTo(GradleVersion.version("4.4")) >= 0) {
                         gs = GradleSettingsBuilder.gradleSettings(((DefaultGradle) project.getGradle()).getSettings());
@@ -1083,7 +1088,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         File gradlePropertiesFile = subproject.file("gradle.properties");
         if (gradlePropertiesFile.exists()) {
             Path gradlePropertiesPath = baseDir.relativize(gradlePropertiesFile.toPath());
-            if (!isExcluded(repository, exclusions, gradlePropertiesPath)) {
+            if (!isExcluded(repository, dirCache(), exclusions, gradlePropertiesPath)) {
                 final GradleProject finalGradleProject = gradleProject;
                 sourceFiles = Stream.concat(
                         sourceFiles,
@@ -1110,7 +1115,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                                 .anyMatch(sp -> dir.equals(sp.getProjectDir().toPath())) ||
                         subproject.getGradle().getIncludedBuilds().stream()
                                 .anyMatch(ib -> dir.equals(ib.getProjectDir().toPath())) ||
-                        isExcluded(repository, exclusions, baseDir.relativize(dir))) {
+                        isExcluded(repository, dirCache(), exclusions, baseDir.relativize(dir))) {
                         return FileVisitResult.SKIP_SUBTREE;
                     }
 
@@ -1119,7 +1124,7 @@ public class DefaultProjectParser implements GradleProjectParser {
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    if ((file.toString().endsWith(".gradle") || file.toString().endsWith(".gradle.kts")) && !alreadyParsed.contains(file) && !isExcluded(repository, exclusions, baseDir.relativize(file))) {
+                    if ((file.toString().endsWith(".gradle") || file.toString().endsWith(".gradle.kts")) && !alreadyParsed.contains(file) && !isExcluded(repository, dirCache(), exclusions, baseDir.relativize(file))) {
                         freeStandingScripts.add(file);
                     }
                     return FileVisitResult.CONTINUE;
@@ -1193,7 +1198,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     .map(project::file)
                     .filter(File::exists)
                     .map(File::toPath)
-                    .filter(it -> !isExcluded(repository, exclusions, it))
+                    .filter(it -> !isExcluded(repository, dirCache(), exclusions, it))
                     .filter(omniParser::accept)
                     .collect(toList());
             sourceFiles = omniParser.parse(gradleWrapperFiles, baseDir, ctx);
@@ -1332,7 +1337,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                     JavaSourceSet sourceSetProvenance = JavaSourceSet.build(sourceSetName, dependencyPaths);
 
                     sourceFileStream = sourceFileStream.concat(
-                            cus.filter(cu -> !isExcluded(repository, exclusions, cu.getSourcePath()) &&
+                            cus.filter(cu -> !isExcluded(repository, dirCache(), exclusions, cu.getSourcePath()) &&
                                     !cu.getSourcePath().startsWith(buildDirPath))
                                     .map(addProvenance(sourceSetProvenance)),
                             kotlinPaths.size());
@@ -1358,7 +1363,34 @@ public class DefaultProjectParser implements GradleProjectParser {
         return source;
     }
 
+    @Nullable
+    private DirCache dirCache() {
+        if (!dirCacheInitialized) {
+            dirCacheInitialized = true;
+            if (repository != null) {
+                try {
+                    dirCache = repository.readDirCache();
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }
+        }
+        return dirCache;
+    }
+
     static boolean isExcluded(@Nullable Repository repository, Collection<PathMatcher> exclusions, Path path) {
+        DirCache dirCache = null;
+        if (repository != null) {
+            try {
+                dirCache = repository.readDirCache();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        return isExcluded(repository, dirCache, exclusions, path);
+    }
+
+    static boolean isExcluded(@Nullable Repository repository, @Nullable DirCache dirCache, Collection<PathMatcher> exclusions, Path path) {
         for (PathMatcher excluded : exclusions) {
             if (excluded.matches(path)) {
                 return true;
@@ -1375,8 +1407,8 @@ public class DefaultProjectParser implements GradleProjectParser {
             }
         }
 
-        if (repository != null) {
-            return GitIgnore.isIgnoredAndUntracked(repository, path);
+        if (repository != null && dirCache != null) {
+            return GitIgnore.isIgnoredAndUntracked(repository, dirCache, path);
         }
         return false;
     }
