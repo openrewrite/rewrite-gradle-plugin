@@ -19,24 +19,33 @@ import org.gradle.api.Project;
 import org.gradle.internal.service.ServiceRegistry;
 import org.jspecify.annotations.Nullable;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
 public class DelegatingProjectParser implements GradleProjectParser {
+    private static final AtomicLong UNREADABLE_CLASSPATH_ENTRIES = new AtomicLong();
+
     @Nullable
-    protected static List<URL> rewriteClasspath;
+    protected static List<String> rewriteClasspathFingerprint;
     @Nullable
     protected static RewriteClassLoader rewriteClassLoader;
     protected final GradleProjectParser gpp;
@@ -61,15 +70,16 @@ public class DelegatingProjectParser implements GradleProjectParser {
             classpathUrls.add(currentJar);
 
             ClassLoader pluginClassLoader = getPluginClassLoader(project);
+            List<String> classpathFingerprint = fingerprint(classpathUrls);
 
             if (rewriteClassLoader == null ||
-                    !classpathUrls.equals(rewriteClasspath) ||
+                    !classpathFingerprint.equals(rewriteClasspathFingerprint) ||
                     rewriteClassLoader.getPluginClassLoader() != pluginClassLoader) {
                 if (rewriteClassLoader != null) {
-                    rewriteClassLoader.close();
+                    discard(rewriteClassLoader);
                 }
                 rewriteClassLoader = new RewriteClassLoader(classpathUrls, pluginClassLoader);
-                rewriteClasspath = classpathUrls;
+                rewriteClasspathFingerprint = classpathFingerprint;
             }
 
             Class<?> gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, rewriteClassLoader);
@@ -132,6 +142,73 @@ public class DelegatingProjectParser implements GradleProjectParser {
             gpp.shutdownRewrite();
             return null;
         });
+    }
+
+    private static void discard(RewriteClassLoader classLoader) throws IOException {
+        shutdownJGitWorkQueue(classLoader);
+        classLoader.close();
+    }
+
+    /**
+     * JGit keeps a daemon thread around per class loader that initialized it, and that thread references the
+     * class loader that created it. Without shutting it down every replaced class loader, and all the recipe
+     * classes it loaded, would be retained in metaspace for as long as the Gradle daemon lives.
+     */
+    private static void shutdownJGitWorkQueue(ClassLoader classLoader) {
+        try {
+            Class<?> workQueue = Class.forName("org.openrewrite.jgit.lib.internal.WorkQueue", true, classLoader);
+            ((ExecutorService) workQueue.getMethod("getExecutor").invoke(null)).shutdownNow();
+        } catch (ReflectiveOperationException | ClassCastException | LinkageError ignored) {
+            // Not all versions of rewrite bundle JGit, in which case there is no work queue to shut down
+        }
+    }
+
+    /**
+     * Recipe jars built by the project itself are replaced in place, keeping the same location on the classpath.
+     * Comparing locations alone would then reuse a {@link RewriteClassLoader} holding the previous recipe classes
+     * for as long as the Gradle daemon lives, so compare the contents of each classpath entry as well.
+     */
+    static List<String> fingerprint(Collection<URL> classpath) {
+        return classpath.stream()
+                .map(DelegatingProjectParser::fingerprint)
+                .sorted()
+                .collect(toList());
+    }
+
+    private static String fingerprint(URL classpathEntry) {
+        if (!"file".equals(classpathEntry.getProtocol())) {
+            return classpathEntry + "|" + UNREADABLE_CLASSPATH_ENTRIES.incrementAndGet();
+        }
+        try {
+            return classpathEntry + "|" + fingerprint(Paths.get(classpathEntry.toURI()));
+        } catch (URISyntaxException e) {
+            return classpathEntry + "|" + UNREADABLE_CLASSPATH_ENTRIES.incrementAndGet();
+        }
+    }
+
+    private static String fingerprint(Path classpathEntry) {
+        try {
+            BasicFileAttributes attributes = Files.readAttributes(classpathEntry, BasicFileAttributes.class);
+            if (!attributes.isDirectory()) {
+                return attributes.size() + "|" + attributes.lastModifiedTime().toMillis();
+            }
+            try (Stream<Path> contents = Files.walk(classpathEntry)) {
+                return "directory|" + contents.filter(Files::isRegularFile)
+                        .mapToLong(DelegatingProjectParser::fingerprintHash)
+                        .sum();
+            }
+        } catch (IOException e) {
+            return String.valueOf(UNREADABLE_CLASSPATH_ENTRIES.incrementAndGet());
+        }
+    }
+
+    private static long fingerprintHash(Path file) {
+        try {
+            BasicFileAttributes attributes = Files.readAttributes(file, BasicFileAttributes.class);
+            return 31L * file.hashCode() + 31L * attributes.size() + attributes.lastModifiedTime().toMillis();
+        } catch (IOException e) {
+            return UNREADABLE_CLASSPATH_ENTRIES.incrementAndGet();
+        }
     }
 
     protected URL jarContainingResource(String resourcePath) {
