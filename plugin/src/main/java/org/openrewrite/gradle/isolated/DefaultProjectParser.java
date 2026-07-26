@@ -68,6 +68,7 @@ import org.openrewrite.jgit.api.Git;
 import org.openrewrite.jgit.dircache.DirCache;
 import org.openrewrite.jgit.lib.ObjectId;
 import org.openrewrite.jgit.lib.Repository;
+import org.openrewrite.jgit.lib.internal.WorkQueue;
 import org.openrewrite.jgit.revwalk.RevCommit;
 import org.openrewrite.jgit.revwalk.RevWalk;
 import org.openrewrite.jgit.treewalk.TreeWalk;
@@ -1499,6 +1500,19 @@ public class DefaultProjectParser implements GradleProjectParser {
         if (repository != null) {
             repository.close();
         }
+    }
+
+    /**
+     * JGit keeps a daemon thread around per class loader that initialized it, and that thread references the
+     * class loader that created it. Without shutting it down every replaced class loader, and all the recipe
+     * classes it loaded, would be retained in metaspace for as long as the Gradle daemon lives.
+     * <p>
+     * Deliberately not part of {@link #shutdownRewrite()}, as the executor is created once per class loader and
+     * never recreated; it may only be shut down when the class loader itself is discarded.
+     */
+    @SuppressWarnings("unused") // Called reflectively by DelegatingProjectParser when it discards a class loader
+    public static void shutdownJGitWorkQueue() {
+        WorkQueue.getExecutor().shutdownNow();
     }
 
     private static synchronized MavenPomCache getPomCache(@Nullable String pomCacheDirectory) {

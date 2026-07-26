@@ -20,16 +20,14 @@ import org.junit.jupiter.api.io.TempDir;
 import org.openrewrite.Issue;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
-import java.util.Arrays;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.stream.Collectors.toList;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.openrewrite.gradle.DelegatingProjectParser.fingerprint;
 
@@ -40,7 +38,7 @@ class DelegatingProjectParserTest {
     void unchangedClasspathHasEqualFingerprints(@TempDir Path tempDir) throws IOException {
         Path jar = write(tempDir.resolve("recipes.jar"), "first");
 
-        assertThat(fingerprint(urls(jar))).isEqualTo(fingerprint(urls(jar)));
+        assertThat(fingerprint(singletonList(jar))).isEqualTo(fingerprint(singletonList(jar)));
     }
 
     @Test
@@ -48,49 +46,54 @@ class DelegatingProjectParserTest {
         Path first = write(tempDir.resolve("first.jar"), "first");
         Path second = write(tempDir.resolve("second.jar"), "second");
 
-        assertThat(fingerprint(urls(first, second))).isEqualTo(fingerprint(urls(second, first)));
+        assertThat(fingerprint(asList(first, second))).isEqualTo(fingerprint(asList(second, first)));
+    }
+
+    @Test
+    void missingClasspathEntryHasNoFingerprint(@TempDir Path tempDir) {
+        assertThat(fingerprint(singletonList(tempDir.resolve("missing.jar")))).isNull();
     }
 
     @Test
     void replacedJarChangesFingerprint(@TempDir Path tempDir) throws IOException {
         Path jar = write(tempDir.resolve("recipes.jar"), "first");
-        List<String> before = fingerprint(urls(jar));
+        List<String> before = fingerprint(singletonList(jar));
 
         write(jar, "second");
 
-        assertThat(fingerprint(urls(jar))).isNotEqualTo(before);
+        assertThat(fingerprint(singletonList(jar))).isNotEqualTo(before);
     }
 
     @Test
     void rebuiltJarOfEqualSizeChangesFingerprint(@TempDir Path tempDir) throws IOException {
         Path jar = write(tempDir.resolve("recipes.jar"), "first");
-        List<String> before = fingerprint(urls(jar));
+        List<String> before = fingerprint(singletonList(jar));
 
         touch(jar);
 
-        assertThat(fingerprint(urls(jar))).isNotEqualTo(before);
+        assertThat(fingerprint(singletonList(jar))).isNotEqualTo(before);
     }
 
     @Test
     void changedFileWithinDirectoryChangesFingerprint(@TempDir Path tempDir) throws IOException {
         Path classes = Files.createDirectories(tempDir.resolve("classes/org/example"));
         write(classes.resolve("Recipe.class"), "first");
-        List<String> before = fingerprint(urls(tempDir.resolve("classes")));
+        List<String> before = fingerprint(singletonList(tempDir.resolve("classes")));
 
-        touch(write(classes.resolve("Recipe.class"), "second"));
+        touch(classes.resolve("Recipe.class"));
 
-        assertThat(fingerprint(urls(tempDir.resolve("classes")))).isNotEqualTo(before);
+        assertThat(fingerprint(singletonList(tempDir.resolve("classes")))).isNotEqualTo(before);
     }
 
     @Test
     void fileAddedToDirectoryChangesFingerprint(@TempDir Path tempDir) throws IOException {
         Path classes = Files.createDirectories(tempDir.resolve("classes/org/example"));
         write(classes.resolve("Recipe.class"), "first");
-        List<String> before = fingerprint(urls(tempDir.resolve("classes")));
+        List<String> before = fingerprint(singletonList(tempDir.resolve("classes")));
 
         write(classes.resolve("OtherRecipe.class"), "first");
 
-        assertThat(fingerprint(urls(tempDir.resolve("classes")))).isNotEqualTo(before);
+        assertThat(fingerprint(singletonList(tempDir.resolve("classes")))).isNotEqualTo(before);
     }
 
     private static Path write(Path file, String content) throws IOException {
@@ -100,17 +103,5 @@ class DelegatingProjectParserTest {
     private static Path touch(Path file) throws IOException {
         FileTime lastModified = Files.getLastModifiedTime(file);
         return Files.setLastModifiedTime(file, FileTime.fromMillis(lastModified.toMillis() + 1_000));
-    }
-
-    private static List<URL> urls(Path... paths) {
-        return Arrays.stream(paths)
-                .map(path -> {
-                    try {
-                        return path.toUri().toURL();
-                    } catch (MalformedURLException e) {
-                        throw new IllegalStateException(e);
-                    }
-                })
-                .collect(toList());
     }
 }

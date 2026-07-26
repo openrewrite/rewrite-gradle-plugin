@@ -73,14 +73,7 @@ class RewriteDiscoverTest : RewritePluginTest {
         @TempDir projectDir: File
     ) {
         gradleProject(projectDir) {
-            buildGradle("""
-                plugins {
-                    id("java")
-                    id("org.openrewrite.rewrite")
-                }
-
-                ${GradleFixtures.REPOSITORIES}
-
+            buildGradle(GradleFixtures.REWRITE_BUILD_GRADLE + """
                 dependencies {
                     rewrite(project(":recipes"))
                 }
