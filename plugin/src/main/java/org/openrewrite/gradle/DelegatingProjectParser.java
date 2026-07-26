@@ -19,24 +19,29 @@ import org.gradle.api.Project;
 import org.gradle.internal.service.ServiceRegistry;
 import org.jspecify.annotations.Nullable;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 public class DelegatingProjectParser implements GradleProjectParser {
     @Nullable
-    protected static List<URL> rewriteClasspath;
+    protected static ClasspathSnapshot classpathSnapshot;
     @Nullable
     protected static RewriteClassLoader rewriteClassLoader;
     protected final GradleProjectParser gpp;
@@ -63,13 +68,14 @@ public class DelegatingProjectParser implements GradleProjectParser {
             ClassLoader pluginClassLoader = getPluginClassLoader(project);
 
             if (rewriteClassLoader == null ||
-                    !classpathUrls.equals(rewriteClasspath) ||
+                    classpathSnapshot == null ||
+                    classpathSnapshot.hasChanged(classpathUrls) ||
                     rewriteClassLoader.getPluginClassLoader() != pluginClassLoader) {
                 if (rewriteClassLoader != null) {
                     rewriteClassLoader.close();
                 }
                 rewriteClassLoader = new RewriteClassLoader(classpathUrls, pluginClassLoader);
-                rewriteClasspath = classpathUrls;
+                classpathSnapshot = new ClasspathSnapshot(classpathUrls);
             }
 
             Class<?> gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, rewriteClassLoader);
@@ -197,5 +203,67 @@ public class DelegatingProjectParser implements GradleProjectParser {
             }
         }
         return null;
+    }
+
+    protected static class ClasspathSnapshot {
+        private final Map<Path, Item> items = new HashMap<>();
+
+        protected ClasspathSnapshot(Collection<URL> urls) throws IOException, NoSuchAlgorithmException {
+            for (Path path : getJars(urls)) {
+                items.put(path, new Item(path));
+            }
+        }
+
+        protected boolean hasChanged(Collection<URL> urls) throws IOException, NoSuchAlgorithmException {
+            Set<Path> jars = getJars(urls);
+
+            // Check we have all paths
+            if (!items.keySet().equals(jars)) return true;
+
+            for (Path path : jars) {
+                Item oldItem = items.get(path);
+                // Just in case
+                if (oldItem == null) return true;
+
+                BasicFileAttributes attributes = Files.readAttributes(path, BasicFileAttributes.class);
+                if (!attributes.lastModifiedTime().equals(oldItem.lastModified)) return true;
+                if (attributes.size() != oldItem.size) return true;
+
+                byte[] sha256 = Item.computeHash(path);
+                if (!Arrays.equals(sha256, oldItem.sha256)) return true;
+            }
+
+            return false;
+        }
+
+        private static Set<Path> getJars(Collection<URL> urls) {
+            return urls.stream()
+                    .map(url -> {
+                        try {
+                            return Paths.get(url.toURI());
+                        } catch (URISyntaxException e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .filter(p -> p.toString().endsWith(".jar"))
+                    .collect(toSet());
+        }
+
+        private static class Item {
+            private final FileTime lastModified;
+            private final long size;
+            private final byte[] sha256;
+
+            private Item(Path path) throws IOException, NoSuchAlgorithmException {
+                BasicFileAttributes attributes = Files.readAttributes(path, BasicFileAttributes.class);
+                this.lastModified = attributes.lastModifiedTime();
+                this.size = attributes.size();
+                this.sha256 = computeHash(path);
+            }
+
+            private static byte[] computeHash(Path path) throws NoSuchAlgorithmException, IOException {
+                return MessageDigest.getInstance("SHA256").digest(Files.readAllBytes(path));
+            }
+        }
     }
 }
