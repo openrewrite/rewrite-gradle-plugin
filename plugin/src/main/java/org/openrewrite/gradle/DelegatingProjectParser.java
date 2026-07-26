@@ -23,27 +23,25 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
+import static java.util.Collections.sort;
 import static java.util.stream.Collectors.toList;
 
 public class DelegatingProjectParser implements GradleProjectParser {
-    private static final AtomicLong UNREADABLE_CLASSPATH_ENTRIES = new AtomicLong();
-
     @Nullable
     protected static List<String> rewriteClasspathFingerprint;
     @Nullable
@@ -69,10 +67,14 @@ public class DelegatingProjectParser implements GradleProjectParser {
                     .toString());
             classpathUrls.add(currentJar);
 
+            List<Path> classpathEntries = new ArrayList<>(classpath);
+            classpathEntries.add(Paths.get(currentJar.toURI()));
+
             ClassLoader pluginClassLoader = getPluginClassLoader(project);
-            List<String> classpathFingerprint = fingerprint(classpathUrls);
+            List<String> classpathFingerprint = fingerprint(classpathEntries);
 
             if (rewriteClassLoader == null ||
+                    classpathFingerprint == null ||
                     !classpathFingerprint.equals(rewriteClasspathFingerprint) ||
                     rewriteClassLoader.getPluginClassLoader() != pluginClassLoader) {
                 if (rewriteClassLoader != null) {
@@ -145,69 +147,57 @@ public class DelegatingProjectParser implements GradleProjectParser {
     }
 
     private static void discard(RewriteClassLoader classLoader) throws IOException {
-        shutdownJGitWorkQueue(classLoader);
-        classLoader.close();
-    }
-
-    /**
-     * JGit keeps a daemon thread around per class loader that initialized it, and that thread references the
-     * class loader that created it. Without shutting it down every replaced class loader, and all the recipe
-     * classes it loaded, would be retained in metaspace for as long as the Gradle daemon lives.
-     */
-    private static void shutdownJGitWorkQueue(ClassLoader classLoader) {
         try {
-            Class<?> workQueue = Class.forName("org.openrewrite.jgit.lib.internal.WorkQueue", true, classLoader);
-            ((ExecutorService) workQueue.getMethod("getExecutor").invoke(null)).shutdownNow();
-        } catch (ReflectiveOperationException | ClassCastException | LinkageError ignored) {
+            Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, classLoader)
+                    .getMethod("shutdownJGitWorkQueue")
+                    .invoke(null);
+        } catch (ReflectiveOperationException | LinkageError ignored) {
             // Not all versions of rewrite bundle JGit, in which case there is no work queue to shut down
         }
+        classLoader.close();
     }
 
     /**
      * Recipe jars built by the project itself are replaced in place, keeping the same location on the classpath.
      * Comparing locations alone would then reuse a {@link RewriteClassLoader} holding the previous recipe classes
      * for as long as the Gradle daemon lives, so compare the contents of each classpath entry as well.
+     *
+     * @return a fingerprint per classpath entry, or {@code null} if any entry could not be read
      */
-    static List<String> fingerprint(Collection<URL> classpath) {
-        return classpath.stream()
-                .map(DelegatingProjectParser::fingerprint)
-                .sorted()
-                .collect(toList());
-    }
-
-    private static String fingerprint(URL classpathEntry) {
-        if (!"file".equals(classpathEntry.getProtocol())) {
-            return classpathEntry + "|" + UNREADABLE_CLASSPATH_ENTRIES.incrementAndGet();
-        }
-        try {
-            return classpathEntry + "|" + fingerprint(Paths.get(classpathEntry.toURI()));
-        } catch (URISyntaxException e) {
-            return classpathEntry + "|" + UNREADABLE_CLASSPATH_ENTRIES.incrementAndGet();
-        }
-    }
-
-    private static String fingerprint(Path classpathEntry) {
-        try {
-            BasicFileAttributes attributes = Files.readAttributes(classpathEntry, BasicFileAttributes.class);
-            if (!attributes.isDirectory()) {
-                return attributes.size() + "|" + attributes.lastModifiedTime().toMillis();
+    static @Nullable List<String> fingerprint(Collection<Path> classpath) {
+        List<String> fingerprints = new ArrayList<>(classpath.size());
+        for (Path classpathEntry : classpath) {
+            try {
+                fingerprints.add(fingerprint(classpathEntry));
+            } catch (IOException e) {
+                return null;
             }
-            try (Stream<Path> contents = Files.walk(classpathEntry)) {
-                return "directory|" + contents.filter(Files::isRegularFile)
-                        .mapToLong(DelegatingProjectParser::fingerprintHash)
-                        .sum();
-            }
-        } catch (IOException e) {
-            return String.valueOf(UNREADABLE_CLASSPATH_ENTRIES.incrementAndGet());
         }
+        sort(fingerprints);
+        return fingerprints;
     }
 
-    private static long fingerprintHash(Path file) {
-        try {
-            BasicFileAttributes attributes = Files.readAttributes(file, BasicFileAttributes.class);
-            return 31L * file.hashCode() + 31L * attributes.size() + attributes.lastModifiedTime().toMillis();
-        } catch (IOException e) {
-            return UNREADABLE_CLASSPATH_ENTRIES.incrementAndGet();
+    private static String fingerprint(Path classpathEntry) throws IOException {
+        BasicFileAttributes attributes = Files.readAttributes(classpathEntry, BasicFileAttributes.class);
+        if (!attributes.isDirectory()) {
+            return classpathEntry + "|" + stamp(classpathEntry, attributes);
+        }
+        DirectoryStamp directoryStamp = new DirectoryStamp();
+        Files.walkFileTree(classpathEntry, directoryStamp);
+        return classpathEntry + "|" + directoryStamp.stamp;
+    }
+
+    private static long stamp(Path file, BasicFileAttributes attributes) {
+        return 31L * (31L * file.hashCode() + attributes.size()) + attributes.lastModifiedTime().toMillis();
+    }
+
+    private static class DirectoryStamp extends SimpleFileVisitor<Path> {
+        private long stamp;
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) {
+            stamp += stamp(file, attributes);
+            return FileVisitResult.CONTINUE;
         }
     }
 
