@@ -141,7 +141,9 @@ class DocumentationSyncTest {
                 ""
             }
 
-            if (fieldName !in userFacingFields) continue
+            if (fieldName !in userFacingFields) {
+                continue
+            }
 
             // Clean up Javadoc: strip * prefixes, {@code ...} -> `...`, collapse whitespace
             val javadoc = rawJavadoc
