@@ -21,6 +21,10 @@ concurrency:
 env:
   GRADLE_SWITCHES: --console=plain --info --stacktrace --warning-mode=all --no-daemon
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
+  # Resolve org.openrewrite and io.moderne dependencies from the Code Genome Project. Empty when the
+  # secrets are unset, which leaves the codegenome repository out of the build entirely.
+  ORG_GRADLE_PROJECT_codegenomeUsername: ${{ secrets.CGP_ARTIFACTS_MAVEN_USERNAME }}
+  ORG_GRADLE_PROJECT_codegenomePassword: ${{ secrets.CGP_ARTIFACTS_MAVEN_TOKEN }}
 
 jobs:
   build:
