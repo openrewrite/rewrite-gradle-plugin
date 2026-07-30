@@ -47,6 +47,26 @@ repositories {
             excludeVersionByRegex(".+", ".+", ".+-rc-?[0-9]*")
         }
     }
+
+    val codegenomeUsername = providers.gradleProperty("codegenomeUsername").orNull
+    val codegenomePassword = providers.gradleProperty("codegenomePassword").orNull
+    if (!codegenomeUsername.isNullOrEmpty() && !codegenomePassword.isNullOrEmpty()) {
+        maven {
+            name = "codegenome"
+            url = uri("https://artifacts.codegenomeproject.org/maven")
+            credentials {
+                username = codegenomeUsername
+                password = codegenomePassword
+            }
+            // Declared after Maven Central and group-scoped, so an outage or expired token
+            // can't break resolution of anything CGP doesn't serve.
+            mavenContent {
+                includeGroupAndSubgroups("org.openrewrite")
+                includeGroupAndSubgroups("io.moderne")
+            }
+        }
+    }
+
     gradlePluginPortal()
     google()
 }
