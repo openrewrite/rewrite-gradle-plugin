@@ -18,13 +18,12 @@ package org.openrewrite.gradle
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
 import org.openrewrite.gradle.fixtures.GradleFixtures
 import java.io.File
 
-class RewriteDiscoverTest : RewritePluginTest {
+class RewriteDiscoverTest : IRewritePluginTest {
 
     override fun taskName(): String = "rewriteDiscover"
 

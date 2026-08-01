@@ -19,41 +19,81 @@ import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
-import org.openrewrite.Issue
-import org.openrewrite.gradle.condition.EnabledForGradleRange
+import org.openrewrite.gradle.fixtures.GradleFixtures
 import java.io.File
 
-interface RewritePluginTest: GradleRunnerTest {
+class RewritePluginTest : GradleRunnerTest {
 
-    fun taskName(): String
-
-    // The configuration cache works on Gradle 6.6+, but rewrite-gradle-plugin uses notCompatibleWithConfigurationCache,
-    // which is only available on Gradle 7.4+.
-    @EnabledForGradleRange(min = "7.4")
-    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/227")
     @Test
-    fun `task is compatible with the configuration cache`(
-        @TempDir projectDir: File
+    fun `effective classpath is equal to rewrite plus recipe classpath`(
+        @TempDir projectDir: File,
     ) {
         gradleProject(projectDir) {
             buildGradle(
-                """
-                plugins {
-                    id("org.openrewrite.rewrite")
+                GradleFixtures.REWRITE_BUILD_GRADLE + """
+
+                dependencies {
+                    rewrite(project(":recipes"))
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
+                def plugin = plugins.getPlugin("org.openrewrite.rewrite")
+                def extension = project.extensions["rewrite"]
+                def configuration = project.configurations["rewrite"]
+
+                def deps = plugin.getResolvedDependencies(project, extension, configuration)
+                def effective = new HashSet<>(deps.getEffectiveClasspath().collect { it.getPath() })
+                def concatenated = new HashSet<>()
+                concatenated.addAll(deps.getFromRewriteOnly().collect { it.getPath() })
+                concatenated.addAll(deps.getFromRecipeOnly().collect { it.getPath() })
+
+                if (effective != concatenated) {
+                    throw new AssertionError("Effective classpath isn't rewrite + recipe")
                 }
                 """
             )
+
+            subproject("recipes") {
+                buildGradle("""
+                    plugins {
+                        id("java")
+                    }
+
+                    ${GradleFixtures.REPOSITORIES}
+
+                    dependencies {
+                        implementation("org.openrewrite:rewrite-core:latest.release")
+                    }
+                """)
+
+                sourceSet("main") {
+                    java(recipe("FirstRecipe"))
+                }
+            }
         }
-        val result = runGradle(projectDir, taskName(), "--configuration-cache")
-        val taskResult = result.task(":${taskName()}")!!
+        val buildResult = runGradle(projectDir, "rewriteDiscover")
+        // Make sure our recipe was detected
+        assertThat(buildResult.output).contains("org.example.FirstRecipe")
+
+        val taskResult = buildResult.task(":rewriteDiscover")!!
         assertThat(taskResult.outcome).isEqualTo(TaskOutcome.SUCCESS)
     }
+
+    //language=java
+    private fun recipe(className: String) = """
+        package org.example;
+
+        import org.openrewrite.Recipe;
+
+        public class $className extends Recipe {
+            @Override
+            public String getDisplayName() {
+                return "$className";
+            }
+
+            @Override
+            public String getDescription() {
+                return "$className.";
+            }
+        }
+    """.trimIndent()
 }

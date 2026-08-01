@@ -27,7 +27,7 @@ import org.openrewrite.gradle.condition.EnabledForGradleRange
 import java.io.File
 
 @Suppress("GroovyUnusedAssignment")
-class RewriteDryRunTest : RewritePluginTest {
+class RewriteDryRunTest : IRewritePluginTest {
     @TempDir
     lateinit var projectDir: File
 
