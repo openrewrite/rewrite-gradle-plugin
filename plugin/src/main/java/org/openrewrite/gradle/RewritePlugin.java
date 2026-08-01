@@ -20,7 +20,12 @@ import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ModuleIdentifier;
+import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.*;
 import org.gradle.api.attributes.java.TargetJvmEnvironment;
 import org.gradle.api.model.ObjectFactory;
@@ -32,12 +37,18 @@ import org.gradle.api.plugins.quality.CheckstylePlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
+import org.jetbrains.annotations.TestOnly;
 import org.jspecify.annotations.Nullable;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.Collectors;
 
+import static java.util.Collections.emptyList;
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
 import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE;
 
@@ -52,7 +63,7 @@ import static org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENV
 public class RewritePlugin implements Plugin<Project> {
 
     @Nullable
-    private Set<File> resolvedDependencies;
+    private ResolvedDependencies resolvedDependencies;
 
     @Override
     public void apply(Project project) {
@@ -70,7 +81,7 @@ public class RewritePlugin implements Plugin<Project> {
         Configuration rewriteConf = project.getConfigurations().maybeCreate("rewrite");
         rewriteConf.setCanBeConsumed(false);
 
-        Provider<Set<File>> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(project, extension, rewriteConf));
+        Provider<ResolvedDependencies> resolvedDependenciesProvider = project.provider(() -> getResolvedDependencies(project, extension, rewriteConf));
 
         TaskProvider<RewriteRunTask> rewriteRun = project.getTasks().register("rewriteRun", RewriteRunTask.class, task -> {
             task.setExtension(extension);
@@ -164,40 +175,62 @@ public class RewritePlugin implements Plugin<Project> {
         });
     }
 
-    private Set<File> getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
+    public ResolvedDependencies getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
         if (resolvedDependencies == null) {
             // Avoid Stream.concat here pending https://github.com/gradle/gradle/issues/33152
             List<Dependency> dependencies = new ArrayList<>();
             dependencies.addAll(knownRewriteDependencies(extension, project.getDependencies()));
             dependencies.addAll(rewriteConf.getDependencies());
-            // By using a detached configuration, we separate this dependency resolution from the rest of the project's
-            // configuration. This also means that Gradle has no criteria with which to select between variants of
-            // dependencies which expose differing capabilities. So those must be manually configured
-            Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies.toArray(new Dependency[0]));
 
-            try {
-                ObjectFactory objectFactory = project.getObjects();
-                detachedConf.attributes(attributes -> {
-                    // Adapted from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
-                    attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
-                    attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
-                    attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
-                    attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
-                    try {
-                        attributes.attribute(TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
-                    } catch (NoClassDefFoundError e) {
-                        // Old versions of Gradle don't have the class TargetJvmEnvironment and that's OK, we can always
-                        // try this attribute instead
-                        attributes.attribute(Attribute.of("org.gradle.jvm.environment", String.class), "standard-jvm");
-                    }
-                });
-            } catch (NoClassDefFoundError e) {
-                // Old versions of Gradle don't have all of these attributes and that's OK
-            }
+            List<ProjectDependency> rewriteDependencies = resolveConfiguration(project, knownRewriteDependencies(extension, project.getDependencies()));
+            List<ProjectDependency> recipeDependencies = resolveConfiguration(project, rewriteConf.getDependencies());
+            List<ProjectDependency> effectiveDependencies = resolveConfiguration(project, dependencies);
 
-            resolvedDependencies = detachedConf.resolve();
+            resolvedDependencies = new ResolvedDependencies(rewriteDependencies, recipeDependencies, effectiveDependencies);
         }
         return resolvedDependencies;
+    }
+
+    private static List<ProjectDependency> resolveConfiguration(Project project, Collection<Dependency> dependencies) {
+        // By using a detached configuration, we separate this dependency resolution from the rest of the project's
+        // configuration. This also means that Gradle has no criteria with which to select between variants of
+        // dependencies which expose differing capabilities. So those must be manually configured
+        Configuration detachedConf = project.getConfigurations().detachedConfiguration(dependencies.toArray(new Dependency[0]));
+        configureAttributes(project, detachedConf);
+
+        return detachedConf.getIncoming()
+                .getArtifacts().getArtifacts()
+                .stream()
+                .map(artifactResult -> {
+                    try {
+                        return new ProjectDependency(artifactResult);
+                    } catch (MalformedURLException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toList());
+    }
+
+    private static void configureAttributes(Project project, Configuration configuration) {
+        try {
+            ObjectFactory objectFactory = project.getObjects();
+            configuration.attributes(attributes -> {
+                // Adapted from org.gradle.api.plugins.jvm.internal.DefaultJvmEcosystemAttributesDetails
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, objectFactory.named(Category.class, Category.LIBRARY));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objectFactory.named(LibraryElements.class, LibraryElements.JAR));
+                attributes.attribute(BUNDLING_ATTRIBUTE, objectFactory.named(Bundling.class, Bundling.EXTERNAL));
+                try {
+                    attributes.attribute(TARGET_JVM_ENVIRONMENT_ATTRIBUTE, objectFactory.named(TargetJvmEnvironment.class, TargetJvmEnvironment.STANDARD_JVM));
+                } catch (NoClassDefFoundError e) {
+                    // Old versions of Gradle don't have the class TargetJvmEnvironment and that's OK, we can always
+                    // try this attribute instead
+                    attributes.attribute(Attribute.of("org.gradle.jvm.environment", String.class), "standard-jvm");
+                }
+            });
+        } catch (NoClassDefFoundError e) {
+            // Old versions of Gradle don't have all of these attributes and that's OK
+        }
     }
 
     private static Collection<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
@@ -228,5 +261,99 @@ public class RewritePlugin implements Plugin<Project> {
                 deps.create("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:" + extension.getJacksonModuleKotlinVersion()),
                 deps.create("org.rocksdb:rocksdbjni:" + extension.getRocksdbJniVersion())
         );
+    }
+
+    public static class ResolvedDependencies {
+        static final ResolvedDependencies EMPTY = new ResolvedDependencies(emptyList(), emptyList(), emptyList());
+
+        private final List<ProjectDependency> rewriteClasspath;
+        private final List<ProjectDependency> recipeClasspath;
+        private final List<ProjectDependency> effectiveClasspath;
+
+        private ResolvedDependencies(List<ProjectDependency> rewriteClasspath, List<ProjectDependency> recipeClasspath, List<ProjectDependency> effectiveClasspath) {
+            this.rewriteClasspath = rewriteClasspath;
+            this.recipeClasspath = recipeClasspath;
+            this.effectiveClasspath = effectiveClasspath;
+        }
+
+        @TestOnly // Used by RewritePluginTest
+        @SuppressWarnings("unused")
+        public List<ProjectDependency> getEffectiveClasspath() {
+            return effectiveClasspath;
+        }
+
+        /** Returns dependencies only including OpenRewrite's own required dependencies */
+        public List<ProjectDependency> getFromRewriteOnly() {
+            // Using the effective dependency versions, take the ones that only appear from the (known) rewrite classpath
+            return effectiveClasspath.stream()
+                    .filter(effectiveDependency -> {
+                        // Keep if from known rewrite deps
+                        ComponentIdentifier expectedIdentifier = effectiveDependency.getIdentifier();
+                        return rewriteClasspath.stream()
+                                .anyMatch(rewriteDependency -> hasSameDependencyIdentifier(expectedIdentifier, rewriteDependency.getIdentifier()));
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        /** Returns dependencies that are <strong>only</strong> present in the recipe's classpath, i.e., excluding rewrite classpath */
+        public List<ProjectDependency> getFromRecipeOnly() {
+            // Take recipe classpath, remove rewrite modules
+            return recipeClasspath.stream()
+                    .filter(recipeDependency -> {
+                        ComponentIdentifier expectedIdentifier = recipeDependency.getIdentifier();
+
+                        // Keep when identifier (independent of version) can't be found in rewrite classpath
+                        return rewriteClasspath.stream().noneMatch(dep -> hasSameDependencyIdentifier(expectedIdentifier, dep.getIdentifier()));
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        private static boolean hasSameDependencyIdentifier(ComponentIdentifier expectedIdentifier, ComponentIdentifier depIdentifier) {
+            if (!(expectedIdentifier instanceof ModuleComponentIdentifier) && !(expectedIdentifier instanceof ProjectComponentIdentifier)) {
+                throw new UnsupportedOperationException("Unsupported component identifier type: " + expectedIdentifier.getClass().getName());
+            }
+
+            if (expectedIdentifier instanceof ModuleComponentIdentifier) {
+                if (!(depIdentifier instanceof ModuleComponentIdentifier)) {
+                    return false;
+                }
+
+                ModuleIdentifier expectedModuleIdentifier = ((ModuleComponentIdentifier) expectedIdentifier).getModuleIdentifier();
+                ModuleIdentifier depModuleIdentifier = ((ModuleComponentIdentifier) depIdentifier).getModuleIdentifier();
+                return expectedModuleIdentifier.equals(depModuleIdentifier);
+            } else if (expectedIdentifier instanceof ProjectComponentIdentifier) {
+                if (!(depIdentifier instanceof ProjectComponentIdentifier)) {
+                    return false;
+                }
+
+                return depIdentifier.equals(expectedIdentifier);
+            } else {
+                throw new UnsupportedOperationException("Unsupported component identifier type: " + depIdentifier.getClass().getName());
+            }
+        }
+    }
+
+    public static class ProjectDependency {
+        private final Path path;
+        private final URL url;
+        private final ComponentIdentifier identifier;
+
+        private ProjectDependency(ResolvedArtifactResult artifactResult) throws MalformedURLException {
+            this.path = artifactResult.getFile().toPath();
+            this.url = path.toUri().toURL();
+            this.identifier = artifactResult.getVariant().getOwner();
+        }
+
+        public Path getPath() {
+            return path;
+        }
+
+        public URL getUrl() {
+            return url;
+        }
+
+        public ComponentIdentifier getIdentifier() {
+            return identifier;
+        }
     }
 }

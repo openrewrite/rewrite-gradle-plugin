@@ -18,23 +18,16 @@ package org.openrewrite.gradle;
 import org.gradle.api.Project;
 import org.gradle.internal.service.ServiceRegistry;
 import org.jspecify.annotations.Nullable;
+import org.openrewrite.gradle.RewritePlugin.ResolvedDependencies;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
+import java.net.URLClassLoader;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
@@ -45,46 +38,46 @@ public class DelegatingProjectParser implements GradleProjectParser {
     @Nullable
     protected static List<String> rewriteClasspathFingerprint;
     @Nullable
+    protected static List<String> recipeClasspathFingerprint;
+    @Nullable
     protected static RewriteClassLoader rewriteClassLoader;
+    @Nullable
+    protected static URLClassLoader recipeClassLoader;
     protected final GradleProjectParser gpp;
 
-    public DelegatingProjectParser(Project project, RewriteExtension extension, Set<Path> classpath) {
+    public DelegatingProjectParser(Project project, RewriteExtension extension, ResolvedDependencies classpath) {
         try {
-            List<URL> classpathUrls = classpath.stream()
-                    .map(Path::toUri)
-                    .map(uri -> {
-                        try {
-                            return uri.toURL();
-                        } catch (MalformedURLException e) {
-                            throw new RuntimeException(e);
-                        }
-                    })
+            List<URL> rewriteClasspathUrls = classpath.getFromRewriteOnly().stream()
+                    .map(RewritePlugin.ProjectDependency::getUrl)
+                    .collect(toList());
+            List<URL> recipeClasspathUrls = classpath.getFromRecipeOnly().stream()
+                    .map(RewritePlugin.ProjectDependency::getUrl)
                     .collect(toList());
 
             @SuppressWarnings("ConstantConditions")
             URL currentJar = jarContainingResource(getClass()
                     .getResource("/org/openrewrite/gradle/isolated/DefaultProjectParser.class")
                     .toString());
-            classpathUrls.add(currentJar);
+            rewriteClasspathUrls.add(currentJar);
 
-            List<Path> classpathEntries = new ArrayList<>(classpath);
-            classpathEntries.add(Paths.get(currentJar.toURI()));
+            List<Path> rewriteClasspathEntries = classpath.getFromRewriteOnly().stream().map(RewritePlugin.ProjectDependency::getPath).collect(toList());
+            List<Path> recipeClasspathEntries = classpath.getFromRecipeOnly().stream().map(RewritePlugin.ProjectDependency::getPath).collect(toList());
+            rewriteClasspathEntries.add(Paths.get(currentJar.toURI()));
 
             ClassLoader pluginClassLoader = getPluginClassLoader(project);
-            List<String> classpathFingerprint = fingerprint(classpathEntries);
+            List<String> newRewriteClasspathFingerprint = fingerprint(rewriteClasspathEntries);
+            List<String> newRecipeClasspathFingerprint = fingerprint(recipeClasspathEntries);
 
-            if (rewriteClassLoader == null ||
-                    classpathFingerprint == null ||
-                    !classpathFingerprint.equals(rewriteClasspathFingerprint) ||
-                    rewriteClassLoader.getPluginClassLoader() != pluginClassLoader) {
-                if (rewriteClassLoader != null) {
-                    discard(rewriteClassLoader);
-                }
-                rewriteClassLoader = new RewriteClassLoader(classpathUrls, pluginClassLoader);
-                rewriteClasspathFingerprint = classpathFingerprint;
+            // Throw recipe CL if rewrite CL is reset
+            // because recipe classes depend on rewrite's dependencies
+            if (hasRewriteClasspathChanged(newRewriteClasspathFingerprint, pluginClassLoader)) {
+                recreateRewriteClassLoader(rewriteClasspathUrls, newRewriteClasspathFingerprint, pluginClassLoader);
+                recreateRecipeClassLoader(recipeClasspathUrls, newRecipeClasspathFingerprint);
+            } else if (hasRecipeClasspathChanged(newRecipeClasspathFingerprint)) {
+                recreateRecipeClassLoader(recipeClasspathUrls, newRecipeClasspathFingerprint);
             }
 
-            Class<?> gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, rewriteClassLoader);
+            Class<?> gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, recipeClassLoader);
             assert (gppClass.getClassLoader() == rewriteClassLoader) : "DefaultProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's classpath";
             gpp = (GradleProjectParser) gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class)
                     .newInstance(project, extension);
@@ -92,6 +85,37 @@ public class DelegatingProjectParser implements GradleProjectParser {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static boolean hasRewriteClasspathChanged(@Nullable List<String> newRewriteClasspathFingerprint, ClassLoader pluginClassLoader) {
+        return rewriteClassLoader == null ||
+                rewriteClasspathFingerprint == null ||
+                !rewriteClasspathFingerprint.equals(newRewriteClasspathFingerprint) ||
+                rewriteClassLoader.getPluginClassLoader() != pluginClassLoader;
+    }
+
+    private static boolean hasRecipeClasspathChanged(@Nullable List<String> newRecipeClasspathFingerprint) {
+        return recipeClassLoader == null ||
+                recipeClasspathFingerprint == null ||
+                !recipeClasspathFingerprint.equals(newRecipeClasspathFingerprint);
+    }
+
+    private static void recreateRewriteClassLoader(List<URL> rewriteClasspathUrls, @Nullable List<String> newRewriteClasspathFingerprint, ClassLoader pluginClassLoader) throws IOException {
+        if (rewriteClassLoader != null) {
+            discard(rewriteClassLoader);
+        }
+
+        rewriteClassLoader = new RewriteClassLoader(rewriteClasspathUrls, pluginClassLoader);
+        rewriteClasspathFingerprint = newRewriteClasspathFingerprint;
+    }
+
+    private static void recreateRecipeClassLoader(List<URL> recipeClasspathUrls, @Nullable List<String> newRecipeClasspathFingerprint) throws IOException {
+        if (recipeClassLoader != null) {
+            discard(recipeClassLoader);
+        }
+
+        recipeClassLoader = new URLClassLoader(recipeClasspathUrls.toArray(new URL[0]), Objects.requireNonNull(rewriteClassLoader, "Rewrite CL is missing"));
+        recipeClasspathFingerprint = newRecipeClasspathFingerprint;
     }
 
     @Override
@@ -146,7 +170,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
         });
     }
 
-    private static void discard(RewriteClassLoader classLoader) throws IOException {
+    private static void discard(URLClassLoader classLoader) throws IOException {
         try {
             Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, classLoader)
                     .getMethod("shutdownJGitWorkQueue")

@@ -24,19 +24,14 @@ import org.gradle.api.tasks.options.Option;
 import org.gradle.util.GradleVersion;
 import org.gradle.work.DisableCachingByDefault;
 import org.jspecify.annotations.Nullable;
+import org.openrewrite.gradle.RewritePlugin.ResolvedDependencies;
 
 import javax.inject.Inject;
-import java.io.File;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Set;
-
-import static java.util.Collections.emptySet;
-import static java.util.stream.Collectors.toSet;
 
 @DisableCachingByDefault(because = "Rewrite tasks act on source files in place and are not safe to cache")
 public abstract class AbstractRewriteTask extends DefaultTask {
-    protected @Nullable Provider<Set<File>> resolvedDependencies;
+    protected @Nullable Provider<ResolvedDependencies> resolvedDependencies;
     protected boolean dumpGcActivity;
     protected @Nullable GradleProjectParser gpp;
     protected @Nullable RewriteExtension extension;
@@ -53,7 +48,7 @@ public abstract class AbstractRewriteTask extends DefaultTask {
         return (T) this;
     }
 
-    public <T extends AbstractRewriteTask> T setResolvedDependencies(Provider<Set<File>> resolvedDependencies) {
+    public <T extends AbstractRewriteTask> T setResolvedDependencies(Provider<ResolvedDependencies> resolvedDependencies) {
         this.resolvedDependencies = resolvedDependencies;
         //noinspection unchecked
         return (T) this;
@@ -83,14 +78,11 @@ public abstract class AbstractRewriteTask extends DefaultTask {
             if (resolvedDependencies == null) {
                 throw new IllegalArgumentException("Must configure resolvedDependencies");
             }
-            Set<File> deps = resolvedDependencies.getOrNull();
+            ResolvedDependencies deps = resolvedDependencies.getOrNull();
             if (deps == null) {
-                deps = emptySet();
+                deps = ResolvedDependencies.EMPTY;
             }
-            Set<Path> classpath = deps.stream()
-                    .map(File::toPath)
-                    .collect(toSet());
-            gpp = new DelegatingProjectParser(getProject(), extension, classpath);
+            gpp = new DelegatingProjectParser(getProject(), extension, deps);
         }
         //noinspection unchecked
         return (T) gpp;
