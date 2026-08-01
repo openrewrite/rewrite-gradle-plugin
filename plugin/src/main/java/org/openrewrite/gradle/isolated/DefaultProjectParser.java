@@ -122,6 +122,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     protected final Path baseDir;
     protected final RewriteExtension extension;
     protected final Project project;
+    protected final ClassLoader classLoader;
     private final List<Marker> sharedProvenance;
 
     @Nullable
@@ -140,11 +141,12 @@ public class DefaultProjectParser implements GradleProjectParser {
     @Nullable
     private AndroidProjectParser androidProjectParser;
 
-    public DefaultProjectParser(Project project, RewriteExtension extension) {
+    public DefaultProjectParser(Project project, RewriteExtension extension, ClassLoader classLoader) {
         this.baseDir = repositoryRoot(project);
         this.repository = getRepository(baseDir);
         this.extension = extension;
         this.project = project;
+        this.classLoader = classLoader;
 
         BuildEnvironment buildEnvironment = BuildEnvironment.build(System::getenv);
         sharedProvenance = Stream.of(
@@ -646,12 +648,12 @@ public class DefaultProjectParser implements GradleProjectParser {
             properties.putAll(gradleProps);
 
             Environment.Builder env = Environment.builder();
-            env.scanClassLoader(getClass().getClassLoader());
+            env.scanClassLoader(classLoader);
 
             File rewriteConfig = extension.getConfigFile();
             if (rewriteConfig.exists()) {
                 try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                    YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties, getClass().getClassLoader());
+                    YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties, classLoader);
                     env.load(resourceLoader);
                 } catch (IOException e) {
                     throw new RuntimeException("Unable to load rewrite configuration", e);

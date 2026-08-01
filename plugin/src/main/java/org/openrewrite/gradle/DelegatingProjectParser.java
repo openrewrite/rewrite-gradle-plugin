@@ -79,8 +79,8 @@ public class DelegatingProjectParser implements GradleProjectParser {
 
             Class<?> gppClass = Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, recipeClassLoader);
             assert (gppClass.getClassLoader() == rewriteClassLoader) : "DefaultProjectParser must be loaded from RewriteClassLoader to be sufficiently isolated from Gradle's classpath";
-            gpp = (GradleProjectParser) gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class)
-                    .newInstance(project, extension);
+            gpp = (GradleProjectParser) gppClass.getDeclaredConstructor(Project.class, RewriteExtension.class, ClassLoader.class)
+                    .newInstance(project, extension, new CompositeURLClassLoader(rewriteClassLoader, recipeClassLoader));
 
         } catch (Exception e) {
             throw new RuntimeException(e);
