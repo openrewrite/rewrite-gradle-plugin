@@ -15,6 +15,7 @@
  */
 package org.openrewrite.gradle.isolated;
 
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
@@ -1515,6 +1516,10 @@ public class DefaultProjectParser implements GradleProjectParser {
     @SuppressWarnings("unused") // Called reflectively by DelegatingProjectParser when it discards a class loader
     public static void shutdownJGitWorkQueue() {
         WorkQueue.getExecutor().shutdownNow();
+        // Jackson (from the RewriteClassLoader) caches references of classes coming from the recipe's ClassLoader,
+        //  which retains the recipe's CL until the RewriteClassLoader gets dropped too. (which is almost never)
+        // By clearing the cache, references to the recipe's CL are gone.
+        TypeFactory.defaultInstance().clearCache();
     }
 
     private static synchronized MavenPomCache getPomCache(@Nullable String pomCacheDirectory) {
