@@ -1506,16 +1506,19 @@ public class DefaultProjectParser implements GradleProjectParser {
     }
 
     /**
-     * JGit keeps a daemon thread around per class loader that initialized it, and that thread references the
-     * class loader that created it. Without shutting it down every replaced class loader, and all the recipe
-     * classes it loaded, would be retained in metaspace for as long as the Gradle daemon lives.
+     * When a ClassLoader is ready to be discarded,
+     * cleans up some things needed to not leak the class loader of the currently executing class.
      * <p>
      * Deliberately not part of {@link #shutdownRewrite()}, as the executor is created once per class loader and
      * never recreated; it may only be shut down when the class loader itself is discarded.
      */
     @SuppressWarnings("unused") // Called reflectively by DelegatingProjectParser when it discards a class loader
-    public static void shutdownJGitWorkQueue() {
+    public static void cleanCurrentClassLoader() {
+        // JGit keeps a daemon thread around per class loader that initialized it, and that thread references the
+        //  class loader that created it. Without shutting it down every replaced class loader, and all the recipe
+        //  classes it loaded, would be retained in metaspace for as long as the Gradle daemon lives.
         WorkQueue.getExecutor().shutdownNow();
+
         // Jackson (from the RewriteClassLoader) caches references of classes coming from the recipe's ClassLoader,
         //  which retains the recipe's CL until the RewriteClassLoader gets dropped too. (which is almost never)
         // By clearing the cache, references to the recipe's CL are gone.

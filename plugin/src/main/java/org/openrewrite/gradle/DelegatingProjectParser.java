@@ -173,7 +173,7 @@ public class DelegatingProjectParser implements GradleProjectParser {
     private static void discard(URLClassLoader classLoader) throws IOException {
         try {
             Class.forName("org.openrewrite.gradle.isolated.DefaultProjectParser", true, classLoader)
-                    .getMethod("shutdownJGitWorkQueue")
+                    .getMethod("cleanCurrentClassLoader")
                     .invoke(null);
         } catch (ReflectiveOperationException | LinkageError ignored) {
             // Not all versions of rewrite bundle JGit, in which case there is no work queue to shut down
