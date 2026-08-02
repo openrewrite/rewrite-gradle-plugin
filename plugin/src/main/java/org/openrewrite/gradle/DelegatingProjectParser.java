@@ -18,7 +18,8 @@ package org.openrewrite.gradle;
 import org.gradle.api.Project;
 import org.gradle.internal.service.ServiceRegistry;
 import org.jspecify.annotations.Nullable;
-import org.openrewrite.gradle.RewritePlugin.ResolvedDependencies;
+import org.openrewrite.gradle.dependencies.ProjectDependency;
+import org.openrewrite.gradle.dependencies.ResolvedDependencies;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -48,10 +49,10 @@ public class DelegatingProjectParser implements GradleProjectParser {
     public DelegatingProjectParser(Project project, RewriteExtension extension, ResolvedDependencies classpath) {
         try {
             List<URL> rewriteClasspathUrls = classpath.getFromRewriteOnly().stream()
-                    .map(RewritePlugin.ProjectDependency::getUrl)
+                    .map(ProjectDependency::getUrl)
                     .collect(toList());
             List<URL> recipeClasspathUrls = classpath.getFromRecipeOnly().stream()
-                    .map(RewritePlugin.ProjectDependency::getUrl)
+                    .map(ProjectDependency::getUrl)
                     .collect(toList());
 
             @SuppressWarnings("ConstantConditions")
@@ -60,8 +61,8 @@ public class DelegatingProjectParser implements GradleProjectParser {
                     .toString());
             rewriteClasspathUrls.add(currentJar);
 
-            List<Path> rewriteClasspathEntries = classpath.getFromRewriteOnly().stream().map(RewritePlugin.ProjectDependency::getPath).collect(toList());
-            List<Path> recipeClasspathEntries = classpath.getFromRecipeOnly().stream().map(RewritePlugin.ProjectDependency::getPath).collect(toList());
+            List<Path> rewriteClasspathEntries = classpath.getFromRewriteOnly().stream().map(ProjectDependency::getPath).collect(toList());
+            List<Path> recipeClasspathEntries = classpath.getFromRecipeOnly().stream().map(ProjectDependency::getPath).collect(toList());
             rewriteClasspathEntries.add(Paths.get(currentJar.toURI()));
 
             ClassLoader pluginClassLoader = getPluginClassLoader(project);

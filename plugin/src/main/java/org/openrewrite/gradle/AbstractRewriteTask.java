@@ -24,7 +24,8 @@ import org.gradle.api.tasks.options.Option;
 import org.gradle.util.GradleVersion;
 import org.gradle.work.DisableCachingByDefault;
 import org.jspecify.annotations.Nullable;
-import org.openrewrite.gradle.RewritePlugin.ResolvedDependencies;
+import org.openrewrite.gradle.dependencies.ResolvedDependencies;
+import org.openrewrite.gradle.dependencies.ResolvedDependenciesProvider;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -80,7 +81,7 @@ public abstract class AbstractRewriteTask extends DefaultTask {
             }
             ResolvedDependencies deps = resolvedDependencies.getOrNull();
             if (deps == null) {
-                deps = ResolvedDependencies.EMPTY;
+                deps = ResolvedDependenciesProvider.empty();
             }
             gpp = new DelegatingProjectParser(getProject(), extension, deps);
         }
