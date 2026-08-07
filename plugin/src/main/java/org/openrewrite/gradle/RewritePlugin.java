@@ -21,6 +21,8 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.dsl.DependencyHandler;
+import org.gradle.api.artifacts.repositories.ArtifactRepository;
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.attributes.*;
 import org.gradle.api.attributes.java.TargetJvmEnvironment;
 import org.gradle.api.model.ObjectFactory;
@@ -36,6 +38,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.util.*;
 
 import static org.gradle.api.attributes.Bundling.BUNDLING_ATTRIBUTE;
@@ -166,6 +169,8 @@ public class RewritePlugin implements Plugin<Project> {
 
     private Set<File> getResolvedDependencies(Project project, RewriteExtension extension, Configuration rewriteConf) {
         if (resolvedDependencies == null) {
+            warnOnStaleRecipeArtifacts(project, rewriteConf);
+
             // Avoid Stream.concat here pending https://github.com/gradle/gradle/issues/33152
             List<Dependency> dependencies = new ArrayList<>();
             dependencies.addAll(knownRewriteDependencies(extension, project.getDependencies()));
@@ -198,6 +203,23 @@ public class RewritePlugin implements Plugin<Project> {
             resolvedDependencies = detachedConf.resolve();
         }
         return resolvedDependencies;
+    }
+
+    private static void warnOnStaleRecipeArtifacts(Project project, Configuration rewriteConf) {
+        List<URI> repositoryUrls = new ArrayList<>();
+        for (ArtifactRepository repository : project.getRepositories()) {
+            if (repository instanceof MavenArtifactRepository) {
+                repositoryUrls.add(((MavenArtifactRepository) repository).getUrl());
+            }
+        }
+        List<String> requestedRecipeDependencies = new ArrayList<>();
+        for (Dependency dependency : rewriteConf.getDependencies()) {
+            requestedRecipeDependencies.add(dependency.getGroup() + ":" + dependency.getName() + ":" + dependency.getVersion());
+        }
+        String warning = CodeGenomeProjectWarning.warningFor(repositoryUrls, requestedRecipeDependencies);
+        if (warning != null) {
+            project.getLogger().warn(warning);
+        }
     }
 
     private static Collection<Dependency> knownRewriteDependencies(RewriteExtension extension, DependencyHandler deps) {
