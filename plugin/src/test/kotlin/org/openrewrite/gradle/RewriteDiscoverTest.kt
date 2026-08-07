@@ -18,12 +18,12 @@ package org.openrewrite.gradle
 import org.assertj.core.api.Assertions.assertThat
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
+import org.openrewrite.gradle.fixtures.GradleFixtures
 import java.io.File
 
-class RewriteDiscoverTest : RewritePluginTest {
+class RewriteDiscoverTest : IRewritePluginTest {
 
     override fun taskName(): String = "rewriteDiscover"
 
@@ -65,4 +65,63 @@ class RewriteDiscoverTest : RewritePluginTest {
 
         assertThat(result.output).contains("Configured with 2 active recipes and 1 active styles.")
     }
+
+    @Issue("https://github.com/openrewrite/rewrite-gradle-plugin/issues/453")
+    @Test
+    fun `rewriteDiscover picks up recipes rebuilt within the same daemon`(
+        @TempDir projectDir: File
+    ) {
+        gradleProject(projectDir) {
+            buildGradle(GradleFixtures.REWRITE_BUILD_GRADLE + """
+                dependencies {
+                    rewrite(project(":recipes"))
+                }
+            """)
+
+            subproject("recipes") {
+                buildGradle("""
+                    plugins {
+                        id("java")
+                    }
+
+                    ${GradleFixtures.REPOSITORIES}
+
+                    dependencies {
+                        implementation("org.openrewrite:rewrite-core:latest.release")
+                    }
+                """)
+
+                sourceSet("main") {
+                    java(recipe("FirstRecipe"))
+                }
+            }
+        }
+
+        assertThat(runGradle(projectDir, taskName()).output).contains("org.example.FirstRecipe")
+
+        val recipeSources = File(projectDir, "recipes/src/main/java/org/example")
+        assertThat(File(recipeSources, "FirstRecipe.java").delete()).isTrue()
+        File(recipeSources, "SecondRecipe.java").writeText(recipe("SecondRecipe"))
+
+        assertThat(runGradle(projectDir, taskName()).output).contains("org.example.SecondRecipe")
+    }
+
+    //language=java
+    private fun recipe(className: String) = """
+        package org.example;
+
+        import org.openrewrite.Recipe;
+
+        public class $className extends Recipe {
+            @Override
+            public String getDisplayName() {
+                return "$className";
+            }
+
+            @Override
+            public String getDescription() {
+                return "$className.";
+            }
+        }
+    """.trimIndent()
 }
