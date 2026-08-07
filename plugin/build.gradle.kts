@@ -71,6 +71,27 @@ repositories {
     google()
 }
 
+publishing {
+    repositories {
+        val awsAccessKeyId = providers.environmentVariable("AWS_ACCESS_KEY_ID").orNull
+        val awsSecretAccessKey = providers.environmentVariable("AWS_SECRET_ACCESS_KEY").orNull
+        if (!awsAccessKeyId.isNullOrEmpty() && !awsSecretAccessKey.isNullOrEmpty()) {
+            maven {
+                name = "cgp"
+                // Region-qualified host, else Gradle's S3 transport defaults to us-east-1 (the bucket is us-west-2).
+                url = uri("s3://codegenome-artifacts.s3.us-west-2.amazonaws.com/maven")
+                credentials(AwsCredentials::class) {
+                    accessKey = awsAccessKeyId
+                    secretKey = awsSecretAccessKey
+                    providers.environmentVariable("AWS_SESSION_TOKEN").orNull
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.let { sessionToken = it }
+                }
+            }
+        }
+    }
+}
+
 val latest = if (project.hasProperty("releasing")) {
     "latest.release"
 } else {
