@@ -1444,9 +1444,10 @@ public class DefaultProjectParser implements GradleProjectParser {
                 .flatMap(Collection::stream).collect(toList());
         if (!failedValidations.isEmpty()) {
             failedValidations.forEach(failedValidation -> logger.error(
-                    "Recipe validation error in {} for property {}: {}",
+                    "Recipe validation error in {} for property {} with invalid value {}: {}",
                     recipe.getName(),
                     failedValidation.getProperty(),
+                    failedValidation.getInvalidValue(),
                     failedValidation.getMessage(),
                     failedValidation.getException()));
             if (extension.getFailOnInvalidActiveRecipes()) {
