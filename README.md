@@ -37,7 +37,7 @@ rewrite {
 }
 ```
 
-### Consuming latest snapshots from OSSRH
+### Consuming latest snapshots from the Code Genome Project
 
 To use the latest `-SNAPSHOT` of the `rewrite-gradle-plugin`, update your project's `settings.gradle.kts`:
 
@@ -54,7 +54,11 @@ pluginManagement {
     repositories {
         // ...
         maven {
-            url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+            url = uri("https://artifacts.codegenomeproject.org/maven")
+            credentials {
+                username = "USERNAME"
+                password = "TOKEN"
+            }
         }
         // ...
         // you'll likely also need this if you don't have a pluginManagement section already:
@@ -63,6 +67,10 @@ pluginManagement {
     }
 }
 ```
+
+The Code Genome Project repository requires authentication. Sign in to the Code Genome Project to
+create a download token, then replace `USERNAME` with the email or username you signed in with and
+`TOKEN` with that token.
 
 The plugin can be consumed in your `build.gradle.kts`:
 
