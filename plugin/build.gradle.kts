@@ -5,7 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.2.0"
+    id("org.jetbrains.kotlin.jvm") version "2.4.0"
     id("com.gradle.plugin-publish") version "latest.release"
     id("com.github.hierynomus.license") version "0.16.1"
     id("nebula.maven-apache-license")
@@ -30,27 +30,21 @@ gradlePlugin {
 }
 
 repositories {
-    if (!project.hasProperty("releasing")) {
+    val releasing = project.hasProperty("releasing")
+
+    if (!releasing) {
         mavenLocal {
             mavenContent {
                 excludeVersionByRegex(".+", ".+", ".+-rc-?[0-9]*")
             }
-        }
-
-        maven {
-            url = uri("https://central.sonatype.com/repository/maven-snapshots")
-        }
-    }
-
-    mavenCentral {
-        mavenContent {
-            excludeVersionByRegex(".+", ".+", ".+-rc-?[0-9]*")
         }
     }
 
     val codegenomeUsername = providers.gradleProperty("codegenomeUsername").orNull
     val codegenomePassword = providers.gradleProperty("codegenomePassword").orNull
     if (!codegenomeUsername.isNullOrEmpty() && !codegenomePassword.isNullOrEmpty()) {
+        // CGP is the first publish target for both snapshots and releases, so consult it
+        // ahead of Sonatype and Maven Central; group-scoped to the artifacts it serves.
         maven {
             name = "codegenome"
             url = uri("https://artifacts.codegenomeproject.org/maven")
@@ -58,12 +52,28 @@ repositories {
                 username = codegenomeUsername
                 password = codegenomePassword
             }
-            // Declared after Maven Central and group-scoped, so an outage or expired token
-            // can't break resolution of anything CGP doesn't serve.
             mavenContent {
                 includeGroupAndSubgroups("org.openrewrite")
                 includeGroupAndSubgroups("io.moderne")
             }
+        }
+    }
+
+    if (!releasing) {
+        maven {
+            url = uri("https://central.sonatype.com/repository/maven-snapshots")
+            // Only consult the snapshots repo for groups that actually publish snapshots we consume,
+            // so a snapshots-repo outage can't break resolution of third-party releases.
+            mavenContent {
+                includeGroupAndSubgroups("org.openrewrite")
+                includeGroupAndSubgroups("io.moderne")
+            }
+        }
+    }
+
+    mavenCentral {
+        mavenContent {
+            excludeVersionByRegex(".+", ".+", ".+-rc-?[0-9]*")
         }
     }
 
