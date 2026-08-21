@@ -822,6 +822,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
+                        .filter(Files::exists)
                         .forEach(dependencyPaths::add);
             } catch (Exception e) {
                 logger.warn(
@@ -1321,6 +1322,7 @@ public class DefaultProjectParser implements GradleProjectParser {
                         .map(File::toPath)
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize)
+                        .filter(Files::exists)
                         .distinct()
                         .collect(toList());
 
