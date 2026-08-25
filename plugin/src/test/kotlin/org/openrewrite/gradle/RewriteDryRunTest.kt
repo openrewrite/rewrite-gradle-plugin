@@ -24,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.openrewrite.Issue
 import org.openrewrite.gradle.condition.EnabledForGradleRange
+import org.openrewrite.gradle.fixtures.GradleFixtures.Companion.REPOSITORIES
 import java.io.File
 
 @Suppress("GroovyUnusedAssignment")
@@ -65,13 +66,7 @@ class RewriteDryRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
@@ -102,13 +97,7 @@ class RewriteDryRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
             """
             )
             sourceSet("main") {
@@ -149,13 +138,7 @@ class RewriteDryRunTest : RewritePluginTest {
                 group = "org.example"
                 version = "1.0-SNAPSHOT"
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 kotlin {
                     jvmToolchain(8)
@@ -222,13 +205,7 @@ class RewriteDryRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
             """
             )
         }
@@ -358,13 +335,7 @@ class RewriteDryRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.FindSourceFiles")
