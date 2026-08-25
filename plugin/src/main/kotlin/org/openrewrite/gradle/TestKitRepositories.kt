@@ -15,6 +15,8 @@
  */
 package org.openrewrite.gradle
 
+import org.gradle.util.GradleVersion
+
 /**
  * The repositories from which builds launched by TestKit resolve the `org.openrewrite` artifacts
  * that `versions.properties` pins.
@@ -35,6 +37,10 @@ internal object TestKitRepositories {
     private val username: String? = System.getProperty("codegenomeUsername")?.ifEmpty { null }
     private val password: String? = System.getProperty("codegenomePassword")?.ifEmpty { null }
 
+    private val supportsContentFiltering: Boolean =
+        GradleVersion.version(System.getProperty("org.openrewrite.test.gradleVersion", "8.0")) >=
+                GradleVersion.version("5.1")
+
     //language=groovy
     private val DECLARATIONS: String = if (username == null || password == null) {
         """
@@ -45,18 +51,29 @@ internal object TestKitRepositories {
         }
         """.trimIndent()
     } else {
-        // No content filtering, as the repository content APIs postdate the oldest Gradle version tested here.
-        """
-        mavenLocal()
-        mavenCentral()
-        maven {
-            url = uri("$CODE_GENOME_URL")
-            credentials {
-                username = ${username.asGroovyString()}
-                password = ${password.asGroovyString()}
-            }
+        // CGP goes ahead of Maven Central, so that Central is never asked for org.openrewrite artifacts.
+        listOf("mavenLocal()", codeGenomeRepository(username, password), "mavenCentral()").joinToString("\n")
+    }
+
+    private fun codeGenomeRepository(username: String, password: String): String {
+        val lines = mutableListOf(
+            "maven {",
+            """    url = uri("$CODE_GENOME_URL")""",
+            "    credentials {",
+            "        username = ${username.asGroovyString()}",
+            "        password = ${password.asGroovyString()}",
+            "    }"
+        )
+        if (supportsContentFiltering) {
+            // Everything else keeps coming from Maven Central; the regex avoids escapes Groovy rejects.
+            lines += listOf(
+                "    content {",
+                """        includeGroupByRegex("org[.]openrewrite.*")""",
+                "    }"
+            )
         }
-        """.trimIndent()
+        lines += "}"
+        return lines.joinToString("\n")
     }
 
     /**
