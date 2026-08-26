@@ -31,18 +31,6 @@ jobs:
         with:
           develocity-access-key: ${{ env.GRADLE_ENTERPRISE_ACCESS_KEY }}
 
-      - name: publish-candidate
-        if: contains(github.ref, '-rc.')
-        run: |
-          ./gradlew \
-            -Preleasing \
-            -Prelease.disableGitChecks=true \
-            -Prelease.useLastTag=true \
-            -Dgradle.publish.key=${{ secrets.GRADLE_PUBLISH_KEY }} \
-            -Dgradle.publish.secret=${{ secrets.GRADLE_PUBLISH_SECRET }} \
-            candidate \
-            publishPlugins
-
       - name: publish-release
         if: (!contains(github.ref, '-rc.'))
         run: |
@@ -53,4 +41,13 @@ jobs:
             -Dgradle.publish.key=${{ secrets.GRADLE_PUBLISH_KEY }} \
             -Dgradle.publish.secret=${{ secrets.GRADLE_PUBLISH_SECRET }} \
             final \
-            publishPlugins
+            publishPlugins \
+            :plugin:publishPluginMavenPublicationToCgpRepository
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CGP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CGP_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-west-2
+          # Gradle's own s3:// transport still bundles AWS SDK for Java 1.x, which prints a
+          # deprecation banner with a stack trace on every upload. Drop once Gradle ships
+          # https://github.com/gradle/gradle/pull/29686 (milestone 9.8.0).
+          AWS_JAVA_V1_DISABLE_DEPRECATION_ANNOUNCEMENT: true
