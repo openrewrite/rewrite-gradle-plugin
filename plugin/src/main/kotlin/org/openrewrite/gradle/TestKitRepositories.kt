@@ -18,16 +18,9 @@ package org.openrewrite.gradle
 import org.gradle.util.GradleVersion
 
 /**
- * The repositories from which builds launched by TestKit resolve the `org.openrewrite` artifacts
- * that `versions.properties` pins.
- *
- * When the Code Genome Project credentials reach the test JVM as system properties, which
- * `plugin/build.gradle.kts` arranges from the `codegenomeUsername` and `codegenomePassword` Gradle
- * properties, those builds resolve from CGP, the same place the main build resolves from. Without
- * the credentials, as on fork pull requests, they fall back to Maven Central plus the Sonatype
- * snapshots repository.
- *
- * `mavenLocal()` stays first either way, so a locally published `rewrite` build still wins.
+ * The repositories builds launched by TestKit resolve `org.openrewrite` artifacts from: the Code Genome
+ * Project when `plugin/build.gradle.kts` passed its credentials through as system properties, and Maven
+ * Central plus Sonatype snapshots when it could not, as on fork pull requests.
  */
 internal object TestKitRepositories {
 
@@ -37,7 +30,7 @@ internal object TestKitRepositories {
     private val username: String? = System.getProperty("codegenomeUsername")?.ifEmpty { null }
     private val password: String? = System.getProperty("codegenomePassword")?.ifEmpty { null }
 
-    /** Repository content filtering arrived in Gradle 5.1, and this suite still tests Gradle 4.10. */
+    // Repository content filtering arrived in Gradle 5.1, and this suite still tests Gradle 4.10.
     private val supportsContentFiltering: Boolean =
         GradleVersion.version(System.getProperty("org.openrewrite.test.gradleVersion", "8.0")) >=
                 GradleVersion.version("5.1")
@@ -52,11 +45,9 @@ internal object TestKitRepositories {
         }
         """.trimIndent()
     } else if (supportsContentFiltering) {
-        // Scoped to the artifacts CGP serves, it can go ahead of Maven Central, which is then never
-        // asked for org.openrewrite at all.
         listOf("mavenLocal()", codeGenomeRepository(username, password), "mavenCentral()").joinToString("\n")
     } else {
-        // Unscoped, it has to go last, or every third-party dependency would be looked up on CGP first.
+        // Unscoped, CGP has to go last, or every third-party dependency would be looked up there first.
         listOf("mavenLocal()", "mavenCentral()", codeGenomeRepository(username, password)).joinToString("\n")
     }
 
@@ -70,7 +61,6 @@ internal object TestKitRepositories {
             "    }"
         )
         if (supportsContentFiltering) {
-            // Everything else keeps coming from Maven Central; the regex avoids escapes Groovy rejects.
             lines += listOf(
                 "    content {",
                 """        includeGroupByRegex("org[.]openrewrite.*")""",
@@ -81,24 +71,15 @@ internal object TestKitRepositories {
         return lines.joinToString("\n")
     }
 
-    /**
-     * The repository declarations without an enclosing `repositories { }`, so that they can be dropped
-     * into a `dependencyResolutionManagement` block alongside other repositories.
-     */
+    /** The declarations without an enclosing `repositories { }`, for a `dependencyResolutionManagement` block. */
     fun declarations(indent: Int): String = DECLARATIONS.indentedForInterpolation(indent)
 
-    /**
-     * The declarations wrapped in a `repositories { }` block.
-     */
     fun block(indent: Int): String =
         ("repositories {\n" + DECLARATIONS.prependIndent("    ") + "\n}").indentedForInterpolation(indent)
 
-    /**
-     * Indents every line but the first by [indent] spaces, so that the result reads correctly when
-     * interpolated into a build script whose lines are indented that far.
-     */
+    // Indents every line but the first, so the result reads correctly interpolated at that indent.
     private fun String.indentedForInterpolation(indent: Int) = replaceIndent(" ".repeat(indent)).trimStart()
 
-    /** A single quoted Groovy string, which unlike a double quoted one does not interpolate a `$` in a token. */
+    // Single quoted, so that Groovy does not interpolate a `$` in a token.
     private fun String.asGroovyString() = "'" + replace("\\", "\\\\").replace("'", "\\'") + "'"
 }

@@ -199,11 +199,9 @@ project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getBy
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
-    // Hand the same Code Genome Project credentials to the builds TestKit launches, so they resolve
-    // the org.openrewrite versions this build pinned in versions.properties from where it got them.
-    // An argument provider without annotated inputs keeps the credentials out of the task's input
-    // fingerprint. Absent the properties, as on fork pull requests, the fixtures fall back to
-    // Maven Central plus Sonatype snapshots.
+    // Hand the same credentials to the builds TestKit launches, so they resolve org.openrewrite from
+    // where this build did. An argument provider without annotated inputs keeps them out of the task
+    // input fingerprint.
     val codegenomeUsername = providers.gradleProperty("codegenomeUsername")
     val codegenomePassword = providers.gradleProperty("codegenomePassword")
     jvmArgumentProviders.add(CommandLineArgumentProvider {
