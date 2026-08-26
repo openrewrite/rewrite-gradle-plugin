@@ -15,6 +15,7 @@
  */
 package org.openrewrite.gradle.isolated;
 
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
@@ -68,6 +69,7 @@ import org.openrewrite.jgit.api.Git;
 import org.openrewrite.jgit.dircache.DirCache;
 import org.openrewrite.jgit.lib.ObjectId;
 import org.openrewrite.jgit.lib.Repository;
+import org.openrewrite.jgit.lib.internal.WorkQueue;
 import org.openrewrite.jgit.revwalk.RevCommit;
 import org.openrewrite.jgit.revwalk.RevWalk;
 import org.openrewrite.jgit.treewalk.TreeWalk;
@@ -121,6 +123,7 @@ public class DefaultProjectParser implements GradleProjectParser {
     protected final Path baseDir;
     protected final RewriteExtension extension;
     protected final Project project;
+    protected final ClassLoader classLoader;
     private final List<Marker> sharedProvenance;
 
     @Nullable
@@ -139,11 +142,12 @@ public class DefaultProjectParser implements GradleProjectParser {
     @Nullable
     private AndroidProjectParser androidProjectParser;
 
-    public DefaultProjectParser(Project project, RewriteExtension extension) {
+    public DefaultProjectParser(Project project, RewriteExtension extension, ClassLoader classLoader) {
         this.baseDir = repositoryRoot(project);
         this.repository = getRepository(baseDir);
         this.extension = extension;
         this.project = project;
+        this.classLoader = classLoader;
 
         BuildEnvironment buildEnvironment = BuildEnvironment.build(System::getenv);
         sharedProvenance = Stream.of(
@@ -645,12 +649,12 @@ public class DefaultProjectParser implements GradleProjectParser {
             properties.putAll(gradleProps);
 
             Environment.Builder env = Environment.builder();
-            env.scanClassLoader(getClass().getClassLoader());
+            env.scanClassLoader(classLoader);
 
             File rewriteConfig = extension.getConfigFile();
             if (rewriteConfig.exists()) {
                 try (FileInputStream is = new FileInputStream(rewriteConfig)) {
-                    YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties, getClass().getClassLoader());
+                    YamlResourceLoader resourceLoader = new YamlResourceLoader(is, rewriteConfig.toURI(), properties, classLoader);
                     env.load(resourceLoader);
                 } catch (IOException e) {
                     throw new RuntimeException("Unable to load rewrite configuration", e);
@@ -1502,6 +1506,26 @@ public class DefaultProjectParser implements GradleProjectParser {
         if (repository != null) {
             repository.close();
         }
+    }
+
+    /**
+     * When a ClassLoader is ready to be discarded,
+     * cleans up some things needed to not leak the class loader of the currently executing class.
+     * <p>
+     * Deliberately not part of {@link #shutdownRewrite()}, as the executor is created once per class loader and
+     * never recreated; it may only be shut down when the class loader itself is discarded.
+     */
+    @SuppressWarnings("unused") // Called reflectively by DelegatingProjectParser when it discards a class loader
+    public static void cleanCurrentClassLoader() {
+        // JGit keeps a daemon thread around per class loader that initialized it, and that thread references the
+        //  class loader that created it. Without shutting it down every replaced class loader, and all the recipe
+        //  classes it loaded, would be retained in metaspace for as long as the Gradle daemon lives.
+        WorkQueue.getExecutor().shutdownNow();
+
+        // Jackson (from the RewriteClassLoader) caches references of classes coming from the recipe's ClassLoader,
+        //  which retains the recipe's CL until the RewriteClassLoader gets dropped too. (which is almost never)
+        // By clearing the cache, references to the recipe's CL are gone.
+        TypeFactory.defaultInstance().clearCache();
     }
 
     private static synchronized MavenPomCache getPomCache(@Nullable String pomCacheDirectory) {

@@ -33,7 +33,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 
 @Suppress("GroovyUnusedAssignment")
-class RewriteRunTest : RewritePluginTest {
+class RewriteRunTest : IRewritePluginTest {
 
     override fun taskName(): String = "rewriteRun"
 
