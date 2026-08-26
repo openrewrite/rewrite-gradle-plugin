@@ -1,6 +1,5 @@
 plugins {
     id("nebula.release") version "latest.release"
-    id("io.github.gradle-nexus.publish-plugin") version "latest.release"
     id("org.owasp.dependencycheck") version "latest.release" apply false
     id("nebula.maven-resolved-dependencies") version "latest.release" apply false
     id("nebula.maven-apache-license") version "latest.release" apply false
@@ -41,15 +40,6 @@ allprojects {
             module("com.google.collections:google-collections") {
                 replacedBy("com.google.guava:guava", "google-collections is part of guava")
             }
-        }
-    }
-}
-
-nexusPublishing {
-    repositories {
-        sonatype {
-            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
         }
     }
 }

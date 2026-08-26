@@ -40,11 +40,12 @@ repositories {
         }
     }
 
-    val codegenomeUsername = providers.gradleProperty("codegenomeUsername").orNull
-    val codegenomePassword = providers.gradleProperty("codegenomePassword").orNull
-    if (!codegenomeUsername.isNullOrEmpty() && !codegenomePassword.isNullOrEmpty()) {
-        // CGP is the first publish target for both snapshots and releases, so consult it
-        // ahead of Sonatype and Maven Central; group-scoped to the artifacts it serves.
+    val codegenomeUsername = providers.gradleProperty("codegenomeUsername").getOrElse("")
+    val codegenomePassword = providers.gradleProperty("codegenomePassword").getOrElse("")
+    val codegenomeConfigured = codegenomeUsername.isNotEmpty() && codegenomePassword.isNotEmpty()
+    if (codegenomeConfigured) {
+        // CGP is the only source of org.openrewrite and io.moderne artifacts; group-scoped to
+        // the artifacts it serves so an outage can't break resolution of third-party releases.
         maven {
             name = "codegenome"
             url = uri("https://artifacts.codegenomeproject.org/maven")
@@ -59,26 +60,41 @@ repositories {
         }
     }
 
-    if (!releasing) {
-        maven {
-            url = uri("https://central.sonatype.com/repository/maven-snapshots")
-            // Only consult the snapshots repo for groups that actually publish snapshots we consume,
-            // so a snapshots-repo outage can't break resolution of third-party releases.
-            mavenContent {
-                includeGroupAndSubgroups("org.openrewrite")
-                includeGroupAndSubgroups("io.moderne")
+    mavenCentral {
+        mavenContent {
+            excludeVersionByRegex(".+", ".+", ".+-rc-?[0-9]*")
+            if (codegenomeConfigured) {
+                excludeGroupAndSubgroups("org.openrewrite")
+                excludeGroupAndSubgroups("io.moderne")
             }
         }
     }
 
-    mavenCentral {
-        mavenContent {
-            excludeVersionByRegex(".+", ".+", ".+-rc-?[0-9]*")
+    // The plugin portal proxies Maven Central, so it needs the same exclusion to keep these groups on CGP
+    gradlePluginPortal {
+        if (codegenomeConfigured) {
+            (this as MavenArtifactRepository).content {
+                excludeGroupAndSubgroups("org.openrewrite")
+                excludeGroupAndSubgroups("io.moderne")
+            }
         }
     }
-
-    gradlePluginPortal()
     google()
+}
+
+publishing {
+    repositories {
+        // Region-qualified host, else Gradle's S3 transport defaults to us-east-1 (the bucket is us-west-2).
+        maven {
+            name = "cgp"
+            url = uri("s3://codegenome-artifacts.s3.us-west-2.amazonaws.com/maven")
+            credentials(AwsCredentials::class) {
+                accessKey = System.getenv("AWS_ACCESS_KEY_ID")
+                secretKey = System.getenv("AWS_SECRET_ACCESS_KEY")
+                sessionToken = System.getenv("AWS_SESSION_TOKEN")
+            }
+        }
+    }
 }
 
 val latest = if (project.hasProperty("releasing")) {
