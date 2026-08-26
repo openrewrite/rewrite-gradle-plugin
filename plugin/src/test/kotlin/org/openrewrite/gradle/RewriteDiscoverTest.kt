@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.DisabledIf
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
+import org.openrewrite.gradle.fixtures.GradleFixtures.Companion.REPOSITORIES
 import java.io.File
 
 class RewriteDiscoverTest : RewritePluginTest {
@@ -39,13 +40,7 @@ class RewriteDiscoverTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                        url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 dependencies {
                     rewrite("org.openrewrite.recipe:rewrite-testing-frameworks:latest.release")

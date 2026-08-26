@@ -28,6 +28,8 @@ import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
 import org.openrewrite.gradle.condition.DisabledForGradleRange
 import org.openrewrite.gradle.condition.EnabledForGradleRange
+import org.openrewrite.gradle.fixtures.GradleFixtures.Companion.REPOSITORIES
+import org.openrewrite.gradle.fixtures.GradleFixtures.Companion.repositories
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
@@ -64,13 +66,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
@@ -120,13 +116,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
@@ -197,13 +187,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.gradle.SayHello", "org.openrewrite.java.format.AutoFormat")
@@ -297,13 +281,7 @@ class RewriteRunTest : RewritePluginTest {
                     exclusion("**/BTestClass.java")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 subprojects {
                     apply plugin: "java"
@@ -395,13 +373,7 @@ class RewriteRunTest : RewritePluginTest {
                     activeRecipe("org.openrewrite.ChangeFooToBar")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 subprojects {
                     apply plugin: "java"
@@ -463,13 +435,7 @@ class RewriteRunTest : RewritePluginTest {
                     activeRecipe("org.openrewrite.staticanalysis.EqualsAvoidsNull")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 dependencies {
                     rewrite("org.openrewrite.recipe:rewrite-static-analysis:latest.release")
@@ -537,13 +503,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("com.example.RenameSam")
@@ -589,13 +549,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.test.AddGradleWrapper")
@@ -651,13 +605,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 def foo() {}
                 class A {}
@@ -688,13 +636,7 @@ class RewriteRunTest : RewritePluginTest {
                 id("org.openrewrite.rewrite")
             }
 
-            repositories {
-                mavenLocal()
-                mavenCentral()
-                maven {
-                   url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                }
-            }
+            ${repositories(12)}
 
             def foo() {}
             class A {}
@@ -734,13 +676,7 @@ class RewriteRunTest : RewritePluginTest {
             settingsGradle(
                 """
                 dependencyResolutionManagement {
-                    repositories {
-                        mavenLocal()
-                        mavenCentral()
-                        maven {
-                           url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                        }
-                    }
+                    ${repositories(20)}
                 }
             """
             )
@@ -806,13 +742,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
@@ -872,13 +802,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
@@ -963,13 +887,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.test.FindA")
@@ -1034,13 +952,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.jetbrains.kotlin.jvm") version("2.2.0")
                     id("org.openrewrite.rewrite")
                 }
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
                 kotlin {
                     jvmToolchain(21)
                 }
@@ -1093,13 +1005,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.jetbrains.kotlin.jvm") version("1.9.20")
                     id("org.openrewrite.rewrite")
                 }
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
                 rewrite {
                     activeRecipe("org.openrewrite.test.FindString")
                 }
@@ -1168,13 +1074,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.java.format.AutoFormat")
@@ -1267,13 +1167,7 @@ class RewriteRunTest : RewritePluginTest {
                     plugins {
                         id("org.openrewrite.rewrite")
                     }
-                    repositories {
-                        mavenLocal()
-                        mavenCentral()
-                        maven {
-                           url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                        }
-                    }
+                    ${repositories(20)}
 
                     rewrite {
                         activeRecipe("com.example.TextToSam")
@@ -1324,13 +1218,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 sourceSets {
                     create("overlapping") {
@@ -1399,13 +1287,7 @@ class RewriteRunTest : RewritePluginTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                        url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("com.test.DeleteYamlKey")
@@ -1469,13 +1351,7 @@ class RewriteRunTest : RewritePluginTest {
                 id("org.openrewrite.rewrite")
             }
 
-            repositories {
-                mavenLocal()
-                mavenCentral()
-                maven {
-                    url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                }
-            }
+            ${repositories(12)}
 
             rewrite {
                 activeRecipe("org.openrewrite.gradle.FindDistributionUrl")
@@ -1532,13 +1408,7 @@ class RewriteRunTest : RewritePluginTest {
                 plugins {
                     id("org.openrewrite.rewrite")
                 }
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
             """
             )
         }
@@ -1579,13 +1449,7 @@ class RewriteRunTest : RewritePluginTest {
                     sourceCompatibility = JavaVersion.VERSION_17
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.test.AddJavaApplicationProperty")
@@ -1667,13 +1531,7 @@ class RewriteRunTest : RewritePluginTest {
                     }
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 rewrite {
                     activeRecipe("org.openrewrite.test.AddJavaApplicationProperty")
@@ -1735,13 +1593,7 @@ class RewriteRunTest : RewritePluginTest {
             )
             otherGradleScript(
                 "dependencies.gradle", """
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
                 dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
                 }
@@ -1757,13 +1609,7 @@ class RewriteRunTest : RewritePluginTest {
             //language=groovy
             .isEqualTo(
                 """
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
                 dependencies {
                     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.0")
                 }
@@ -1797,13 +1643,7 @@ class RewriteRunTest : RewritePluginTest {
                     activeRecipe("org.openrewrite.test.FindLombokGetter")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
 
                 dependencies {
                     compileOnly("org.projectlombok:lombok:1.18.34")

@@ -15,25 +15,23 @@
  */
 package org.openrewrite.gradle.fixtures
 
+import org.openrewrite.gradle.TestKitRepositories
+
 class GradleFixtures {
     companion object {
-        //language=groovy
-        const val REPOSITORIES = """
-            repositories {
-                mavenLocal()
-                mavenCentral()
-                maven {
-                    url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                }
-            }
-        """
+        // Rendered to sit in a build script whose lines are indented that many spaces.
+        fun repositories(indent: Int): String = TestKitRepositories.block(indent)
+
+        val REPOSITORIES: String = repositories(16)
 
         //language=groovy
-        const val REWRITE_BUILD_GRADLE = """
+        val REWRITE_BUILD_GRADLE = """
             plugins {
                 id("java")
                 id("org.openrewrite.rewrite")
             }
-        """ + REPOSITORIES
+
+            ${repositories(12)}
+        """
     }
 }

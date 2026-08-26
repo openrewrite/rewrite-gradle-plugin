@@ -199,6 +199,20 @@ project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getBy
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    // Hand the same credentials to the builds TestKit launches, so they resolve org.openrewrite from
+    // where this build did. An argument provider without annotated inputs keeps them out of the task
+    // input fingerprint.
+    val codegenomeUsername = providers.gradleProperty("codegenomeUsername")
+    val codegenomePassword = providers.gradleProperty("codegenomePassword")
+    jvmArgumentProviders.add(CommandLineArgumentProvider {
+        val username = codegenomeUsername.orNull
+        val password = codegenomePassword.orNull
+        if (username.isNullOrEmpty() || password.isNullOrEmpty()) {
+            emptyList()
+        } else {
+            listOf("-DcodegenomeUsername=$username", "-DcodegenomePassword=$password")
+        }
+    })
 }
 
 val gVP = tasks.register("generateVersionsProperties") {

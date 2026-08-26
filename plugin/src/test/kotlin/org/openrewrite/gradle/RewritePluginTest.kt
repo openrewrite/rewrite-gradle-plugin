@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.openrewrite.Issue
 import org.openrewrite.gradle.condition.EnabledForGradleRange
+import org.openrewrite.gradle.fixtures.GradleFixtures.Companion.REPOSITORIES
 import java.io.File
 
 interface RewritePluginTest: GradleRunnerTest {
@@ -42,13 +43,7 @@ interface RewritePluginTest: GradleRunnerTest {
                     id("org.openrewrite.rewrite")
                 }
 
-                repositories {
-                    mavenLocal()
-                    mavenCentral()
-                    maven {
-                       url = uri("https://central.sonatype.com/repository/maven-snapshots")
-                    }
-                }
+                $REPOSITORIES
                 """
             )
         }
