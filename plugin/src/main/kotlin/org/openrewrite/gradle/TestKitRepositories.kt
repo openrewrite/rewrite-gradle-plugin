@@ -37,6 +37,7 @@ internal object TestKitRepositories {
     private val username: String? = System.getProperty("codegenomeUsername")?.ifEmpty { null }
     private val password: String? = System.getProperty("codegenomePassword")?.ifEmpty { null }
 
+    /** Repository content filtering arrived in Gradle 5.1, and this suite still tests Gradle 4.10. */
     private val supportsContentFiltering: Boolean =
         GradleVersion.version(System.getProperty("org.openrewrite.test.gradleVersion", "8.0")) >=
                 GradleVersion.version("5.1")
@@ -50,9 +51,13 @@ internal object TestKitRepositories {
             url = uri("$SONATYPE_SNAPSHOTS_URL")
         }
         """.trimIndent()
-    } else {
-        // CGP goes ahead of Maven Central, so that Central is never asked for org.openrewrite artifacts.
+    } else if (supportsContentFiltering) {
+        // Scoped to the artifacts CGP serves, it can go ahead of Maven Central, which is then never
+        // asked for org.openrewrite at all.
         listOf("mavenLocal()", codeGenomeRepository(username, password), "mavenCentral()").joinToString("\n")
+    } else {
+        // Unscoped, it has to go last, or every third-party dependency would be looked up on CGP first.
+        listOf("mavenLocal()", "mavenCentral()", codeGenomeRepository(username, password)).joinToString("\n")
     }
 
     private fun codeGenomeRepository(username: String, password: String): String {
