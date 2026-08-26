@@ -18,9 +18,9 @@ package org.openrewrite.gradle
 import org.gradle.util.GradleVersion
 
 /**
- * The repositories builds launched by TestKit resolve `org.openrewrite` artifacts from: the Code Genome
- * Project when `plugin/build.gradle.kts` passed its credentials through as system properties, and Maven
- * Central plus Sonatype snapshots when it could not, as on fork pull requests.
+ * The repositories builds launched by TestKit resolve `org.openrewrite` and `io.moderne` artifacts from: the
+ * Code Genome Project when `plugin/build.gradle.kts` passed its credentials through as system properties, and
+ * Maven Central plus Sonatype snapshots when it could not, as on fork pull requests.
  */
 internal object TestKitRepositories {
 
@@ -63,7 +63,7 @@ internal object TestKitRepositories {
         if (supportsContentFiltering) {
             lines += listOf(
                 "    content {",
-                """        includeGroupByRegex("org[.]openrewrite.*")""",
+                """        includeGroupByRegex("(org[.]openrewrite|io[.]moderne).*")""",
                 "    }"
             )
         }
