@@ -37,9 +37,8 @@ rewrite {
 }
 ```
 
-### Consuming latest snapshots
+### Consuming latest snapshots from the Code Genome Project
 
-Snapshots are published to the Code Genome Project artifact repository, which requires credentials.
 To use the latest `-SNAPSHOT` of the `rewrite-gradle-plugin`, update your project's `settings.gradle.kts`:
 
 ```kts
@@ -57,8 +56,8 @@ pluginManagement {
         maven {
             url = uri("https://artifacts.codegenomeproject.org/maven")
             credentials {
-                username = providers.gradleProperty("codegenomeUsername").get()
-                password = providers.gradleProperty("codegenomePassword").get()
+                username = "USERNAME"
+                password = "TOKEN"
             }
         }
         // ...
@@ -68,6 +67,10 @@ pluginManagement {
     }
 }
 ```
+
+The [Code Genome Project](https://codegenomeproject.org/) repository requires authentication.
+[Sign in to get a download token](https://codegenomeproject.org/token), then replace `USERNAME` with
+the email or username you signed in with and `TOKEN` with that token.
 
 The plugin can be consumed in your `build.gradle.kts`:
 

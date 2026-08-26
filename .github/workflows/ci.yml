@@ -23,8 +23,8 @@ env:
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
   # Resolve org.openrewrite and io.moderne dependencies from the Code Genome Project. Empty when the
   # secrets are unset, which leaves the codegenome repository out of the build entirely.
-  ORG_GRADLE_PROJECT_codegenomeUsername: ${{ secrets.CGP_ARTIFACTS_MAVEN_USERNAME }}
-  ORG_GRADLE_PROJECT_codegenomePassword: ${{ secrets.CGP_ARTIFACTS_MAVEN_TOKEN }}
+  ORG_GRADLE_PROJECT_codegenomeUsername: ${{ secrets.CODEGENOME_USERNAME }}
+  ORG_GRADLE_PROJECT_codegenomePassword: ${{ secrets.CODEGENOME_TOKEN }}
 
 jobs:
   build:
@@ -43,10 +43,8 @@ jobs:
         run: ./gradlew ${{ env.GRADLE_SWITCHES }} build
       - name: publish-snapshots
         if: github.event_name != 'pull_request'
-        run: ./gradlew ${{ env.GRADLE_SWITCHES }} snapshot :plugin:publish -x test -x publishPlugins
+        run: ./gradlew ${{ env.GRADLE_SWITCHES }} snapshot :plugin:publishPluginMavenPublicationToCgpRepository -x test -x publishPlugins
         env:
-          # Publish snapshots to the Code Genome Project. Empty when the secrets are unset, which
-          # leaves the cgp repository out of the build entirely, making `publish` a no-op.
           AWS_ACCESS_KEY_ID: ${{ secrets.CGP_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CGP_AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-west-2
