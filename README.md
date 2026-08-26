@@ -68,9 +68,9 @@ pluginManagement {
 }
 ```
 
-The Code Genome Project repository requires authentication. Sign in to the Code Genome Project to
-create a download token, then replace `USERNAME` with the email or username you signed in with and
-`TOKEN` with that token.
+The [Code Genome Project](https://codegenomeproject.org/) repository requires authentication.
+[Sign in to get a download token](https://codegenomeproject.org/token), then replace `USERNAME` with
+the email or username you signed in with and `TOKEN` with that token.
 
 The plugin can be consumed in your `build.gradle.kts`:
 
