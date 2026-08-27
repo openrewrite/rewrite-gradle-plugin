@@ -43,7 +43,7 @@ jobs:
         run: ./gradlew ${{ env.GRADLE_SWITCHES }} build
       - name: publish-snapshots
         if: github.event_name != 'pull_request'
-        run: ./gradlew ${{ env.GRADLE_SWITCHES }} snapshot :plugin:publishPluginMavenPublicationToCgpRepository -x test -x publishPlugins
+        run: ./gradlew ${{ env.GRADLE_SWITCHES }} snapshot :plugin:publishPluginMavenPublicationToCgpRepository -x test
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CGP_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CGP_AWS_SECRET_ACCESS_KEY }}

@@ -16,7 +16,6 @@
 
 <!-- Keep the gap above this line, otherwise they won't render correctly! -->
 [![ci](https://github.com/openrewrite/rewrite-gradle-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/openrewrite/rewrite-gradle-plugin/actions/workflows/ci.yml)
-[![Gradle Plugin Portal](https://img.shields.io/maven-metadata/v/https/plugins.gradle.org/m2/org.openrewrite/plugin/maven-metadata.xml.svg?label=gradlePluginPortal)](https://plugins.gradle.org/plugin/org.openrewrite.rewrite)
 [![Revved up by Develocity](https://img.shields.io/badge/Revved%20up%20by-Develocity-06A0CE?logo=Gradle&labelColor=02303A)](https://community.develocity.cloud/scans)
 [![Contributing Guide](https://img.shields.io/badge/Contributing-Guide-informational)](https://github.com/openrewrite/.github/blob/main/CONTRIBUTING.md)
 </div>
@@ -37,9 +36,11 @@ rewrite {
 }
 ```
 
-### Consuming latest snapshots from the Code Genome Project
+### Consuming from the Code Genome Project
 
-To use the latest `-SNAPSHOT` of the `rewrite-gradle-plugin`, update your project's `settings.gradle.kts`:
+The plugin is published to the [Code Genome Project](https://codegenomeproject.org/) rather than the Gradle
+Plugin Portal, since it resolves `org.openrewrite` artifacts that are only available there. To consume a
+release or `-SNAPSHOT` of the `rewrite-gradle-plugin`, update your project's `settings.gradle.kts`:
 
 ```kts
 pluginManagement {
@@ -68,7 +69,7 @@ pluginManagement {
 }
 ```
 
-The [Code Genome Project](https://codegenomeproject.org/) repository requires authentication.
+The Code Genome Project repository requires authentication.
 [Sign in to get a download token](https://codegenomeproject.org/token), then replace `USERNAME` with
 the email or username you signed in with and `TOKEN` with that token.
 
@@ -76,8 +77,8 @@ The plugin can be consumed in your `build.gradle.kts`:
 
 ```kts
 plugins {
-    id("org.openrewrite.rewrite") version "X.Y.Z-SNAPSHOT"
-    // or resolved dynamically to absolute latest:
+    id("org.openrewrite.rewrite") version "X.Y.Z"
+    // or resolved dynamically to the absolute latest snapshot:
     id("org.openrewrite.rewrite") version "latest.integration"
 }
 ```
