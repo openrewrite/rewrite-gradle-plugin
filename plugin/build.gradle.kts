@@ -6,6 +6,7 @@ import java.util.*
 
 plugins {
     id("org.jetbrains.kotlin.jvm") version "2.4.0"
+    // Not for the portal; this supplies the sources and javadoc jars in the CGP publication.
     id("com.gradle.plugin-publish") version "latest.release"
     id("com.github.hierynomus.license") version "0.16.1"
     id("nebula.maven-apache-license")
@@ -194,8 +195,6 @@ dependencies {
         }
     }
 }
-
-project.rootProject.tasks.getByName("postRelease").dependsOn(project.tasks.getByName("publishPlugins"))
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
