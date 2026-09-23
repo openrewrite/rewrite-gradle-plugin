@@ -1574,7 +1574,8 @@ public class DefaultProjectParser implements GradleProjectParser {
                     treeWalk.setFilter(PathFilter.create(PathUtils.separatorsToUnix(s.getSourcePath().toString())));
 
                     if (treeWalk.next()) {
-                        return s.withMarkers(s.getMarkers().add(new GitTreeEntry(randomId(), treeWalk.getObjectId(0).name(), treeWalk.getRawMode(0))));
+                        // Null: what was parsed is never compared to the blob here.
+                        return s.withMarkers(s.getMarkers().add(new GitTreeEntry(randomId(), treeWalk.getObjectId(0).name(), treeWalk.getRawMode(0), null)));
                     }
                     return s;
                 }
