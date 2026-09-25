@@ -2,52 +2,36 @@
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
     <suppress>
         <notes><![CDATA[
+            False positives from NVD CPE ranges that are wider than the advisories.
             CVE-2026-53914 (GHSA-r937-wjx7-w2jp) is unsafe deserialization of untrusted Kotlin
             build-cache metadata. GHSA lists exactly one affected Maven package:
             org.jetbrains.kotlin:kotlin-gradle-plugin < 2.4.20-Beta1. NVD instead encodes a single
             coarse cpe:2.3:a:jetbrains:kotlin with versionEndExcluding 2.4.20, so every artifact in
             the org.jetbrains.kotlin group below 2.4.20 matches, and NVD re-scored it 9.8 CRITICAL
-            (JetBrains, the CNA, scores it 6.7: AV:L/AC:H/PR:H).
+            (JetBrains, the CNA, scores it 6.7: AV:L/AC:H/PR:H). kotlin-reflect contains no
+            build-cache code.
+            CVE-2020-29582 (GHSA-cqj8-47ch-rvvq) is insecure permissions on temporary files, scoped
+            by both the advisory text and GHSA to kotlin-stdlib <= 1.4.20. NVD widens it to
+            cpe:2.3:a:jetbrains:kotlin versionEndExcluding 2.1.0.
             kotlin-reflect 1.6.10 can never be remediated: kotlin-compiler-embeddable (still as of
             2.4.20) hard-pins it, so it resolves on kotlinCompilerClasspath, kotlinBuildToolsApiClasspath
             and kotlinKlibCommonizerClasspath whatever Kotlin version we use. These are build-time only
-            and not published, and kotlin-reflect contains no build-cache code; suppressed indefinitely.
-            Added: 2026-09-25
+            and not published; suppressed indefinitely.
+            Added: 2026-08-24
         ]]></notes>
         <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/kotlin-reflect@1\.6\.10$</packageUrl>
         <cve>CVE-2026-53914</cve>
+        <cve>CVE-2020-29582</cve>
     </suppress>
     <suppress until="2026-10-01Z">
         <notes><![CDATA[
-            CVE-2026-53914 on the rest of the org.jetbrains.kotlin group (see the kotlin-reflect entry
-            above for the CPE over-match). The Kotlin Gradle plugin is on the fixed 2.4.20, and the
-            kotlin-reflect and kotlin-stdlib-jdk7/jdk8 stragglers from jackson-module-kotlin and AGP are
-            constrained to it in plugin/build.gradle.kts. What remains is the Kotlin 2.4.10 compiler,
-            stdlib and reflect that rewrite-kotlin puts on rewriteDependencies and testRuntimeClasspath;
-            openrewrite/rewrite#8914 (merged 2026-09-25) moves rewrite-kotlin to 2.4.20. This window
-            lets that propagate. Anything still matching after the expiry should be fixed, not suppressed.
+            CVE-2026-53914 on the Kotlin 2.4.10 compiler, stdlib and reflect that rewrite-kotlin puts
+            on rewriteDependencies and testRuntimeClasspath (see the kotlin-reflect entry above for the
+            CPE over-match). openrewrite/rewrite#8914 (merged 2026-09-25) moves rewrite-kotlin to the
+            fixed 2.4.20; this window lets that reach releases.
             Added: 2026-08-24
         ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/.*@.*$</packageUrl>
+        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/.*@2\.4\.10$</packageUrl>
         <cve>CVE-2026-53914</cve>
-    </suppress>
-    <suppress>
-        <notes><![CDATA[
-            False positive. CVE-2020-29582 (GHSA-cqj8-47ch-rvvq, MODERATE 5.3) is insecure
-            permissions on temporary files, and both the advisory text ("In JetBrains Kotlin before
-            1.4.21") and GHSA scope it to org.jetbrains.kotlin:kotlin-stdlib <= 1.4.20, fixed in
-            1.4.21. NVD's CPE range is erroneously widened to
-            cpe:2.3:a:jetbrains:kotlin versionEndExcluding 2.1.0, which is why kotlin-reflect:1.6.10
-            matches here despite carrying the fix.
-            Provenance: kotlin-reflect:1.6.10 is hard-pinned by kotlin-compiler-embeddable and resolves
-            only on the Kotlin Gradle plugin's internal kotlinCompilerClasspath,
-            kotlinBuildToolsApiClasspath and kotlinKlibCommonizerClasspath configurations. It is not on
-            runtimeClasspath and is not published.
-            The advisory is permanently scoped to Kotlin < 1.4.21, so the versions we resolve can
-            never become a true positive for this CVE; suppressed indefinitely.
-            Added: 2026-08-24
-        ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/kotlin-reflect@1\.6\.10$</packageUrl>
-        <cve>CVE-2020-29582</cve>
     </suppress>
 </suppressions>

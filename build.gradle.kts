@@ -19,8 +19,7 @@ allprojects {
     configure<org.owasp.dependencycheck.gradle.extension.DependencyCheckExtension> {
         analyzers.assemblyEnabled = false
         suppressionFile = "suppressions.xml"
-        // Only the Kotlin Gradle plugin's ABI validation tasks resolve this, and this build does not enable
-        // them. It strictly pins its own Kotlin build tools version, which we can therefore neither raise nor use.
+        // Only resolved by the Kotlin ABI validation tasks, which this build does not enable
         skipConfigurations = listOf("kotlinAbiValidationCompatClasspath")
         format = System.getenv("DEPENDENCY_CHECK_FORMAT") ?: "HTML"
         nvd.apiKey = System.getenv("NVD_API_KEY")
