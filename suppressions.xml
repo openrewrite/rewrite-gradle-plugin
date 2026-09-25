@@ -23,15 +23,4 @@
         <cve>CVE-2026-53914</cve>
         <cve>CVE-2020-29582</cve>
     </suppress>
-    <suppress until="2026-10-01Z">
-        <notes><![CDATA[
-            CVE-2026-53914 on the Kotlin 2.4.10 compiler, stdlib and reflect that rewrite-kotlin puts
-            on rewriteDependencies and testRuntimeClasspath (see the kotlin-reflect entry above for the
-            CPE over-match). openrewrite/rewrite#8914 (merged 2026-09-25) moves rewrite-kotlin to the
-            fixed 2.4.20; this window lets that reach releases.
-            Added: 2026-08-24
-        ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/.*@2\.4\.10$</packageUrl>
-        <cve>CVE-2026-53914</cve>
-    </suppress>
 </suppressions>
