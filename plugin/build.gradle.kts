@@ -5,7 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.*
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.4.0"
+    id("org.jetbrains.kotlin.jvm") version "2.4.20"
     // Not for the portal; this supplies the sources and javadoc jars in the CGP publication.
     id("com.gradle.plugin-publish") version "latest.release"
     id("com.github.hierynomus.license") version "0.16.1"
@@ -185,6 +185,19 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.assertj:assertj-core:3.+")
     testImplementation("com.android.tools.build:gradle:7.0.4")
+
+    // On compileOnly and testImplementation rather than implementation, so they stay out of the published metadata
+    constraints {
+        compileOnly("org.jetbrains.kotlin:kotlin-reflect:2.4.20") {
+            because("CVE-2026-53914")
+        }
+        testImplementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.4.20") {
+            because("CVE-2026-53914")
+        }
+        testImplementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.4.20") {
+            because("CVE-2026-53914")
+        }
+    }
 
     modules {
         module("com.google.guava:listenablefuture") {
