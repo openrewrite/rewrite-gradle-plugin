@@ -169,6 +169,7 @@ dependencies {
     "rewriteDependencies"("org.openrewrite.gradle.tooling:model")
     "rewriteDependencies"("org.openrewrite:rewrite-maven")
     "rewriteDependencies"("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
+    "rewriteDependencies"("io.micrometer:micrometer-core:1.9.+")
     "rewriteDependencies"("com.google.guava:guava:latest.release")
     "rewriteDependencies"("org.rocksdb:rocksdbjni:8.8.1")
     implementation(platform("org.openrewrite:rewrite-bom:$latest"))
