@@ -177,6 +177,7 @@ dependencies {
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:latest.release")
     compileOnly("com.google.guava:guava:latest.release")
 
+    testImplementation(kotlin("stdlib"))
     testImplementation(platform("org.junit:junit-bom:5.+"))
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
