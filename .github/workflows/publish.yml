@@ -39,7 +39,7 @@ jobs:
             -Prelease.disableGitChecks=true \
             -Prelease.useLastTag=true \
             final \
-            :plugin:publishPluginMavenPublicationToCgpRepository
+            :plugin:publishAllPublicationsToCgpRepository
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CGP_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.CGP_AWS_SECRET_ACCESS_KEY }}
