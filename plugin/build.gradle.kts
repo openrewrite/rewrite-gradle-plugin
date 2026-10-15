@@ -298,8 +298,33 @@ val testGradle9 = tasks.register<Test>("testGradle9") {
         languageVersion.set(JavaLanguageVersion.of(25))
     })
 }
+val pluginReference = sourceSets.create("pluginReference")
+dependencies {
+    "pluginReferenceImplementation"(kotlin("stdlib"))
+}
+
+val pluginReferenceFile = rootProject.file("docs/plugin-reference.md")
+fun JavaExec.runPluginReference(vararg extraArgs: String) {
+    classpath = pluginReference.runtimeClasspath
+    mainClass.set("org.openrewrite.gradle.docs.PluginReferenceKt")
+    inputs.dir("src/main/java")
+    args(listOf(file("src/main/java"), pluginReferenceFile) + extraArgs)
+}
+tasks.register<JavaExec>("generatePluginReference") {
+    group = "documentation"
+    description = "Generates docs/plugin-reference.md from the plugin sources."
+    runPluginReference()
+    outputs.file(pluginReferenceFile)
+}
+val checkPluginReference = tasks.register<JavaExec>("checkPluginReference") {
+    group = "verification"
+    description = "Fails when docs/plugin-reference.md is out of date with the plugin sources."
+    runPluginReference("--check")
+    inputs.file(pluginReferenceFile)
+}
+
 tasks.named("check").configure {
-    dependsOn(testGradle4, testGradle8, testGradle9)
+    dependsOn(testGradle4, testGradle8, testGradle9, checkPluginReference)
 }
 
 tasks.withType<Javadoc>().configureEach {

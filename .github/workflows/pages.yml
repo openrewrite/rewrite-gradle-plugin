@@ -39,15 +39,18 @@ jobs:
           develocity-access-key: ${{ env.GRADLE_ENTERPRISE_ACCESS_KEY }}
 
       - name: Generate documentation
-        run: ./gradlew :plugin:test --tests "org.openrewrite.gradle.DocumentationSyncTest" :plugin:javadoc
+        run: ./gradlew :plugin:generatePluginReference :plugin:javadoc
 
       - name: Assemble site
         run: |
+          version=$(git ls-remote --tags --refs --sort=-v:refname origin 'v*' | grep -v -- '-rc\.' | head -1 | sed 's|.*refs/tags/v||')
           mkdir -p site/apidocs
-          cp docs/plugin-reference.md site/index.md
+          sed "s/X\.Y\.Z/$version/g" docs/plugin-reference.md > site/index.md
           sudo apt-get install -y pandoc
-          pandoc docs/plugin-reference.md -s --metadata title="OpenRewrite Gradle Plugin Reference" --css style.css -o site/index.html
-          cp docs/style.css site/
+          pandoc site/index.md --standalone --template docs/template.html \
+            --shift-heading-level-by=-1 --toc --toc-depth=2 \
+            --variable version="$version" --css style.css -o site/index.html
+          cp docs/style.css docs/logo-*.svg site/
           cp -r plugin/build/docs/javadoc/* site/apidocs/
 
       - uses: actions/configure-pages@v6
