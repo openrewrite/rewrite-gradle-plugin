@@ -153,7 +153,7 @@ In the Kotlin DSL, boolean properties with an `is` getter keep that prefix: `isE
 | `enableExperimentalGradleBuildScriptParsing` | `boolean` | `true` | Whether to parse Gradle build scripts (`build.gradle`) as part of the source set. |
 | `exportDatatables` | `boolean` | `false` | Whether to export data tables to `<build directory>/reports/rewrite/datatables/<timestamp>`. |
 | `exclusions` | `List<String>` | Empty list | Glob patterns for files to exclude from processing. For example: `"src/generated/**"`. |
-| `plainTextMasks` | `List<String>` | [Built-in list](#default-plain-text-masks) | Glob patterns for files that should be parsed as plain text. Exclusions take precedence over plain text masks. |
+| `plainTextMasks` | `List<String>` | [Built-in list](https://openrewrite.github.io/rewrite-gradle-plugin/#default-plain-text-masks) | Glob patterns for files that should be parsed as plain text. Exclusions take precedence over plain text masks. |
 | `sizeThresholdMb` | `int` | `10` | Maximum file size in megabytes. Source files larger than this threshold are skipped during parsing. |
 | `rewriteVersion` | `String` | `null` | Override the version of rewrite core libraries to be used. When `null`, the version bundled with the plugin is used. |
 | `logCompilationWarningsAndErrors` | `boolean` | `false` | Whether to log Java compilation warnings and errors encountered during parsing. |
