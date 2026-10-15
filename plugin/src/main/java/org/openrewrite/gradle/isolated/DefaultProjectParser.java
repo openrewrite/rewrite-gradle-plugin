@@ -1437,7 +1437,7 @@ public class DefaultProjectParser implements GradleProjectParser {
         Environment env = environment();
         Recipe recipe = env.activateRecipes(getActiveRecipes());
         if ("org.openrewrite.Recipe$Noop".equals(recipe.getName())) {
-            logger.warn("No recipes were activated. Activate a recipe with rewrite.activeRecipe(\"com.fully.qualified.RecipeClassName\") in your build file, or on the command line with -DactiveRecipe=com.fully.qualified.RecipeClassName");
+            logger.warn("No recipes were activated. Activate a recipe with rewrite.activeRecipe(\"com.fully.qualified.RecipeClassName\") in your build file, or on the command line with -Drewrite.activeRecipe=com.fully.qualified.RecipeClassName");
             return new ResultsContainer(baseDir, null);
         }
         logger.lifecycle("Validating active recipes");
