@@ -131,7 +131,8 @@ class PluginReference(private val sourceRoot: File) {
         val rows = extension.fields.filter { it.name in userFacingFields }.map { field ->
             val javadoc = field.javadoc!!
             val default = if (field.name == "plainTextMasks") {
-                "[Built-in list](#default-plain-text-masks)"
+                // Absolute, as rewrite-docs copies this table into docs.openrewrite.org
+                "[Built-in list](https://openrewrite.github.io/rewrite-gradle-plugin/#default-plain-text-masks)"
             } else {
                 defaultsToSentence.find(javadoc)?.groupValues?.get(1) ?: inferredDefault(field)
             }
