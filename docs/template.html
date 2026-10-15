@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Apply OpenRewrite recipes to refactor, migrate, and fix source code from your Gradle build." />
+  <title>$pagetitle$</title>
+$for(css)$
+  <link rel="stylesheet" href="$css$" />
+$endfor$
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="https://docs.openrewrite.org">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/openrewrite/rewrite/raw/main/doc/logo-oss-dark.svg" />
+      <img src="https://github.com/openrewrite/rewrite/raw/main/doc/logo-oss-light.svg" alt="OpenRewrite" />
+    </picture>
+  </a>
+  <span class="product">Gradle Plugin</span>
+$if(version)$
+  <a class="version" href="https://github.com/openrewrite/rewrite-gradle-plugin/releases/tag/v$version$">v$version$</a>
+$endif$
+  <nav class="site-links">
+    <a class="docs" href="https://docs.openrewrite.org">Docs</a>
+    <a href="https://docs.openrewrite.org/recipes">Recipes</a>
+    <a href="apidocs/index.html">Javadoc</a>
+    <a href="https://github.com/openrewrite/rewrite-gradle-plugin">GitHub</a>
+  </nav>
+</header>
+<div class="layout">
+$if(toc)$
+<nav id="TOC" role="doc-toc">
+$table-of-contents$
+</nav>
+$endif$
+<main>
+<h1 class="title">$title$</h1>
+$body$
+</main>
+</div>
+<script>
+  (function () {
+    var labels = { kotlin: "Kotlin DSL", groovy: "Groovy DSL" };
+    var groups = document.querySelectorAll(".dsl-tabs");
+    function select(lang) {
+      groups.forEach(function (group) {
+        group.querySelectorAll("[data-lang]").forEach(function (el) {
+          var active = el.dataset.lang === lang;
+          if (el.tagName === "BUTTON") el.setAttribute("aria-selected", active);
+          else el.hidden = !active;
+        });
+      });
+      try { localStorage.setItem("dsl", lang); } catch (e) {}
+    }
+    groups.forEach(function (group) {
+      var bar = document.createElement("div");
+      bar.className = "tab-bar";
+      bar.setAttribute("role", "tablist");
+      group.querySelectorAll(":scope > div.sourceCode").forEach(function (block) {
+        var lang = block.querySelector("pre").classList.contains("groovy") ? "groovy" : "kotlin";
+        block.dataset.lang = lang;
+        var button = document.createElement("button");
+        button.type = "button";
+        button.setAttribute("role", "tab");
+        button.dataset.lang = lang;
+        button.textContent = labels[lang];
+        button.addEventListener("click", function () { select(lang); });
+        bar.appendChild(button);
+      });
+      group.prepend(bar);
+    });
+    var saved = null;
+    try { saved = localStorage.getItem("dsl"); } catch (e) {}
+    if (groups.length) select(saved === "groovy" ? "groovy" : "kotlin");
+
+    function openTargetDetails() {
+      var target = location.hash && document.getElementById(location.hash.slice(1));
+      if (target && target.tagName === "DETAILS") target.open = true;
+    }
+    window.addEventListener("hashchange", openTargetDetails);
+    openTargetDetails();
+  })();
+</script>
+</body>
+</html>

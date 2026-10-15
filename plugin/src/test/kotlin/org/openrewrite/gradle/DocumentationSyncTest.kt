@@ -42,6 +42,29 @@ class DocumentationSyncTest {
         "failOnInvalidActiveRecipes",
         "failOnDryRunResults",
         "throwOnParseFailures",
+        "pomCacheEnabled",
+        "pomCacheDirectory",
+    )
+
+    private val taskClasses = listOf(
+        "src/main/java/org/openrewrite/gradle/RewriteRunTask.java" to "rewriteRun",
+        "src/main/java/org/openrewrite/gradle/RewriteDryRunTask.java" to "rewriteDryRun",
+        "src/main/java/org/openrewrite/gradle/RewriteDiscoverTask.java" to "rewriteDiscover",
+    )
+
+    private val dslMethods = listOf(
+        "activeRecipe" to "`activeRecipe(String...)` | Adds recipes to `activeRecipes`.",
+        "activeStyle" to "`activeStyle(String...)` | Adds styles to `activeStyles`.",
+        "clearActiveRecipes" to "`clearActiveRecipes()` | Removes all active recipes, for example ones added by a convention plugin.",
+        "clearActiveStyles" to "`clearActiveStyles()` | Removes all active styles.",
+        "exclusion" to "`exclusion(String...)` | Adds glob patterns to `exclusions`. Also accepts a `Collection<String>`.",
+        "plainTextMask" to "`plainTextMask(String...)` | Adds glob patterns to `plainTextMasks`. Specifying any mask replaces the built-in list. Also accepts a `Collection<String>`.",
+    )
+
+    private val defaultOverrides = mapOf(
+        "configFile" to "`rewrite.yml` in the project directory",
+        "plainTextMasks" to "[Built-in list](#default-plain-text-masks)",
+        "pomCacheDirectory" to "`~/.rewrite-cache`",
     )
 
     @Test
@@ -59,12 +82,7 @@ class DocumentationSyncTest {
 
     @Test
     fun `all task classes have non-empty descriptions`() {
-        val taskFiles = listOf(
-            "src/main/java/org/openrewrite/gradle/RewriteRunTask.java",
-            "src/main/java/org/openrewrite/gradle/RewriteDryRunTask.java",
-            "src/main/java/org/openrewrite/gradle/RewriteDiscoverTask.java",
-        )
-        for (path in taskFiles) {
+        for ((path, _) in taskClasses) {
             val source = File(path).readText()
             assertThat(source)
                 .withFailMessage("$path does not call setDescription()")
@@ -76,120 +94,284 @@ class DocumentationSyncTest {
         }
     }
 
-    private val taskClasses = listOf(
-        "src/main/java/org/openrewrite/gradle/RewriteRunTask.java" to "rewriteRun",
-        "src/main/java/org/openrewrite/gradle/RewriteDryRunTask.java" to "rewriteDryRun",
-        "src/main/java/org/openrewrite/gradle/RewriteDiscoverTask.java" to "rewriteDiscover",
-    )
+    @Test
+    fun `all documented DSL methods exist`() {
+        val missing = dslMethods.map { it.first }.filter { !Regex("""public void $it\(""").containsMatchIn(extensionSource) }
+        assertThat(missing)
+            .withFailMessage("The following documented DSL methods no longer exist on RewriteExtension:\n${missing.joinToString("\n") { "  - $it" }}")
+            .isEmpty()
+    }
 
     @Test
     fun `generated plugin reference is up to date`() {
-        val generated = generatePluginReference()
         val referenceFile = File("../docs/plugin-reference.md")
 
         // Always write the file so it stays in sync
         referenceFile.parentFile.mkdirs()
-        referenceFile.writeText(generated)
+        referenceFile.writeText(generatePluginReference())
     }
 
-    private fun generatePluginReference(): String {
-        val sb = StringBuilder()
-        sb.appendLine("# OpenRewrite Gradle Plugin Reference")
-        sb.appendLine()
-        sb.appendLine("Automatically eliminate technical debt. Apply OpenRewrite recipes to refactor, migrate, and fix source code across Java, Kotlin, Gradle, XML, YAML, properties, and more.")
-        sb.appendLine()
-        sb.appendLine("## Tasks")
-        sb.appendLine()
+    private fun generatePluginReference(): String = listOf(
+        """
+        # OpenRewrite Gradle Plugin Reference
 
-        for ((path, taskName) in taskClasses) {
-            val source = File(path).readText()
-            val description = Regex("""setDescription\("(.+?)"\)""").find(source)!!.groupValues[1]
-            sb.appendLine("### `$taskName`")
-            sb.appendLine()
-            sb.appendLine(description)
-            sb.appendLine()
+        Automatically eliminate technical debt. Apply OpenRewrite recipes to refactor, migrate, and fix source code across Java, Kotlin, Gradle, XML, YAML, properties, and more.
+
+        New to OpenRewrite? Start with the [quickstart guide](https://docs.openrewrite.org/running-recipes/getting-started), or browse the [recipe catalog](https://docs.openrewrite.org/recipes).
+        """.trimIndent(),
+        gettingStarted(),
+        tasks(),
+        configuration(),
+        commandLineOverrides(),
+        """
+        ## Javadoc
+
+        Full API documentation is available in the [Javadoc](apidocs/index.html).
+        """.trimIndent(),
+    ).joinToString("\n\n", postfix = "\n")
+
+    private fun gettingStarted(): String = listOf(
+        """
+        ## Getting started
+
+        The plugin is published to the [Code Genome Project](https://codegenomeproject.org/) rather than the Gradle Plugin Portal, since it resolves `org.openrewrite` artifacts that are only available there. Add the repository to `settings.gradle.kts` or `settings.gradle`:
+        """.trimIndent(),
+        dslTabs(
+            """
+            pluginManagement {
+                repositories {
+                    maven {
+                        name = "codegenome"
+                        url = uri("https://artifacts.codegenomeproject.org/maven")
+                        credentials(PasswordCredentials::class)
+                    }
+                    gradlePluginPortal()
+                }
+            }
+            """.trimIndent(),
+            """
+            pluginManagement {
+                repositories {
+                    maven {
+                        name = 'codegenome'
+                        url = 'https://artifacts.codegenomeproject.org/maven'
+                        credentials(PasswordCredentials)
+                    }
+                    gradlePluginPortal()
+                }
+            }
+            """.trimIndent(),
+        ),
+        """
+        The repository requires authentication. [Sign in to get a download token](https://codegenomeproject.org/token), then add your username and token to `~/.gradle/gradle.properties`:
+
+        ```properties
+        codegenomeUsername=you@example.com
+        codegenomePassword=<token>
+        ```
+
+        Then apply the plugin in `build.gradle.kts` or `build.gradle`, add the recipe modules you need to the `rewrite` configuration, and activate a recipe:
+        """.trimIndent(),
+        dslTabs(
+            """
+            plugins {
+                id("org.openrewrite.rewrite") version "X.Y.Z"
+            }
+
+            repositories {
+                mavenCentral()
+                maven {
+                    name = "codegenome"
+                    url = uri("https://artifacts.codegenomeproject.org/maven")
+                    credentials(PasswordCredentials::class)
+                }
+            }
+
+            dependencies {
+                rewrite(platform("org.openrewrite.recipe:rewrite-recipe-bom:latest.release"))
+                rewrite("org.openrewrite.recipe:rewrite-static-analysis")
+            }
+
+            rewrite {
+                activeRecipe("org.openrewrite.staticanalysis.CommonStaticAnalysis")
+            }
+            """.trimIndent(),
+            """
+            plugins {
+                id 'org.openrewrite.rewrite' version 'X.Y.Z'
+            }
+
+            repositories {
+                mavenCentral()
+                maven {
+                    name = 'codegenome'
+                    url = 'https://artifacts.codegenomeproject.org/maven'
+                    credentials(PasswordCredentials)
+                }
+            }
+
+            dependencies {
+                rewrite(platform('org.openrewrite.recipe:rewrite-recipe-bom:latest.release'))
+                rewrite('org.openrewrite.recipe:rewrite-static-analysis')
+            }
+
+            rewrite {
+                activeRecipe('org.openrewrite.staticanalysis.CommonStaticAnalysis')
+            }
+            """.trimIndent(),
+        ),
+        """
+        Preview the changes as a patch in `build/reports/rewrite/rewrite.patch`, then apply them:
+
+        ```bash
+        ./gradlew rewriteDryRun
+        ./gradlew rewriteRun
+        ```
+        """.trimIndent(),
+    ).joinToString("\n\n")
+
+    private fun tasks(): String {
+        val rows = taskClasses.map { (path, taskName) ->
+            val description = Regex("""setDescription\("(.+?)"\)""").find(File(path).readText())!!.groupValues[1]
+            "| `$taskName` | $description |"
         }
+        return listOf(
+            "## Tasks",
+            (listOf("| Task | Description |", "|------|-------------------|") + rows).joinToString("\n"),
+        ).joinToString("\n\n")
+    }
 
-        sb.appendLine("## Configuration")
-        sb.appendLine()
-        sb.appendLine("The plugin is configured via the `rewrite` DSL block in your `build.gradle` or `build.gradle.kts`:")
-        sb.appendLine()
-        sb.appendLine("```groovy")
-        sb.appendLine("rewrite {")
-        sb.appendLine("    activeRecipe(\"org.openrewrite.java.format.AutoFormat\")")
-        sb.appendLine("    exclusion(\"src/generated/**\")")
-        sb.appendLine("}")
-        sb.appendLine("```")
-        sb.appendLine()
-        sb.appendLine("### Properties")
-        sb.appendLine()
-        sb.appendLine("| Property | Type | Default | Description |")
-        sb.appendLine("|----------|------|---------|-------------|")
+    private fun configuration(): String {
+        val kotlinIsProperties = Regex("""public boolean is(\w+)\(""").findAll(extensionSource)
+            .map { "`is${it.groupValues[1]}`" }
+            .toList()
+        return listOf(
+            """
+            ## Configuration
 
+            The plugin is configured via the `rewrite` DSL block in your `build.gradle.kts` or `build.gradle`:
+            """.trimIndent(),
+            dslTabs(
+                """
+                rewrite {
+                    activeRecipe("org.openrewrite.staticanalysis.CommonStaticAnalysis")
+                    exclusion("src/generated/**")
+                    failOnDryRunResults = true
+                }
+                """.trimIndent(),
+                """
+                rewrite {
+                    activeRecipe('org.openrewrite.staticanalysis.CommonStaticAnalysis')
+                    exclusion('src/generated/**')
+                    failOnDryRunResults = true
+                }
+                """.trimIndent(),
+            ),
+            """
+            Applied to the root project of a multi-project build, the plugin covers every subproject, and the root project's `rewrite` DSL and `rewrite` dependency configuration apply to the whole build. Applied to a subproject, it covers only that subproject.
+
+            ### Properties
+
+            In the Kotlin DSL, boolean properties with an `is` getter keep that prefix: ${kotlinIsProperties.joinToString(", ")}.
+            """.trimIndent(),
+            propertiesTable(),
+            defaultPlainTextMasks(),
+            "### Methods",
+            (listOf("| Method | Description |", "|--------|-------------------|") + dslMethods.map { "| ${it.second} |" }).joinToString("\n"),
+        ).joinToString("\n\n")
+    }
+
+    private fun propertiesTable(): String {
         // Match Javadoc comment followed by optional annotations and a field declaration.
         // The Javadoc must start at the beginning of a line (after optional whitespace).
         val javadocFieldPattern = Regex("""(?m)^\s*/\*\*\n((?:\s*\*.*\n)*?)\s*\*/\n(?:\s*@\w+(?:\(.*?\))?\s*\n)*\s*(?:private|public|protected)\s+([\w<>,\s]+?)\s+(\w+)\s*([;=].*)""")
 
-        for (match in javadocFieldPattern.findAll(extensionSource)) {
+        val rows = javadocFieldPattern.findAll(extensionSource).mapNotNull { match ->
             val rawJavadoc = match.groupValues[1]
             val fieldType = match.groupValues[2].trim()
             val fieldName = match.groupValues[3]
             val rest = match.groupValues[4]
-            val initializer = if (rest.startsWith("=")) {
-                rest.drop(1).trimEnd(';').trim()
-            } else {
-                ""
+            if (fieldName !in userFacingFields) {
+                return@mapNotNull null
             }
-
-            if (fieldName !in userFacingFields) continue
-
-            // Clean up Javadoc: strip * prefixes, {@code ...} -> `...`, collapse whitespace
-            val javadoc = rawJavadoc
-                .lines()
-                .joinToString(" ") { it.trimStart().removePrefix("* ").removePrefix("*").trim() }
-                .replace(Regex("""\{@code\s+(.*?)\}"""), "`$1`")
-                .replace(Regex("""\{@link\s+#?\S+\s+(.*?)\}"""), "$1")
-                .replace(Regex("""\{@link\s+(.*?)\}"""), "`$1`")
-                .replace(Regex("""\s*<p>\s*"""), " ")
-                .replace(Regex("""\s*<pre>.*?</pre>\s*"""), " ")
-                .replace("&#47;", "/")
-                .replace(Regex("""\s+"""), " ")
-                .trim()
-
-            // Determine display type
-            val displayType = when {
-                fieldType.contains("List<String>") -> "`List<String>`"
-                fieldType.contains("boolean") -> "`boolean`"
-                fieldType.contains("int") -> "`int`"
-                fieldType.contains("String") -> "`String`"
-                fieldType.contains("File") -> "`File`"
-                else -> "`$fieldType`"
-            }
-
-            // Determine default value from field initializer, with overrides for constructor-set fields
-            val default = when (fieldName) {
-                "configFile" -> "`rewrite.yml`"
-                else -> when {
-                    initializer.startsWith("new ArrayList") -> "Empty list"
-                    initializer == "true" -> "`true`"
-                    initializer == "false" -> "`false`"
-                    initializer.matches(Regex("\\d+")) -> "`$initializer`"
-                    fieldType.contains("boolean") && initializer.isEmpty() -> "`false`"
-                    fieldType.contains("String") && initializer.isEmpty() -> "`null`"
-                    fieldType.contains("File") && initializer.isEmpty() -> "`null`"
-                    else -> ""
-                }
-            }
-
-            sb.appendLine("| `$fieldName` | $displayType | $default | $javadoc |")
+            val initializer = if (rest.startsWith("=")) rest.drop(1).trimEnd(';').trim() else ""
+            "| `$fieldName` | ${displayType(fieldType)} | ${defaultValue(fieldName, fieldType, initializer)} | ${javadocToMarkdown(rawJavadoc)} |"
         }
 
-        sb.appendLine()
-        sb.appendLine("## Javadoc")
-        sb.appendLine()
-        sb.appendLine("Full API documentation is available in the [Javadoc](apidocs/index.html).")
-        sb.appendLine()
-
-        return sb.toString()
+        return (listOf(
+            "| Property | Type | Default | Description |",
+            "|------------|-----|-------|------------------|",
+        ) + rows).joinToString("\n")
     }
+
+    private fun javadocToMarkdown(rawJavadoc: String): String = rawJavadoc
+        .lines()
+        .joinToString(" ") { it.trimStart().removePrefix("* ").removePrefix("*").trim() }
+        .replace(Regex("""\{@code\s+(.*?)\}"""), "`$1`")
+        .replace(Regex("""\{@link\s+#?\S+\s+(.*?)\}"""), "$1")
+        .replace(Regex("""\{@link\s+(.*?)\}"""), "`$1`")
+        .replace(Regex("""\s*<p>\s*"""), " ")
+        .replace(Regex("""\s*<pre>.*?</pre>\s*"""), " ")
+        .replace("&#47;", "/")
+        .replace(Regex("""\s+"""), " ")
+        // Already shown in the Default column
+        .replace(Regex("""\s*Defaults to (?:`[^`]*`|[^.`])*\."""), "")
+        .trim()
+
+    private fun displayType(fieldType: String): String = when {
+        fieldType.contains("List<String>") -> "`List<String>`"
+        fieldType.contains("boolean") -> "`boolean`"
+        fieldType.contains("int") -> "`int`"
+        fieldType.contains("String") -> "`String`"
+        fieldType.contains("File") -> "`File`"
+        else -> "`$fieldType`"
+    }
+
+    private fun defaultValue(fieldName: String, fieldType: String, initializer: String): String =
+        defaultOverrides[fieldName] ?: when {
+            initializer.startsWith("new ArrayList") -> "Empty list"
+            initializer == "true" -> "`true`"
+            initializer == "false" -> "`false`"
+            initializer.matches(Regex("\\d+")) -> "`$initializer`"
+            fieldType.contains("boolean") && initializer.isEmpty() -> "`false`"
+            fieldType.contains("String") && initializer.isEmpty() -> "`null`"
+            fieldType.contains("File") && initializer.isEmpty() -> "`null`"
+            else -> ""
+        }
+
+    private fun defaultPlainTextMasks(): String {
+        val defaultsList = Regex("""(?s)getPlainTextMasks\(\)\s*\{.*?asList\((.*?)\)\);""").find(extensionSource)!!.groupValues[1]
+        val masks = Regex("\"(.*?)\"").findAll(defaultsList).map { "`${it.groupValues[1]}`" }
+        return listOf(
+            """<details id="default-plain-text-masks">""",
+            "<summary>Default plain text masks</summary>",
+            masks.joinToString(" "),
+            "</details>",
+        ).joinToString("\n\n")
+    }
+
+    private fun commandLineOverrides(): String =
+        """
+        ## Command-line overrides
+
+        System properties take precedence over the `rewrite` DSL, so you can run a recipe once without editing the build. The recipe still has to be on the `rewrite` classpath.
+
+        ```bash
+        ./gradlew rewriteRun -Drewrite.activeRecipe=org.openrewrite.staticanalysis.CommonStaticAnalysis
+        ```
+
+        | Property | Effect |
+        |------------|------------------|
+        | `-Drewrite.activeRecipe=<names>` | Replaces `activeRecipes` with a comma-separated list of recipe names. `rewrite.activeRecipes` is accepted too. |
+        | `-Drewrite.activeStyle=<names>` | Replaces `activeStyles` with a comma-separated list of style names. `rewrite.activeStyles` is accepted too. |
+        | `-Prewrite.throwOnParseFailures` | Enables `throwOnParseFailures`. |
+        """.trimIndent()
+
+    // Rendered as a tab per build script language on the site; plain consecutive code blocks elsewhere
+    private fun dslTabs(kotlin: String, groovy: String): String = listOf(
+        "::: dsl-tabs",
+        "```kotlin\n$kotlin\n```",
+        "```groovy\n$groovy\n```",
+        ":::",
+    ).joinToString("\n\n")
 }
