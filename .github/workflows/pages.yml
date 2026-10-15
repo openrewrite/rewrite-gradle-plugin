@@ -39,7 +39,7 @@ jobs:
           develocity-access-key: ${{ env.GRADLE_ENTERPRISE_ACCESS_KEY }}
 
       - name: Generate documentation
-        run: ./gradlew :plugin:test --tests "org.openrewrite.gradle.DocumentationSyncTest" :plugin:javadoc
+        run: ./gradlew :plugin:generatePluginReference :plugin:javadoc
 
       - name: Assemble site
         run: |

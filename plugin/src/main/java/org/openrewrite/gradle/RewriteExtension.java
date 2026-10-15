@@ -96,7 +96,7 @@ public class RewriteExtension {
 
     /**
      * Glob patterns for files that should be parsed as plain text.
-     * Defaults to a comprehensive list including {@code **&#47;*.md}, {@code **&#47;*.sql}, {@code **&#47;*.txt}, and others.
+     * Defaults to a built-in list covering formats such as Markdown, SQL, shell scripts, and plain text.
      * Exclusions take precedence over plain text masks.
      */
     private final List<String> plainTextMasks = new ArrayList<>();
