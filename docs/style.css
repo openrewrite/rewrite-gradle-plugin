@@ -220,12 +220,8 @@ code span.dt, code span.bu, code span.va { color: var(--code-type); }
   margin: 1rem 0;
 }
 
-.dsl-tabs div.sourceCode {
+.tab-bar ~ div.sourceCode {
   margin: 0;
-}
-
-.dsl-tabs div.sourceCode + div.sourceCode {
-  margin-top: 1rem;
 }
 
 .tab-bar ~ div.sourceCode pre {

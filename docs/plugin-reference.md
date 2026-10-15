@@ -109,7 +109,7 @@ Preview the changes as a patch in `build/reports/rewrite/rewrite.patch`, then ap
 ## Tasks
 
 | Task | Description |
-|------|-------------------|
+| ---- | ------------ |
 | `rewriteRun` | Apply the active refactoring recipes. Source files will be modified in place. |
 | `rewriteDryRun` | Run the active refactoring recipes, producing a patch file. No source files will be changed. |
 | `rewriteDiscover` | Lists all available recipes, their visitors, and active recipes configured in the rewrite DSL or rewrite.yml |
@@ -145,7 +145,7 @@ Applied to the root project of a multi-project build, the plugin covers every su
 In the Kotlin DSL, boolean properties with an `is` getter keep that prefix: `isEnableExperimentalGradleBuildScriptParsing`, `isExportDatatables`.
 
 | Property | Type | Default | Description |
-|------------|-----|-------|------------------|
+| ---------------- | -------- | -------- | ------------------------ |
 | `activeRecipes` | `List<String>` | Empty list | Fully qualified class names of recipes to activate. Recipes will only run when explicitly activated here or in a rewrite.yml file. |
 | `activeStyles` | `List<String>` | Empty list | Fully qualified class names of styles to activate. Styles will only be applied when explicitly activated here or in a rewrite.yml file. |
 | `configFile` | `File` | `rewrite.yml` in the project directory | Path to the OpenRewrite YAML configuration file. |
@@ -160,8 +160,8 @@ In the Kotlin DSL, boolean properties with an `is` getter keep that prefix: `isE
 | `failOnInvalidActiveRecipes` | `boolean` | `false` | Whether to throw an exception if an activeRecipe fails configuration validation. This may happen if the activeRecipe is improperly configured, or any downstream recipes are improperly configured. For now, this defaults to `false` to prevent one improperly configured recipe from failing the build. In the future, the default may change to `true` to be more restrictive. |
 | `failOnDryRunResults` | `boolean` | `false` | Whether `rewriteDryRun` should fail the build when it detects that changes would be made. Useful in CI to enforce that all recipes have already been applied. |
 | `throwOnParseFailures` | `boolean` | `false` | Whether to throw an exception when source file parsing fails. Can also be enabled via the project property `-Prewrite.throwOnParseFailures`. |
-| `pomCacheEnabled` | `boolean` | `true` | Whether to cache resolved Maven POMs to a RocksDB-backed on-disk cache to speed up subsequent recipe runs. When `true` (the default), a two-layer cache is used: an in-memory L1 cache backed by a RocksDB L2 cache. When `false`, only an in-memory cache is used. |
-| `pomCacheDirectory` | `String` | `~/.rewrite-cache` | Directory in which to store the RocksDB-backed Maven POM cache. When `null` (the default), the cache is stored under `~/.rewrite-cache`. |
+| `pomCacheEnabled` | `boolean` | `true` | Whether to cache resolved Maven POMs to a RocksDB-backed on-disk cache to speed up subsequent recipe runs. When enabled, a two-layer cache is used: an in-memory L1 cache backed by a RocksDB L2 cache. When disabled, only an in-memory cache is used. |
+| `pomCacheDirectory` | `String` | `~/.rewrite-cache` | Directory in which to store the RocksDB-backed Maven POM cache. |
 
 <details id="default-plain-text-masks">
 
@@ -174,10 +174,10 @@ In the Kotlin DSL, boolean properties with an `is` getter keep that prefix: `isE
 ### Methods
 
 | Method | Description |
-|--------|-------------------|
+| ---- | ------------ |
 | `activeRecipe(String...)` | Adds recipes to `activeRecipes`. |
-| `activeStyle(String...)` | Adds styles to `activeStyles`. |
 | `clearActiveRecipes()` | Removes all active recipes, for example ones added by a convention plugin. |
+| `activeStyle(String...)` | Adds styles to `activeStyles`. |
 | `clearActiveStyles()` | Removes all active styles. |
 | `exclusion(String...)` | Adds glob patterns to `exclusions`. Also accepts a `Collection<String>`. |
 | `plainTextMask(String...)` | Adds glob patterns to `plainTextMasks`. Specifying any mask replaces the built-in list. Also accepts a `Collection<String>`. |

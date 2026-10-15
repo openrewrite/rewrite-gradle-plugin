@@ -148,14 +148,15 @@ public class RewriteExtension {
 
     /**
      * Whether to cache resolved Maven POMs to a RocksDB-backed on-disk cache to speed up subsequent recipe runs.
-     * When {@code true} (the default), a two-layer cache is used: an in-memory L1 cache backed by a RocksDB L2 cache.
-     * When {@code false}, only an in-memory cache is used.
+     * When enabled, a two-layer cache is used: an in-memory L1 cache backed by a RocksDB L2 cache.
+     * When disabled, only an in-memory cache is used.
+     * Defaults to {@code true}.
      */
     private boolean pomCacheEnabled = true;
 
     /**
      * Directory in which to store the RocksDB-backed Maven POM cache.
-     * When {@code null} (the default), the cache is stored under {@code ~/.rewrite-cache}.
+     * Defaults to {@code ~/.rewrite-cache}.
      */
     @Nullable
     private String pomCacheDirectory;
@@ -216,10 +217,16 @@ public class RewriteExtension {
         return configFile;
     }
 
+    /**
+     * Adds recipes to {@code activeRecipes}.
+     */
     public void activeRecipe(String... recipes) {
         activeRecipes.addAll(asList(recipes));
     }
 
+    /**
+     * Removes all active recipes, for example ones added by a convention plugin.
+     */
     public void clearActiveRecipes() {
         activeRecipes.clear();
     }
@@ -229,10 +236,16 @@ public class RewriteExtension {
         this.activeRecipes.addAll(activeRecipes);
     }
 
+    /**
+     * Adds styles to {@code activeStyles}.
+     */
     public void activeStyle(String... styles) {
         activeStyles.addAll(asList(styles));
     }
 
+    /**
+     * Removes all active styles.
+     */
     public void clearActiveStyles() {
         activeStyles.clear();
     }
@@ -354,6 +367,9 @@ public class RewriteExtension {
         return exclusions;
     }
 
+    /**
+     * Adds glob patterns to {@code exclusions}.
+     */
     public void exclusion(String... exclusions) {
         this.exclusions.addAll(asList(exclusions));
     }
@@ -403,6 +419,10 @@ public class RewriteExtension {
         return plainTextMasks;
     }
 
+    /**
+     * Adds glob patterns to {@code plainTextMasks}.
+     * Specifying any mask replaces the built-in list.
+     */
     public void plainTextMask(String... masks) {
         this.plainTextMasks.addAll(asList(masks));
     }

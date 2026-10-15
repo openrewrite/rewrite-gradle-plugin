@@ -52,54 +52,42 @@ class DocumentationSyncTest {
         "src/main/java/org/openrewrite/gradle/RewriteDiscoverTask.java" to "rewriteDiscover",
     )
 
-    private val dslMethods = listOf(
-        "activeRecipe" to "`activeRecipe(String...)` | Adds recipes to `activeRecipes`.",
-        "activeStyle" to "`activeStyle(String...)` | Adds styles to `activeStyles`.",
-        "clearActiveRecipes" to "`clearActiveRecipes()` | Removes all active recipes, for example ones added by a convention plugin.",
-        "clearActiveStyles" to "`clearActiveStyles()` | Removes all active styles.",
-        "exclusion" to "`exclusion(String...)` | Adds glob patterns to `exclusions`. Also accepts a `Collection<String>`.",
-        "plainTextMask" to "`plainTextMask(String...)` | Adds glob patterns to `plainTextMasks`. Specifying any mask replaces the built-in list. Also accepts a `Collection<String>`.",
+    /**
+     * User-facing DSL methods on RewriteExtension that must have Javadoc.
+     */
+    private val userFacingMethods = listOf(
+        "activeRecipe",
+        "clearActiveRecipes",
+        "activeStyle",
+        "clearActiveStyles",
+        "exclusion",
+        "plainTextMask",
     )
 
-    private val defaultOverrides = mapOf(
-        "configFile" to "`rewrite.yml` in the project directory",
-        "plainTextMasks" to "[Built-in list](#default-plain-text-masks)",
-        "pomCacheDirectory" to "`~/.rewrite-cache`",
-    )
+    // Match Javadoc comment followed by optional annotations and a field declaration.
+    // The Javadoc must start at the beginning of a line (after optional whitespace).
+    private val javadocFieldPattern = Regex("""(?m)^\s*/\*\*\n((?:\s*\*.*\n)*?)\s*\*/\n(?:\s*@\w+(?:\(.*?\))?\s*\n)*\s*(?:private|public|protected)\s+([\w<>,\s]+?)\s+(\w+)\s*([;=].*)""")
+    private val javadocMethodPattern = Regex("""(?m)^\s*/\*\*\n((?:\s*\*.*\n)*?)\s*\*/\n\s*public void (\w+)\(([^)]*)\)""")
+    private val defaultsToSentence = Regex("""\s*Defaults to ((?:`[^`]*`|[^.`])*)\.""")
 
     @Test
-    fun `all user-facing RewriteExtension fields have Javadoc`() {
-        val fieldPattern = Regex("""(?s)/\*\*.*?\*/\s*(?:@\w+\s+)*(?:private|public|protected)\s+.*?\b(\w+)\s*[;=]""")
-        val documentedFields = fieldPattern.findAll(extensionSource)
-            .map { it.groupValues[1] }
-            .toSet()
+    fun `all user-facing RewriteExtension fields and methods have Javadoc`() {
+        val documented = (javadocFieldPattern.findAll(extensionSource).map { it.groupValues[3] } +
+                javadocMethodPattern.findAll(extensionSource).map { it.groupValues[2] }).toSet()
 
-        val undocumented = userFacingFields.filter { it !in documentedFields }
+        val undocumented = (userFacingFields + userFacingMethods).filter { it !in documented }
         assertThat(undocumented)
-            .withFailMessage("The following RewriteExtension fields are missing Javadoc:\n${undocumented.joinToString("\n") { "  - $it" }}")
+            .withFailMessage("The following RewriteExtension members are missing Javadoc:\n${undocumented.joinToString("\n") { "  - $it" }}")
             .isEmpty()
     }
 
     @Test
     fun `all task classes have non-empty descriptions`() {
         for ((path, _) in taskClasses) {
-            val source = File(path).readText()
-            assertThat(source)
-                .withFailMessage("$path does not call setDescription()")
-                .contains("setDescription(")
-            val desc = Regex("""setDescription\("(.+?)"\)""").find(source)?.groupValues?.get(1)
-            assertThat(desc)
-                .withFailMessage("$path has an empty task description")
+            assertThat(taskDescription(path))
+                .withFailMessage("$path does not set a task description")
                 .isNotBlank()
         }
-    }
-
-    @Test
-    fun `all documented DSL methods exist`() {
-        val missing = dslMethods.map { it.first }.filter { !Regex("""public void $it\(""").containsMatchIn(extensionSource) }
-        assertThat(missing)
-            .withFailMessage("The following documented DSL methods no longer exist on RewriteExtension:\n${missing.joinToString("\n") { "  - $it" }}")
-            .isEmpty()
     }
 
     @Test
@@ -172,6 +160,7 @@ class DocumentationSyncTest {
 
         Then apply the plugin in `build.gradle.kts` or `build.gradle`, add the recipe modules you need to the `rewrite` configuration, and activate a recipe:
         """.trimIndent(),
+        // pages.yml replaces X.Y.Z with the latest release version
         dslTabs(
             """
             plugins {
@@ -230,16 +219,13 @@ class DocumentationSyncTest {
         """.trimIndent(),
     ).joinToString("\n\n")
 
-    private fun tasks(): String {
-        val rows = taskClasses.map { (path, taskName) ->
-            val description = Regex("""setDescription\("(.+?)"\)""").find(File(path).readText())!!.groupValues[1]
-            "| `$taskName` | $description |"
-        }
-        return listOf(
-            "## Tasks",
-            (listOf("| Task | Description |", "|------|-------------------|") + rows).joinToString("\n"),
-        ).joinToString("\n\n")
-    }
+    private fun tasks(): String = "## Tasks\n\n" + table(
+        listOf("Task" to 1, "Description" to 3),
+        taskClasses.map { (path, taskName) -> listOf("`$taskName`", taskDescription(path)!!) },
+    )
+
+    private fun taskDescription(path: String): String? =
+        Regex("""setDescription\("(.+?)"\)""").find(File(path).readText())?.groupValues?.get(1)
 
     private fun configuration(): String {
         val kotlinIsProperties = Regex("""public boolean is(\w+)\(""").findAll(extensionSource)
@@ -277,31 +263,48 @@ class DocumentationSyncTest {
             propertiesTable(),
             defaultPlainTextMasks(),
             "### Methods",
-            (listOf("| Method | Description |", "|--------|-------------------|") + dslMethods.map { "| ${it.second} |" }).joinToString("\n"),
+            methodsTable(),
         ).joinToString("\n\n")
     }
 
     private fun propertiesTable(): String {
-        // Match Javadoc comment followed by optional annotations and a field declaration.
-        // The Javadoc must start at the beginning of a line (after optional whitespace).
-        val javadocFieldPattern = Regex("""(?m)^\s*/\*\*\n((?:\s*\*.*\n)*?)\s*\*/\n(?:\s*@\w+(?:\(.*?\))?\s*\n)*\s*(?:private|public|protected)\s+([\w<>,\s]+?)\s+(\w+)\s*([;=].*)""")
-
-        val rows = javadocFieldPattern.findAll(extensionSource).mapNotNull { match ->
-            val rawJavadoc = match.groupValues[1]
-            val fieldType = match.groupValues[2].trim()
-            val fieldName = match.groupValues[3]
-            val rest = match.groupValues[4]
-            if (fieldName !in userFacingFields) {
-                return@mapNotNull null
+        val rows = javadocFieldPattern.findAll(extensionSource)
+            .filter { it.groupValues[3] in userFacingFields }
+            .map {
+                val (rawJavadoc, fieldType, fieldName, rest) = it.destructured
+                val type = fieldType.trim().removePrefix("final ")
+                val initializer = rest.removePrefix("=").trimEnd(';').trim()
+                val javadoc = javadocToMarkdown(rawJavadoc)
+                val default = if (fieldName == "plainTextMasks") {
+                    "[Built-in list](#default-plain-text-masks)"
+                } else {
+                    defaultsToSentence.find(javadoc)?.groupValues?.get(1) ?: inferredDefault(type, initializer)
+                }
+                listOf("`$fieldName`", "`$type`", default, javadoc.replace(defaultsToSentence, "").trim())
             }
-            val initializer = if (rest.startsWith("=")) rest.drop(1).trimEnd(';').trim() else ""
-            "| `$fieldName` | ${displayType(fieldType)} | ${defaultValue(fieldName, fieldType, initializer)} | ${javadocToMarkdown(rawJavadoc)} |"
-        }
+            .toList()
+        return table(listOf("Property" to 4, "Type" to 2, "Default" to 2, "Description" to 6), rows)
+    }
 
-        return (listOf(
-            "| Property | Type | Default | Description |",
-            "|------------|-----|-------|------------------|",
-        ) + rows).joinToString("\n")
+    private fun inferredDefault(type: String, initializer: String): String = when {
+        initializer.startsWith("new ArrayList") -> "Empty list"
+        initializer.isNotEmpty() -> "`$initializer`"
+        type == "boolean" -> "`false`"
+        else -> "`null`"
+    }
+
+    private fun methodsTable(): String {
+        val rows = javadocMethodPattern.findAll(extensionSource)
+            .filter { it.groupValues[2] in userFacingMethods }
+            .map {
+                val (rawJavadoc, name, parameters) = it.destructured
+                val parameterTypes = parameters.split(",").filter { p -> p.isNotBlank() }
+                    .joinToString(", ") { p -> p.trim().substringBeforeLast(' ') }
+                val collectionOverload = if ("public void $name(Collection<String>" in extensionSource) " Also accepts a `Collection<String>`." else ""
+                listOf("`$name($parameterTypes)`", javadocToMarkdown(rawJavadoc) + collectionOverload)
+            }
+            .toList()
+        return table(listOf("Method" to 1, "Description" to 3), rows)
     }
 
     private fun javadocToMarkdown(rawJavadoc: String): String = rawJavadoc
@@ -314,41 +317,18 @@ class DocumentationSyncTest {
         .replace(Regex("""\s*<pre>.*?</pre>\s*"""), " ")
         .replace("&#47;", "/")
         .replace(Regex("""\s+"""), " ")
-        // Already shown in the Default column
-        .replace(Regex("""\s*Defaults to (?:`[^`]*`|[^.`])*\."""), "")
         .trim()
-
-    private fun displayType(fieldType: String): String = when {
-        fieldType.contains("List<String>") -> "`List<String>`"
-        fieldType.contains("boolean") -> "`boolean`"
-        fieldType.contains("int") -> "`int`"
-        fieldType.contains("String") -> "`String`"
-        fieldType.contains("File") -> "`File`"
-        else -> "`$fieldType`"
-    }
-
-    private fun defaultValue(fieldName: String, fieldType: String, initializer: String): String =
-        defaultOverrides[fieldName] ?: when {
-            initializer.startsWith("new ArrayList") -> "Empty list"
-            initializer == "true" -> "`true`"
-            initializer == "false" -> "`false`"
-            initializer.matches(Regex("\\d+")) -> "`$initializer`"
-            fieldType.contains("boolean") && initializer.isEmpty() -> "`false`"
-            fieldType.contains("String") && initializer.isEmpty() -> "`null`"
-            fieldType.contains("File") && initializer.isEmpty() -> "`null`"
-            else -> ""
-        }
 
     private fun defaultPlainTextMasks(): String {
         val defaultsList = Regex("""(?s)getPlainTextMasks\(\)\s*\{.*?asList\((.*?)\)\);""").find(extensionSource)!!.groupValues[1]
-        val masks = Regex("\"(.*?)\"").findAll(defaultsList).map { "`${it.groupValues[1]}`" }
-        return listOf(
-            """<details id="default-plain-text-masks">""",
-            "<summary>Default plain text masks</summary>",
-            masks.joinToString(" "),
-            "</details>",
-        ).joinToString("\n\n")
+        val masks = Regex("\"(.*?)\"").findAll(defaultsList).joinToString(" ") { "`${it.groupValues[1]}`" }
+        return "<details id=\"default-plain-text-masks\">\n\n<summary>Default plain text masks</summary>\n\n$masks\n\n</details>"
     }
+
+    // Column weights become the separator's dash counts, which pandoc uses as relative column widths
+    private fun table(columns: List<Pair<String, Int>>, rows: List<List<String>>): String =
+        (listOf(columns.map { it.first }, columns.map { "-".repeat(it.second * 4) }) + rows)
+            .joinToString("\n") { cells -> cells.joinToString(" | ", "| ", " |") }
 
     private fun commandLineOverrides(): String =
         """
