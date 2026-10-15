@@ -26,6 +26,8 @@ jobs:
     timeout-minutes: 30
     env:
       GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
+      ORG_GRADLE_PROJECT_codegenomeUsername: ${{ secrets.CODEGENOME_USERNAME }}
+      ORG_GRADLE_PROJECT_codegenomePassword: ${{ secrets.CODEGENOME_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
