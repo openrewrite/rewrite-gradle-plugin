@@ -141,7 +141,7 @@ class RewriteDryRunTest : RewritePluginTest {
                 $REPOSITORIES
 
                 kotlin {
-                    jvmToolchain(8)
+                    jvmToolchain(17)
                     jvm()
 
                     sourceSets {
