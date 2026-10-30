@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRADLE_SWITCHES: --console=plain --info --stacktrace --warning-mode=all --no-daemon
+  GRADLE_SWITCHES: --console=plain --info --stacktrace --warning-mode=all --no-daemon -Porg.gradle.java.installations.fromEnv=JAVA_HOME_8_X64
   GRADLE_ENTERPRISE_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_ACCESS_KEY }}
   # Resolve org.openrewrite and io.moderne dependencies from the Code Genome Project. Empty when the
   # secrets are unset, which leaves the codegenome repository out of the build entirely.
@@ -36,7 +36,9 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 25
+          java-version: |
+            8
+            25
       - name: setup-gradle
         uses: gradle/actions/setup-gradle@v5
       - name: build
