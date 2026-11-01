@@ -57,6 +57,7 @@ repositories {
             mavenContent {
                 includeGroupAndSubgroups("org.openrewrite")
                 includeGroupAndSubgroups("io.moderne")
+                includeVersionByRegex(".*", ".*", ".*-backpatch-.*")
             }
         }
     }
