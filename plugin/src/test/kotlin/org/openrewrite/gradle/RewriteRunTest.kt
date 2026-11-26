@@ -308,7 +308,8 @@ class RewriteRunTest : RewritePluginTest {
                         public class ATestClass {
 
                             @Test
-                            public void passes() { }
+                            public void passes() {
+                            }
                         }
                     """
                     )
@@ -759,8 +760,10 @@ class RewriteRunTest : RewritePluginTest {
                         void bar() {
                             System.out.println("Hello world");
                             // Autodetect should determine no spaces before if-statement parens
-                            if(true) {}
-                            if(true) {}
+                            if(true) {
+                            }
+                            if(true) {
+                            }
                         }
                     }
                 """
