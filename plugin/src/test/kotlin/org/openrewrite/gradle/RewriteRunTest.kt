@@ -254,7 +254,10 @@ class RewriteRunTest : RewritePluginTest {
                 public class BTestClass {
 
                     @Test
-                    public void passes() { }
+                    public void passes() {
+                        System.out.print("Hello");
+                            System.out.println(" world");
+                    }
                 }
         """.trimIndent()
         gradleProject(projectDir) {
@@ -308,7 +311,10 @@ class RewriteRunTest : RewritePluginTest {
                         public class ATestClass {
 
                             @Test
-                            public void passes() { }
+                            public void passes() {
+                                System.out.print("Hello");
+                                    System.out.println(" world");
+                            }
                         }
                     """
                     )
@@ -335,6 +341,8 @@ class RewriteRunTest : RewritePluginTest {
 
                 @Test
                 public void passes() {
+                    System.out.print("Hello");
+                    System.out.println(" world");
                 }
             }
         """.trimIndent()
@@ -759,8 +767,10 @@ class RewriteRunTest : RewritePluginTest {
                         void bar() {
                             System.out.println("Hello world");
                             // Autodetect should determine no spaces before if-statement parens
-                            if(true) {}
-                            if(true) {}
+                            if(true) {
+                            }
+                            if(true) {
+                            }
                         }
                     }
                 """
