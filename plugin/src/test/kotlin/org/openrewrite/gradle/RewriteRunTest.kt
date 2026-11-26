@@ -254,7 +254,10 @@ class RewriteRunTest : RewritePluginTest {
                 public class BTestClass {
 
                     @Test
-                    public void passes() { }
+                    public void passes() {
+                        System.out.print("Hello");
+                            System.out.println(" world");
+                    }
                 }
         """.trimIndent()
         gradleProject(projectDir) {
@@ -309,6 +312,8 @@ class RewriteRunTest : RewritePluginTest {
 
                             @Test
                             public void passes() {
+                                System.out.print("Hello");
+                                    System.out.println(" world");
                             }
                         }
                     """
@@ -336,6 +341,8 @@ class RewriteRunTest : RewritePluginTest {
 
                 @Test
                 public void passes() {
+                    System.out.print("Hello");
+                    System.out.println(" world");
                 }
             }
         """.trimIndent()
